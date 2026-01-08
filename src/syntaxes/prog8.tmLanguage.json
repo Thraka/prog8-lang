@@ -1,0 +1,298 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Prog8",
+  "scopeName": "source.prog8",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#directives" },
+    { "include": "#strings" },
+    { "include": "#characters" },
+    { "include": "#numbers" },
+    { "include": "#keywords" },
+    { "include": "#storage-types" },
+    { "include": "#storage-modifiers" },
+    { "include": "#constants" },
+    { "include": "#builtins" },
+    { "include": "#operators" },
+    { "include": "#inline-assembly" },
+    { "include": "#labels" },
+    { "include": "#function-calls" },
+    { "include": "#identifiers" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.block.prog8",
+          "begin": "/\\*",
+          "end": "\\*/"
+        },
+        {
+          "name": "comment.line.semicolon.prog8",
+          "match": ";.*$"
+        }
+      ]
+    },
+    "directives": {
+      "patterns": [
+        {
+          "name": "keyword.control.directive.prog8",
+          "match": "%(import|address|align|asm|asmbinary|asminclude|breakpoint|encoding|jmptable|launcher|memtop|option|output|zeropage|zpallowed|zpreserved)\\b"
+        },
+        {
+          "name": "keyword.control.directive.prog8",
+          "match": "%breakpoint!"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.prog8",
+          "begin": "(petscii:|sc:|iso:|iso5:|iso16:|atascii:|cp437:|kata:|c64os:)?\"",
+          "end": "\"",
+          "beginCaptures": {
+            "1": { "name": "storage.type.string.encoding.prog8" }
+          },
+          "patterns": [
+            {
+              "name": "constant.character.escape.prog8",
+              "match": "\\\\(n|r|t|\\\\|\"|'|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4})"
+            }
+          ]
+        }
+      ]
+    },
+    "characters": {
+      "patterns": [
+        {
+          "name": "string.quoted.single.prog8",
+          "match": "(petscii:|sc:|iso:|iso5:|iso16:|atascii:|cp437:|kata:|c64os:)?'(\\\\(n|r|t|\\\\|\"|'|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4})|[^'\\\\])'",
+          "captures": {
+            "1": { "name": "storage.type.string.encoding.prog8" }
+          }
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.float.prog8",
+          "match": "\\b-?[0-9][0-9_]*(\\.[0-9_]+)?([eE][+-]?[0-9_]+)?\\b"
+        },
+        {
+          "name": "constant.numeric.hex.prog8",
+          "match": "\\$[0-9a-fA-F_]+"
+        },
+        {
+          "name": "constant.numeric.binary.prog8",
+          "match": "%[01_]+"
+        },
+        {
+          "name": "constant.numeric.decimal.prog8",
+          "match": "\\b[0-9][0-9_]*\\b"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.flow.prog8",
+          "match": "\\b(if|else|when|on|goto|call|for|in|to|downto|step|while|do|until|repeat|unroll|return|break|continue|defer)\\b"
+        },
+        {
+          "name": "keyword.control.conditional.prog8",
+          "match": "\\b(if_cs|if_cc|if_vs|if_vc|if_eq|if_z|if_ne|if_nz|if_pl|if_pos|if_mi|if_neg)\\b"
+        },
+        {
+          "name": "keyword.other.prog8",
+          "match": "\\b(sub|asmsub|extsub|inline|clobbers|void|alias|struct)\\b"
+        }
+      ]
+    },
+    "storage-types": {
+      "patterns": [
+        {
+          "name": "storage.type.prog8",
+          "match": "\\b(byte|ubyte|word|uword|long|float|bool|str)\\b"
+        },
+        {
+          "name": "storage.type.pointer.prog8",
+          "match": "\\^\\^"
+        }
+      ]
+    },
+    "storage-modifiers": {
+      "patterns": [
+        {
+          "name": "storage.modifier.prog8",
+          "match": "@(zp|requirezp|nozp|shared|nosplit|alignword|align64|alignpage|dirty|bank|R[0-9]|R1[0-5])\\b"
+        },
+        {
+          "name": "storage.modifier.register.prog8",
+          "match": "@\\s*(A|X|Y|AX|AY|XY|Pc|R0R1_32|R2R3_32|R4R5_32|R6R7_32|R8R9_32|R10R11_32|R12R13_32|R14R15_32)\\b"
+        },
+        {
+          "name": "storage.modifier.prog8",
+          "match": "\\bconst\\b"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.prog8",
+          "match": "\\b(true|false)\\b"
+        },
+        {
+          "name": "constant.language.math.prog8",
+          "match": "\\b(PI|TWOPI|π)\\b"
+        }
+      ]
+    },
+    "builtins": {
+      "patterns": [
+        {
+          "name": "support.function.builtin.prog8",
+          "match": "\\b(len|sizeof|offsetof|abs|clamp|divmod|max|min|sgn|sqrt|cmp|lsb|lsw|msb|msw|mkword|mklong|mklong2|peek|peekbool|peekw|peekl|peekf|poke|pokebool|pokew|pokel|pokef|pokemon|rol|rol2|ror|ror2|setlsb|setmsb|memory|call|callfar|callfar2|rsave|rrestore)\\b"
+        },
+        {
+          "name": "support.function.builtin.array.prog8",
+          "match": "\\b(push|pop|pushw|popw|pushl|popl)\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.comparison.prog8",
+          "match": "(==|!=|<=|>=|<|>)"
+        },
+        {
+          "name": "keyword.operator.logical.prog8",
+          "match": "\\b(not|and|or|xor)\\b"
+        },
+        {
+          "name": "keyword.operator.assignment.prog8",
+          "match": "(\\+=|-=|\\*=|/=|&=|\\|=|\\^=|<<=|>>=|=)"
+        },
+        {
+          "name": "keyword.operator.arithmetic.prog8",
+          "match": "(\\+\\+|--|\\+|-|\\*|/|%)"
+        },
+        {
+          "name": "keyword.operator.bitwise.prog8",
+          "match": "(<<|>>|&|\\||\\^|~)"
+        },
+        {
+          "name": "keyword.operator.address.prog8",
+          "match": "&&|&<|&>|&"
+        },
+        {
+          "name": "keyword.operator.cast.prog8",
+          "match": "\\bas\\b"
+        },
+        {
+          "name": "keyword.operator.containment.prog8",
+          "match": "\\bin\\b"
+        },
+        {
+          "name": "keyword.operator.range.prog8",
+          "match": "\\b(then)\\b"
+        }
+      ]
+    },
+    "inline-assembly": {
+      "patterns": [
+        {
+          "name": "meta.embedded.block.assembly.prog8",
+          "begin": "\\{\\{",
+          "end": "\\}\\}",
+          "contentName": "source.asm.6502",
+          "patterns": [
+            {
+              "name": "comment.line.semicolon.assembly",
+              "match": ";.*$"
+            },
+            {
+              "name": "keyword.mnemonic.6502",
+              "match": "\\b(adc|and|asl|bcc|bcs|beq|bit|bmi|bne|bpl|brk|bvc|bvs|clc|cld|cli|clv|cmp|cpx|cpy|dec|dex|dey|eor|inc|inx|iny|jmp|jsr|lda|ldx|ldy|lsr|nop|ora|pha|php|pla|plp|rol|ror|rti|rts|sbc|sec|sed|sei|sta|stx|sty|tax|tay|tsx|txa|txs|tya|bra|phx|phy|plx|ply|stz|trb|tsb|bbr|bbs|rmb|smb|wai|stp)\\b",
+              "captures": {
+                "1": { "name": "keyword.mnemonic.6502" }
+              }
+            },
+            {
+              "name": "constant.numeric.hex.assembly",
+              "match": "\\$[0-9a-fA-F]+"
+            },
+            {
+              "name": "constant.numeric.binary.assembly",
+              "match": "%[01]+"
+            },
+            {
+              "name": "constant.numeric.decimal.assembly",
+              "match": "\\b[0-9]+\\b"
+            },
+            {
+              "name": "entity.name.function.label.assembly",
+              "match": "^\\s*[a-zA-Z_][a-zA-Z0-9_]*:"
+            },
+            {
+              "name": "entity.name.function.local-label.assembly",
+              "match": "^\\s*_[a-zA-Z0-9_]*"
+            }
+          ]
+        }
+      ]
+    },
+    "labels": {
+      "patterns": [
+        {
+          "name": "entity.name.function.label.prog8",
+          "match": "^\\s*[a-zA-Z_][a-zA-Z0-9_]*:"
+        }
+      ]
+    },
+    "function-calls": {
+      "patterns": [
+        {
+          "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)(\\s*)\\(",
+          "captures": {
+            "1": { "name": "entity.name.function.prog8" }
+          }
+        },
+        {
+          "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)(\\s*)\\(",
+          "captures": {
+            "1": { "name": "entity.name.namespace.prog8" },
+            "2": { "name": "entity.name.function.prog8" }
+          }
+        },
+        {
+          "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)(\\s*)\\(",
+          "captures": {
+            "1": { "name": "entity.name.namespace.prog8" },
+            "2": { "name": "entity.name.namespace.prog8" },
+            "3": { "name": "entity.name.function.prog8" }
+          }
+        }
+      ]
+    },
+    "identifiers": {
+      "patterns": [
+        {
+          "name": "variable.other.member.prog8",
+          "match": "\\b(cx16|cbm|c64|c128|sys|txt|math|floats|strings|diskio|graphics|compression|conv|buffers|sorting|sprites|palette|verafx|monogfx|gfx_lores|gfx_hires|emudbg|psg|psg2|bmx|bcd|coroutines)\\b"
+        },
+        {
+          "name": "variable.other.register.prog8",
+          "match": "\\b(r0|r1|r2|r3|r4|r5|r6|r7|r8|r9|r10|r11|r12|r13|r14|r15|r0L|r0H|r1L|r1H|r2L|r2H|r3L|r3H|r4L|r4H|r5L|r5H|r6L|r6H|r7L|r7H|r8L|r8H|r9L|r9H|r10L|r10H|r11L|r11H|r12L|r12H|r13L|r13H|r14L|r14H|r15L|r15H|r0s|r1s|r2s|r3s|r4s|r5s|r6s|r7s|r8s|r9s|r10s|r11s|r12s|r13s|r14s|r15s|r0bL|r0bH|r1bL|r1bH|r2bL|r2bH|r3bL|r3bH|r4bL|r4bH|r5bL|r5bH|r6bL|r6bH|r7bL|r7bH|r8bL|r8bH|r9bL|r9bH|r10bL|r10bH|r11bL|r11bH|r12bL|r12bH|r13bL|r13bH|r14bL|r14bH|r15bL|r15bH)\\b"
+        },
+        {
+          "name": "entity.name.type.block.prog8",
+          "match": "\\b(main|start)\\b"
+        }
+      ]
+    }
+  }
+}

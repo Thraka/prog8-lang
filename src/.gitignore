@@ -1,0 +1,20 @@
+# Prog8 Language VS Code Extension
+
+## Build outputs
+*.vsix
+
+## Node modules (if using npm for packaging)
+node_modules/
+
+## VS Code test folder
+.vscode-test/
+
+## OS files
+.DS_Store
+Thumbs.db
+
+## IDE files
+.idea/
+*.swp
+*.swo
+*~

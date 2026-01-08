@@ -1,0 +1,45 @@
+{
+  "name": "prog8-lang",
+  "displayName": "Prog8 Language Support",
+  "description": "Syntax highlighting and language support for Prog8, a structured programming language for 8-bit 6502/65c02 microprocessors",
+  "version": "1.0.0",
+  "publisher": "SadLogic",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "keywords": [
+    "prog8",
+    "commander x16",
+    "cx16"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thraka/prog8-lang"
+  },
+  "icon": "images/prog8-icon.png",
+  "contributes": {
+    "languages": [
+      {
+        "id": "prog8",
+        "aliases": [
+          "Prog8",
+          "prog8"
+        ],
+        "extensions": [
+          ".p8"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "prog8",
+        "scopeName": "source.prog8",
+        "path": "./syntaxes/prog8.tmLanguage.json"
+      }
+    ]
+  }
+}
