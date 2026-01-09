@@ -15,6 +15,7 @@
     { "include": "#builtins" },
     { "include": "#operators" },
     { "include": "#inline-assembly" },
+    { "include": "#blocks" },
     { "include": "#labels" },
     { "include": "#function-calls" },
     { "include": "#identifiers" }
@@ -37,7 +38,7 @@
       "patterns": [
         {
           "name": "keyword.control.directive.prog8",
-          "match": "%(import|address|align|asm|asmbinary|asminclude|breakpoint|encoding|jmptable|launcher|memtop|option|output|zeropage|zpallowed|zpreserved)\\b"
+          "match": "%(import|address|align|asm|asmbinary|asminclude|breakpoint|encoding|ir|jmptable|launcher|memtop|option|output|zeropage|zpallowed|zpreserved)\\b"
         },
         {
           "name": "keyword.control.directive.prog8",
@@ -49,7 +50,7 @@
       "patterns": [
         {
           "name": "string.quoted.double.prog8",
-          "begin": "(petscii:|sc:|iso:|iso5:|iso16:|atascii:|cp437:|kata:|c64os:)?\"",
+          "begin": "(default:|petscii:|sc:|iso:|iso5:|iso16:|atascii:|cp437:|kata:|c64os:)?\"",
           "end": "\"",
           "beginCaptures": {
             "1": { "name": "storage.type.string.encoding.prog8" }
@@ -67,7 +68,7 @@
       "patterns": [
         {
           "name": "string.quoted.single.prog8",
-          "match": "(petscii:|sc:|iso:|iso5:|iso16:|atascii:|cp437:|kata:|c64os:)?'(\\\\(n|r|t|\\\\|\"|'|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4})|[^'\\\\])'",
+          "match": "(default:|petscii:|sc:|iso:|iso5:|iso16:|atascii:|cp437:|kata:|c64os:)?'(\\\\(n|r|t|\\\\|\"|'|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4})|[^'\\\\])'",
           "captures": {
             "1": { "name": "storage.type.string.encoding.prog8" }
           }
@@ -113,6 +114,34 @@
     "storage-types": {
       "patterns": [
         {
+          "comment": "Memory-mapped variable declarations: &type or &&type followed by identifier",
+          "match": "(&|&&)(byte|ubyte|word|uword|long|float|bool|str)(\\s+)([a-zA-Z_][a-zA-Z0-9_]*)",
+          "captures": {
+            "1": { "name": "storage.type.pointer.prog8" },
+            "2": { "name": "storage.type.prog8" },
+            "4": { "name": "variable.other.declaration.prog8" }
+          }
+        },
+        {
+          "comment": "Variable declarations: type followed by identifier",
+          "match": "\\b(byte|ubyte|word|uword|long|float|bool|str)(\\s+)([a-zA-Z_][a-zA-Z0-9_]*)",
+          "captures": {
+            "1": { "name": "storage.type.prog8" },
+            "3": { "name": "variable.other.declaration.prog8" }
+          }
+        },
+        {
+          "match": "(&&)([a-zA-Z_][a-zA-Z0-9_]*)",
+          "captures": {
+            "1": { "name": "storage.type.pointer.prog8" },
+            "2": { "name": "variable.other.prog8" }
+          }
+        },
+        {
+          "name": "storage.type.pointer.prog8",
+          "match": "&<|&>"
+        },
+        {
           "name": "storage.type.prog8",
           "match": "\\b(byte|ubyte|word|uword|long|float|bool|str)\\b"
         },
@@ -154,7 +183,7 @@
       "patterns": [
         {
           "name": "support.function.builtin.prog8",
-          "match": "\\b(len|sizeof|offsetof|abs|clamp|divmod|max|min|sgn|sqrt|cmp|lsb|lsw|msb|msw|mkword|mklong|mklong2|peek|peekbool|peekw|peekl|peekf|poke|pokebool|pokew|pokel|pokef|pokemon|rol|rol2|ror|ror2|setlsb|setmsb|memory|call|callfar|callfar2|rsave|rrestore)\\b"
+          "match": "\\b(len|sizeof|offsetof|abs|clamp|divmod|max|min|sgn|sqrt|cmp|lsb|lsw|msb|msw|mkword|mklong|mklong2|peek|peekbool|peekw|peekl|peekf|poke|pokebool|pokew|pokel|pokef|pokemon|rol|rol2|ror|ror2|setlsb|setmsb|memory|call|callfar|callfar2|rsave|rsavex|rrestore|rrestorex)\\b"
         },
         {
           "name": "support.function.builtin.array.prog8",
@@ -183,10 +212,6 @@
         {
           "name": "keyword.operator.bitwise.prog8",
           "match": "(<<|>>|&|\\||\\^|~)"
-        },
-        {
-          "name": "keyword.operator.address.prog8",
-          "match": "&&|&<|&>|&"
         },
         {
           "name": "keyword.operator.cast.prog8",
@@ -245,6 +270,17 @@
         }
       ]
     },
+    "blocks": {
+      "patterns": [
+        {
+          "match": "^\\s*([a-zA-Z_][a-zA-Z0-9_]*)(\\s*)(\\$[0-9a-fA-F]+)?(\\s*)(\\{)",
+          "captures": {
+            "1": { "name": "entity.name.namespace.prog8" },
+            "3": { "name": "constant.numeric.hex.prog8" }
+          }
+        }
+      ]
+    },
     "labels": {
       "patterns": [
         {
@@ -287,10 +323,6 @@
         {
           "name": "variable.other.register.prog8",
           "match": "\\b(r0|r1|r2|r3|r4|r5|r6|r7|r8|r9|r10|r11|r12|r13|r14|r15|r0L|r0H|r1L|r1H|r2L|r2H|r3L|r3H|r4L|r4H|r5L|r5H|r6L|r6H|r7L|r7H|r8L|r8H|r9L|r9H|r10L|r10H|r11L|r11H|r12L|r12H|r13L|r13H|r14L|r14H|r15L|r15H|r0s|r1s|r2s|r3s|r4s|r5s|r6s|r7s|r8s|r9s|r10s|r11s|r12s|r13s|r14s|r15s|r0bL|r0bH|r1bL|r1bH|r2bL|r2bH|r3bL|r3bH|r4bL|r4bH|r5bL|r5bH|r6bL|r6bH|r7bL|r7bH|r8bL|r8bH|r9bL|r9bH|r10bL|r10bH|r11bL|r11bH|r12bL|r12bH|r13bL|r13bH|r14bL|r14bH|r15bL|r15bH)\\b"
-        },
-        {
-          "name": "entity.name.type.block.prog8",
-          "match": "\\b(main|start)\\b"
         }
       ]
     }

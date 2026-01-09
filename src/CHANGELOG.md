@@ -2,9 +2,20 @@
 
 All notable changes to the Prog8 Language Support extension will be documented in this file.
 
+## [1.1.0] - 2026-01-08
+
+- Block/namespace highlighting for block definitions (e.g., `main {`, `irq $c000 {`)
+- Variable declaration highlighting - identifiers after type declarations now properly highlighted
+- Memory-mapped variable declaration support (`&ubyte`, `&&uword`, etc.)
+- Typed pointer operators (`&&`, `&<`, `&>`) with distinct highlighting from bitwise `&`
+- Pointer-related operators (`^^`, `&&`, `&<`, `&>`) now share consistent highlighting
+- `default:` string encoding prefix
+- `%ir` directive for intermediate representation mode
+- `rsavex` and `rrestorex` built-in functions
+- Removed special-casing of `main` and `start` - they now follow standard block/function patterns
+
 ## [1.0.0] - 2026-01-06
 
-### Added
 - Initial release
 - Syntax highlighting for Prog8 `.p8` files
 - Support for all Prog8 keywords and control flow statements

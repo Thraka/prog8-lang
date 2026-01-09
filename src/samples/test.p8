@@ -12,11 +12,12 @@
 %zeropage basicsafe
 %option no_sysinit
 
-; Constants
-const ubyte MAX_COUNT = 100
-const float PI_VALUE = 3.14159
-
 main {
+
+    ; Constants
+    const ubyte MAX_COUNT = 100
+    const float PI_VALUE = 3.14159
+
     ; Variables with various types
     ubyte counter = 0
     byte signed_val = -42
@@ -190,7 +191,7 @@ done:
     }
     
     ; Assembly subroutine
-    asmsub fast_multiply(ubyte value @ A) -> ubyte @ A clobbers(Y) {
+    asmsub fast_multiply(ubyte value @ A) clobbers(Y) -> ubyte @ A {
         %asm {{
             ; Multiply A by 2
             asl a
@@ -221,7 +222,7 @@ _loop:
     
     ; Struct usage
     sub struct_example() {
-        Point p
+        ^^Point p
         p.x = 100
         p.y = 200
         

@@ -9,15 +9,19 @@ Syntax highlighting and language support for [Prog8](https://prog8.readthedocs.i
 - **Syntax Highlighting** for `.p8` files including:
   - Keywords and control flow (`if`, `else`, `for`, `while`, `repeat`, `when`, `sub`, etc.)
   - Data types (`byte`, `ubyte`, `word`, `uword`, `long`, `float`, `bool`, `str`)
-  - Compiler directives (`%import`, `%address`, `%zeropage`, `%asm`, etc.)
-  - String literals with encoding prefixes (`petscii:`, `sc:`, `iso:`, etc.)
+  - Pointer types (`^^`) and typed address-of operators (`&&`, `&<`, `&>`)
+  - Variable declarations with proper identifier highlighting
+  - Block/namespace definitions with optional address (`main $c000 { }`)
+  - Compiler directives (`%import`, `%address`, `%zeropage`, `%asm`, `%ir`, etc.)
+  - String literals with encoding prefixes (`default:`, `petscii:`, `sc:`, `iso:`, etc.)
   - Numeric literals (decimal, hexadecimal `$`, binary `%`)
-  - Built-in functions (`len`, `sizeof`, `lsb`, `msb`, `rol`, `ror`, etc.)
+  - Built-in functions (`len`, `sizeof`, `lsb`, `msb`, `rol`, `ror`, `peek`, `poke`, etc.)
+  - Memory-mapped variable declarations (`&ubyte BORDER_COLOR = $d020`)
   - Inline assembly blocks with 6502 instruction highlighting
   - Comments (`;` line comments and `/* */` block comments)
-  - Operators and special syntax
+  - Operators (arithmetic, bitwise, logical, comparison)
   - Virtual registers (`r0`-`r15` and variants)
-  - Library modules (`txt`, `sys`, `math`, `floats`, etc.)
+  - Library modules (`txt`, `sys`, `math`, `floats`, `cx16`, `cbm`, etc.)
 
 - **Language Configuration**:
   - Auto-closing brackets and quotes

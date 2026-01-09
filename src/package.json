@@ -2,8 +2,15 @@
   "name": "prog8-lang",
   "displayName": "Prog8 Language Support",
   "description": "Syntax highlighting and language support for Prog8, a structured programming language for 8-bit 6502/65c02 microprocessors",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "publisher": "SadLogic",
+  "author": "Thraka",
+  "license": "MIT",
+  "pricing": "Free",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Thraka/prog8-lang"
+  },
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -15,10 +22,6 @@
     "commander x16",
     "cx16"
   ],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/thraka/prog8-lang"
-  },
   "icon": "images/prog8-icon.png",
   "contributes": {
     "languages": [
