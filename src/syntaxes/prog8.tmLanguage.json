@@ -38,11 +38,59 @@
       "patterns": [
         {
           "name": "keyword.control.directive.prog8",
-          "match": "%(import|address|align|asm|asmbinary|asminclude|breakpoint|encoding|ir|jmptable|launcher|memtop|option|output|zeropage|zpallowed|zpreserved)\\b"
+          "match": "%breakpoint!"
+        },
+        {
+          "match": "%(import|encoding|launcher|option|output|zeropage)\\b\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+          "captures": {
+            "0": { "name": "keyword.control.directive.prog8" },
+            "2": { "name": "entity.name.type.module.prog8" }
+          }
+        },
+        {
+          "match": "%(zpallowed|zpreserved)\\b\\s+(.*?)(?=;|/\\*|$)",
+          "captures": {
+            "0": { "name": "keyword.control.directive.prog8" },
+            "2": { "name": "constant.numeric.prog8" }
+          }
+        },
+        {
+          "match": "%(address|memtop)\\b\\s+(\\$[0-9a-fA-F]+)",
+          "captures": {
+            "0": { "name": "keyword.control.directive.prog8" },
+            "2": { "name": "constant.numeric.hex.prog8" }
+          }
+        },
+        {
+          "match": "%(align)\\b\\s+(\\$[0-9a-fA-F]+)",
+          "captures": {
+            "0": { "name": "keyword.control.directive.prog8" },
+            "2": { "name": "constant.numeric.hex.prog8" }
+          }
+        },
+        {
+          "match": "%(asmbinary)\\b\\s+(\"[^\"]*\")",
+          "captures": {
+            "0": { "name": "keyword.control.directive.prog8" },
+            "2": { "name": "string.quoted.double.prog8" }
+          }
+        },
+        {
+          "match": "%(asminclude)\\b\\s+(\"[^\"]*\")",
+          "captures": {
+            "0": { "name": "keyword.control.directive.prog8" },
+            "2": { "name": "string.quoted.double.prog8" }
+          }
+        },
+        {
+          "match": "%(jmptable)\\b",
+          "captures": {
+            "0": { "name": "keyword.control.directive.prog8" }
+          }
         },
         {
           "name": "keyword.control.directive.prog8",
-          "match": "%breakpoint!"
+          "match": "%(asm|ir|breakpoint)\\b"
         }
       ]
     },
