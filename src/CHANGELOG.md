@@ -2,6 +2,17 @@
 
 All notable changes to the Prog8 Language Support extension will be documented in this file.
 
+## [1.2.1] - 2026-01-22
+
+- Forgot to update the changelog. :(
+
+## [1.2.0] - 2026-01-22
+
+- Fixed comma-separated variable declarations in Prog8 (e.g., `ubyte counter, counter2 = 0`)
+- Fixed directive parameter coloring `%import something`
+- Fixed struct/type name highlighting in both Prog8 (`struct MyStruct {`)
+- Added support for ProgB
+
 ## [1.1.0] - 2026-01-08
 
 - Block/namespace highlighting for block definitions (e.g., `main {`, `irq $c000 {`)
