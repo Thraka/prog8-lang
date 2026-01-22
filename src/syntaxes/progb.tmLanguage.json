@@ -1,0 +1,418 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "ProgB",
+  "scopeName": "source.progb",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#directives" },
+    { "include": "#strings" },
+    { "include": "#characters" },
+    { "include": "#numbers" },
+    { "include": "#keywords" },
+    { "include": "#storage-types" },
+    { "include": "#storage-modifiers" },
+    { "include": "#constants" },
+    { "include": "#builtins" },
+    { "include": "#operators" },
+    { "include": "#inline-assembly" },
+    { "include": "#blocks" },
+    { "include": "#labels" },
+    { "include": "#function-calls" },
+    { "include": "#identifiers" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.block.progb",
+          "begin": "/'",
+          "end": "'/"
+        },
+        {
+          "name": "comment.line.apostrophe.progb",
+          "match": "'.*$"
+        },
+        {
+          "name": "comment.line.rem.progb",
+          "match": "(?i)\\b(REM)\\b.*$",
+          "captures": {
+            "1": { "name": "keyword.control.progb" }
+          }
+        }
+      ]
+    },
+    "directives": {
+      "patterns": [
+        {
+          "match": "(?i)\\b(IMPORT|ENCODING|LAUNCHER|OPTION|OUTPUT|ZEROPAGE)\\b\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+          "captures": {
+            "1": { "name": "keyword.control.directive.progb" },
+            "2": { "name": "entity.name.type.module.progb" }
+          }
+        },
+        {
+          "match": "(?i)\\b(ZPALLOWED|ZPRESERVED)\\b\\s+(.*?)(?='|/'|$)",
+          "captures": {
+            "1": { "name": "keyword.control.directive.progb" },
+            "2": { "name": "constant.numeric.progb" }
+          }
+        },
+        {
+          "match": "(?i)\\b(ADDRESS|MEMTOP|ALIGN)\\b\\s+(\\$[0-9a-fA-F]+)",
+          "captures": {
+            "1": { "name": "keyword.control.directive.progb" },
+            "2": { "name": "constant.numeric.hex.progb" }
+          }
+        },
+        {
+          "match": "(?i)\\b(ASMBINARY|ASMINCLUDE)\\b\\s+(\"[^\"]*\")",
+          "captures": {
+            "1": { "name": "keyword.control.directive.progb" },
+            "2": { "name": "string.quoted.double.progb" }
+          }
+        },
+        {
+          "name": "keyword.control.directive.progb",
+          "match": "(?i)\\b(JMPTABLE|BREAKPOINT|MERGE|FORCE_OUTPUT|VERAFXMULS)\\b"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.progb",
+          "begin": "(default:|petscii:|sc:|iso:|iso5:|iso16:|atascii:|cp437:|kata:|c64os:)?\"",
+          "end": "\"",
+          "beginCaptures": {
+            "1": { "name": "storage.type.string.encoding.progb" }
+          },
+          "patterns": [
+            {
+              "name": "constant.character.escape.progb",
+              "match": "\\\\(n|r|t|\\\\|\"|'|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4})"
+            }
+          ]
+        }
+      ]
+    },
+    "characters": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.char.progb",
+          "match": "(default:|petscii:|sc:|iso:|iso5:|iso16:|atascii:|cp437:|kata:|c64os:)?\"(\\\\(n|r|t|\\\\|\"|'|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4})|[^\"\\\\])\"c",
+          "captures": {
+            "1": { "name": "storage.type.string.encoding.progb" }
+          }
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.float.progb",
+          "match": "\\b-?[0-9][0-9_]*(\\.[0-9_]+)?([eE][+-]?[0-9_]+)?\\b"
+        },
+        {
+          "name": "constant.numeric.hex.progb",
+          "match": "\\$[0-9a-fA-F_]+"
+        },
+        {
+          "name": "constant.numeric.binary.progb",
+          "match": "%[01_]+"
+        },
+        {
+          "name": "constant.numeric.decimal.progb",
+          "match": "\\b[0-9][0-9_]*\\b"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.flow.progb",
+          "match": "(?i)\\b(IF|THEN|ELSEIF|ELSE|END\\s+IF|SELECT\\s+CASE|CASE|END\\s+SELECT|ON|GOTO|CALL|FOR|IN|TO|DOWNTO|STEP|NEXT|WHILE|WEND|DO|LOOP|UNTIL|REPEAT|END\\s+REPEAT|UNROLL|END\\s+UNROLL|RETURN|BREAK|EXIT|CONTINUE|DEFER|END\\s+DEFER)\\b"
+        },
+        {
+          "name": "keyword.control.conditional.progb",
+          "match": "(?i)\\b(IF_CS|IF_CC|IF_VS|IF_VC|IF_EQ|IF_Z|IF_NE|IF_NZ|IF_PL|IF_POS|IF_MI|IF_NEG)\\b"
+        },
+        {
+          "name": "keyword.other.module.progb",
+          "match": "(?i)\\b(MODULE|END\\s+MODULE)\\b"
+        },
+        {
+          "name": "keyword.other.function.progb",
+          "match": "(?i)\\b(SUB|END\\s+SUB|FUNCTION|END\\s+FUNCTION|ASMSUB|END\\s+ASMSUB|EXTSUB|INLINE|CLOBBERS|AT\\s+BANK)\\b"
+        },
+        {
+          "name": "keyword.other.progb",
+          "match": "(?i)\\b(VOID|ALIAS|TYPE|END\\s+TYPE|DIM|AS|CONST|AT)\\b"
+        }
+      ]
+    },
+    "storage-types": {
+      "patterns": [
+        {
+          "comment": "Variable declarations: DIM ... AS type",
+          "match": "(?i)\\b(DIM)\\s+([a-zA-Z_][a-zA-Z0-9_,\\s\\[\\]]*?)\\s+(AS)\\s+(UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|PTR)",
+          "captures": {
+            "1": { "name": "keyword.other.progb" },
+            "2": { "name": "variable.other.declaration.progb" },
+            "3": { "name": "keyword.other.progb" },
+            "4": { "name": "storage.type.progb" }
+          }
+        },
+        {
+          "comment": "Const declarations",
+          "match": "(?i)\\b(CONST)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\s+(AS)\\s+(UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING)",
+          "captures": {
+            "1": { "name": "storage.modifier.progb" },
+            "2": { "name": "variable.other.declaration.progb" },
+            "3": { "name": "keyword.other.progb" },
+            "4": { "name": "storage.type.progb" }
+          }
+        },
+        {
+          "name": "storage.type.pointer.progb",
+          "match": "&<|&>"
+        },
+        {
+          "name": "storage.type.progb",
+          "match": "(?i)\\b(UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|PTR)\\b"
+        },
+        {
+          "name": "storage.type.pointer.progb",
+          "match": "\\^\\^"
+        }
+      ]
+    },
+    "storage-modifiers": {
+      "patterns": [
+        {
+          "name": "storage.modifier.progb",
+          "match": "@(zp|requirezp|nozp|shared|nosplit|alignword|align64|alignpage|dirty|split|bank|R[0-9]|R1[0-5])\\b"
+        },
+        {
+          "name": "storage.modifier.register.progb",
+          "match": "@\\s*(A|X|Y|AX|AY|XY|Pc|R0R1_32|R2R3_32|R4R5_32|R6R7_32|R8R9_32|R10R11_32|R12R13_32|R14R15_32)\\b"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.progb",
+          "match": "(?i)\\b(TRUE|FALSE)\\b"
+        },
+        {
+          "name": "constant.language.math.progb",
+          "match": "(?i)\\b(PI|TWOPI|π)\\b"
+        }
+      ]
+    },
+    "builtins": {
+      "patterns": [
+        {
+          "name": "support.function.builtin.progb",
+          "match": "(?i)\\b(LEN|SIZEOF|OFFSETOF|ABS|CLAMP|DIVMOD|MAX|MIN|SGN|SQRT|CMP|LSB|LSW|MSB|MSW|MKWORD|MKLONG|MKLONG2|PEEK|PEEKBOOL|PEEKW|PEEKL|PEEKF|POKE|POKEBOOL|POKEW|POKEL|POKEF|POKEMON|ROL|ROL2|ROR|ROR2|SETLSB|SETMSB|MEMORY|CALL|CALLFAR|CALLFAR2|RSAVE|RSAVEX|RRESTORE|RRESTOREX|ADDRESSOF|TYPEDADDR)\\b"
+        },
+        {
+          "name": "support.function.builtin.array.progb",
+          "match": "(?i)\\b(PUSH|POP|PUSHW|POPW|PUSHL|POPL)\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.comparison.progb",
+          "match": "(==|<>|<=|>=|<|>)"
+        },
+        {
+          "name": "keyword.operator.logical.progb",
+          "match": "(?i)\\b(NOT|AND|OR|XOR)\\b"
+        },
+        {
+          "name": "keyword.operator.bitwise.progb",
+          "match": "(?i)\\b(BITNOT|BITAND|BITOR|BITXOR|SHL|SHR)\\b"
+        },
+        {
+          "name": "keyword.operator.assignment.progb",
+          "match": "(\\+=|-=|\\*=|/=|&=|\\|=|\\^=|<<=|>>=|%=|=)"
+        },
+        {
+          "name": "keyword.operator.arithmetic.progb",
+          "match": "(\\+\\+|--|\\+|-|\\*|/|(?i)\\b(MOD)\\b)"
+        },
+        {
+          "name": "keyword.operator.bitwise.symbol.progb",
+          "match": "(<<|>>|&|\\||\\^|~)"
+        },
+        {
+          "name": "keyword.operator.cast.progb",
+          "match": "(?i)\\b(AS)\\b"
+        },
+        {
+          "name": "keyword.operator.containment.progb",
+          "match": "(?i)\\b(IN)\\b"
+        },
+        {
+          "name": "keyword.operator.increment.progb",
+          "match": "(?i)\\b(INC|DEC)\\b"
+        }
+      ]
+    },
+    "inline-assembly": {
+      "patterns": [
+        {
+          "name": "meta.embedded.block.assembly.progb",
+          "begin": "(?i)\\b(ASM)\\b",
+          "end": "(?i)\\b(END\\s+ASM)\\b",
+          "beginCaptures": {
+            "1": { "name": "keyword.control.progb" }
+          },
+          "endCaptures": {
+            "1": { "name": "keyword.control.progb" }
+          },
+          "contentName": "source.asm.6502",
+          "patterns": [
+            {
+              "name": "comment.line.semicolon.assembly",
+              "match": ";.*$"
+            },
+            {
+              "name": "keyword.mnemonic.6502",
+              "match": "\\b(adc|and|asl|bcc|bcs|beq|bit|bmi|bne|bpl|brk|bvc|bvs|clc|cld|cli|clv|cmp|cpx|cpy|dec|dex|dey|eor|inc|inx|iny|jmp|jsr|lda|ldx|ldy|lsr|nop|ora|pha|php|pla|plp|rol|ror|rti|rts|sbc|sec|sed|sei|sta|stx|sty|tax|tay|tsx|txa|txs|tya|bra|phx|phy|plx|ply|stz|trb|tsb|bbr|bbs|rmb|smb|wai|stp)\\b"
+            },
+            {
+              "name": "constant.numeric.hex.assembly",
+              "match": "\\$[0-9a-fA-F]+"
+            },
+            {
+              "name": "constant.numeric.binary.assembly",
+              "match": "%[01]+"
+            },
+            {
+              "name": "constant.numeric.decimal.assembly",
+              "match": "\\b[0-9]+\\b"
+            },
+            {
+              "name": "entity.name.function.label.assembly",
+              "match": "^\\s*[a-zA-Z_][a-zA-Z0-9_]*:"
+            },
+            {
+              "name": "entity.name.function.local-label.assembly",
+              "match": "^\\s*_[a-zA-Z0-9_]*"
+            }
+          ]
+        },
+        {
+          "name": "meta.embedded.block.ir.progb",
+          "begin": "(?i)\\b(IR)\\b",
+          "end": "(?i)\\b(END\\s+IR)\\b",
+          "beginCaptures": {
+            "1": { "name": "keyword.control.progb" }
+          },
+          "endCaptures": {
+            "1": { "name": "keyword.control.progb" }
+          },
+          "contentName": "source.ir"
+        },
+        {
+          "name": "meta.embedded.block.assembly.compat.progb",
+          "begin": "\\{\\{",
+          "end": "\\}\\}",
+          "contentName": "source.asm.6502",
+          "patterns": [
+            {
+              "name": "comment.line.semicolon.assembly",
+              "match": ";.*$"
+            },
+            {
+              "name": "keyword.mnemonic.6502",
+              "match": "\\b(adc|and|asl|bcc|bcs|beq|bit|bmi|bne|bpl|brk|bvc|bvs|clc|cld|cli|clv|cmp|cpx|cpy|dec|dex|dey|eor|inc|inx|iny|jmp|jsr|lda|ldx|ldy|lsr|nop|ora|pha|php|pla|plp|rol|ror|rti|rts|sbc|sec|sed|sei|sta|stx|sty|tax|tay|tsx|txa|txs|tya|bra|phx|phy|plx|ply|stz|trb|tsb|bbr|bbs|rmb|smb|wai|stp)\\b"
+            },
+            {
+              "name": "constant.numeric.hex.assembly",
+              "match": "\\$[0-9a-fA-F]+"
+            },
+            {
+              "name": "constant.numeric.binary.assembly",
+              "match": "%[01]+"
+            },
+            {
+              "name": "constant.numeric.decimal.assembly",
+              "match": "\\b[0-9]+\\b"
+            },
+            {
+              "name": "entity.name.function.label.assembly",
+              "match": "^\\s*[a-zA-Z_][a-zA-Z0-9_]*:"
+            },
+            {
+              "name": "entity.name.function.local-label.assembly",
+              "match": "^\\s*_[a-zA-Z0-9_]*"
+            }
+          ]
+        }
+      ]
+    },
+    "blocks": {
+      "patterns": [
+        {
+          "match": "(?i)\\b(MODULE)\\s+([a-zA-Z_][a-zA-Z0-9_]*)(?:\\s+(AT)\\s+(\\$[0-9a-fA-F]+))?",
+          "captures": {
+            "1": { "name": "keyword.other.module.progb" },
+            "2": { "name": "entity.name.namespace.progb" },
+            "3": { "name": "keyword.other.progb" },
+            "4": { "name": "constant.numeric.hex.progb" }
+          }
+        }
+      ]
+    },
+    "labels": {
+      "patterns": [
+        {
+          "name": "entity.name.function.label.progb",
+          "match": "^\\s*[a-zA-Z_][a-zA-Z0-9_]*:"
+        }
+      ]
+    },
+    "function-calls": {
+      "patterns": [
+        {
+          "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)(\\s*)\\(",
+          "captures": {
+            "1": { "name": "entity.name.function.progb" }
+          }
+        },
+        {
+          "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)(\\s*)\\(",
+          "captures": {
+            "1": { "name": "entity.name.namespace.progb" },
+            "2": { "name": "entity.name.function.progb" }
+          }
+        },
+        {
+          "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)(\\s*)\\(",
+          "captures": {
+            "1": { "name": "entity.name.namespace.progb" },
+            "2": { "name": "entity.name.namespace.progb" },
+            "3": { "name": "entity.name.function.progb" }
+          }
+        }
+      ]
+    },
+    "identifiers": {
+      "patterns": [
+        {
+          "name": "variable.other.member.progb",
+          "match": "\\b(cx16|cbm|c64|c128|sys|txt|math|floats|strings|diskio|graphics|compression|conv|buffers|sorting|sprites|palette|verafx|monogfx|gfx_lores|gfx_hires|emudbg|psg|psg2|bmx|bcd|coroutines)\\b"
+        },
+        {
+          "name": "variable.other.register.progb",
+          "match": "\\b(r0|r1|r2|r3|r4|r5|r6|r7|r8|r9|r10|r11|r12|r13|r14|r15|r0L|r0H|r1L|r1H|r2L|r2H|r3L|r3H|r4L|r4H|r5L|r5H|r6L|r6H|r7L|r7H|r8L|r8H|r9L|r9H|r10L|r10H|r11L|r11H|r12L|r12H|r13L|r13H|r14L|r14H|r15L|r15H|r0s|r1s|r2s|r3s|r4s|r5s|r6s|r7s|r8s|r9s|r10s|r11s|r12s|r13s|r14s|r15s|r0bL|r0bH|r1bL|r1bH|r2bL|r2bH|r3bL|r3bH|r4bL|r4bH|r5bL|r5bH|r6bL|r6bH|r7bL|r7bH|r8bL|r8bH|r9bL|r9bH|r10bL|r10bH|r11bL|r11bH|r12bL|r12bH|r13bL|r13bH|r14bL|r14bH|r15bL|r15bH)\\b"
+        }
+      ]
+    }
+  }
+}
