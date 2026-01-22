@@ -9,7 +9,7 @@ ZEROPAGE basicsafe
 
 MODULE main
     ' Module-level variable declarations
-    DIM buffer[10] AS UBYTE
+    DIM buffer[10], bob AS UBYTE
     DIM counter AS UBYTE = 0
     DIM fastptr AS UWORD @zp
     CONST MAX_ITEMS AS UBYTE = 100

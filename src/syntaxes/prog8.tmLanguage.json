@@ -155,7 +155,7 @@
         },
         {
           "name": "keyword.other.prog8",
-          "match": "\\b(sub|asmsub|extsub|inline|clobbers|void|alias|struct)\\b"
+          "match": "\\b(sub|asmsub|extsub|inline|clobbers|void|alias)\\b"
         }
       ]
     },
@@ -176,6 +176,13 @@
           "captures": {
             "1": { "name": "storage.type.prog8" },
             "3": { "name": "variable.other.declaration.prog8" }
+          }
+        },
+        {
+          "comment": "Additional variables in comma-separated declarations",
+          "match": ",\\s*([a-zA-Z_][a-zA-Z0-9_]*)",
+          "captures": {
+            "1": { "name": "variable.other.declaration.prog8" }
           }
         },
         {
@@ -320,6 +327,13 @@
     },
     "blocks": {
       "patterns": [
+        {
+          "match": "\\b(struct)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\{",
+          "captures": {
+            "1": { "name": "keyword.other.prog8" },
+            "2": { "name": "entity.name.type.struct.prog8" }
+          }
+        },
         {
           "match": "^\\s*([a-zA-Z_][a-zA-Z0-9_]*)(\\s*)(\\$[0-9a-fA-F]+)?(\\s*)(\\{)",
           "captures": {

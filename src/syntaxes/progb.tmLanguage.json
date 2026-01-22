@@ -138,7 +138,7 @@
         },
         {
           "name": "keyword.other.module.progb",
-          "match": "(?i)\\b(MODULE|END\\s+MODULE)\\b"
+          "match": "(?i)\\b(END\\s+MODULE)\\b"
         },
         {
           "name": "keyword.other.function.progb",
@@ -146,20 +146,25 @@
         },
         {
           "name": "keyword.other.progb",
-          "match": "(?i)\\b(VOID|ALIAS|TYPE|END\\s+TYPE|DIM|AS|CONST|AT)\\b"
+          "match": "(?i)\\b(VOID|ALIAS|END\\s+TYPE|AT)\\b"
         }
       ]
     },
     "storage-types": {
       "patterns": [
         {
-          "comment": "Variable declarations: DIM ... AS type",
-          "match": "(?i)\\b(DIM)\\s+([a-zA-Z_][a-zA-Z0-9_,\\s\\[\\]]*?)\\s+(AS)\\s+(UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|PTR)",
+          "comment": "DIM keyword with variable name (including array syntax)",
+          "match": "(?i)\\b(DIM)\\s+([a-zA-Z_][a-zA-Z0-9_]*)(?:\\s*\\[[^\\]]*\\])?",
           "captures": {
             "1": { "name": "keyword.other.progb" },
-            "2": { "name": "variable.other.declaration.progb" },
-            "3": { "name": "keyword.other.progb" },
-            "4": { "name": "storage.type.progb" }
+            "2": { "name": "variable.other.declaration.progb" }
+          }
+        },
+        {
+          "comment": "Additional variables after comma in DIM (including array syntax)",
+          "match": ",\\s*([a-zA-Z_][a-zA-Z0-9_]*)(?:\\s*\\[[^\\]]*\\])?",
+          "captures": {
+            "1": { "name": "variable.other.declaration.progb" }
           }
         },
         {
@@ -358,6 +363,13 @@
     },
     "blocks": {
       "patterns": [
+        {
+          "match": "(?i)\\b(TYPE)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+          "captures": {
+            "1": { "name": "keyword.other.progb" },
+            "2": { "name": "entity.name.type.struct.progb" }
+          }
+        },
         {
           "match": "(?i)\\b(MODULE)\\s+([a-zA-Z_][a-zA-Z0-9_]*)(?:\\s+(AT)\\s+(\\$[0-9a-fA-F]+))?",
           "captures": {

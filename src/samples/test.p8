@@ -19,7 +19,7 @@ main {
     const float PI_VALUE = 3.14159
 
     ; Variables with various types
-    ubyte counter = 0
+    ubyte counter, counter2 = 0
     byte signed_val = -42
     uword address = $c000
     word negative_word = -1000
