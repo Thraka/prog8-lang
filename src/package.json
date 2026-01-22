@@ -19,6 +19,7 @@
   ],
   "keywords": [
     "prog8",
+    "progb",
     "commander x16",
     "cx16"
   ],
@@ -34,7 +35,18 @@
         "extensions": [
           ".p8"
         ],
-        "configuration": "./language-configuration.json"
+        "configuration": "./language-configuration-prog8.json"
+      },
+      {
+        "id": "progb",
+        "aliases": [
+          "ProgB",
+          "progb"
+        ],
+        "extensions": [
+          ".pb"
+        ],
+        "configuration": "./language-configuration-progb.json"
       }
     ],
     "grammars": [
@@ -42,6 +54,11 @@
         "language": "prog8",
         "scopeName": "source.prog8",
         "path": "./syntaxes/prog8.tmLanguage.json"
+      },
+      {
+        "language": "progb",
+        "scopeName": "source.progb",
+        "path": "./syntaxes/progb.tmLanguage.json"
       }
     ]
   }
