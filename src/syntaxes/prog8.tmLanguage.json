@@ -179,10 +179,10 @@
           }
         },
         {
-          "comment": "Additional variables in comma-separated declarations",
-          "match": ",\\s*([a-zA-Z_][a-zA-Z0-9_]*)",
+          "comment": "Additional variables in comma-separated declarations (excludes type keywords)",
+          "match": ",\\s*(?!(byte|ubyte|word|uword|long|float|bool|str)\\b)([a-zA-Z_][a-zA-Z0-9_]*)",
           "captures": {
-            "1": { "name": "variable.other.declaration.prog8" }
+            "2": { "name": "variable.other.declaration.prog8" }
           }
         },
         {

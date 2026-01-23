@@ -2,6 +2,10 @@
 
 All notable changes to the Prog8 Language Support extension will be documented in this file.
 
+## [1.2.2] - 2026-01-22
+
+- Fixed some coloring issues with method parameter variables.
+
 ## [1.2.1] - 2026-01-22
 
 - Forgot to update the changelog. :(

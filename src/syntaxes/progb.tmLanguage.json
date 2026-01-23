@@ -153,6 +153,15 @@
     "storage-types": {
       "patterns": [
         {
+          "comment": "Parameter declarations: name AS TYPE (for function/sub parameters)",
+          "match": "(?i)\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s+(AS)\\s+(UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|PTR)\\b",
+          "captures": {
+            "1": { "name": "variable.other.declaration.progb" },
+            "2": { "name": "keyword.other.progb" },
+            "3": { "name": "storage.type.progb" }
+          }
+        },
+        {
           "comment": "DIM keyword with variable name (including array syntax)",
           "match": "(?i)\\b(DIM)\\s+([a-zA-Z_][a-zA-Z0-9_]*)(?:\\s*\\[[^\\]]*\\])?",
           "captures": {
@@ -161,10 +170,10 @@
           }
         },
         {
-          "comment": "Additional variables after comma in DIM (including array syntax)",
-          "match": ",\\s*([a-zA-Z_][a-zA-Z0-9_]*)(?:\\s*\\[[^\\]]*\\])?",
+          "comment": "Additional variables after comma in DIM (excludes type keywords)",
+          "match": ",\\s*(?!([Uu][Bb][Yy][Tt][Ee]|[Bb][Yy][Tt][Ee]|[Uu][Ww][Oo][Rr][Dd]|[Ww][Oo][Rr][Dd]|[Ll][Oo][Nn][Gg]|[Ff][Ll][Oo][Aa][Tt]|[Bb][Oo][Oo][Ll]|[Ss][Tt][Rr][Ii][Nn][Gg]|[Pp][Tt][Rr])\\b)([a-zA-Z_][a-zA-Z0-9_]*)(?:\\s*\\[[^\\]]*\\])?",
           "captures": {
-            "1": { "name": "variable.other.declaration.progb" }
+            "2": { "name": "variable.other.declaration.progb" }
           }
         },
         {
