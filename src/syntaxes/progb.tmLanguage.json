@@ -130,7 +130,7 @@
       "patterns": [
         {
           "name": "keyword.control.flow.progb",
-          "match": "(?i)\\b(IF|THEN|ELSEIF|ELSE|END\\s+IF|SELECT\\s+CASE|CASE|END\\s+SELECT|ON|GOTO|CALL|FOR|IN|TO|DOWNTO|STEP|NEXT|WHILE|WEND|DO|LOOP|UNTIL|REPEAT|END\\s+REPEAT|UNROLL|END\\s+UNROLL|RETURN|BREAK|EXIT|CONTINUE|DEFER|END\\s+DEFER)\\b"
+          "match": "(?i)\\b(IF|IIF|THEN|ELSEIF|ELSE|END\\s+IF|SELECT\\s+CASE|CASE|END\\s+SELECT|ON|GOTO|CALL|FOR|EACH|IN|TO|DOWNTO|STEP|NEXT|WHILE|WEND|DO|LOOP|UNTIL|REPEAT|END\\s+REPEAT|UNROLL|END\\s+UNROLL|RETURN|BREAK|EXIT|CONTINUE|DEFER|END\\s+DEFER)\\b"
         },
         {
           "name": "keyword.control.conditional.progb",
