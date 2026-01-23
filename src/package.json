@@ -2,7 +2,7 @@
   "name": "prog8-lang",
   "displayName": "Prog8 Language Support",
   "description": "Syntax highlighting and language support for Prog8, a structured programming language for 8-bit 6502/65c02 microprocessors",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "publisher": "SadLogic",
   "author": "Thraka",
   "license": "MIT",
