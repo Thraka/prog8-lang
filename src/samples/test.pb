@@ -7,7 +7,7 @@ IMPORT conv
 IMPORT math
 ZEROPAGE basicsafe
 
-MODULE main
+MODULE mainOther
     ' Module-level variable declarations
     DIM buffer[10], bob AS UBYTE
     DIM counter AS UBYTE = 0
@@ -87,7 +87,7 @@ MODULE main
             txt.print("*")
         END REPEAT
         txt.nl()
-        
+
         ' SELECT CASE statement
         SELECT CASE i
             CASE 1

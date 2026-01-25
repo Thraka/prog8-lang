@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { prog8Parser, Prog8Symbol, SymbolKind } from '../parser/prog8Parser';
+import { unifiedParser, UnifiedSymbol, SymbolKind } from '../parser';
 
 /**
  * Provides "Go to Definition" for Prog8 files.
@@ -14,19 +14,19 @@ export class Prog8DefinitionProvider implements vscode.DefinitionProvider {
         token: vscode.CancellationToken
     ): Promise<vscode.Definition | vscode.LocationLink[] | undefined> {
         
-        const word = prog8Parser.getWordAtPosition(document, position);
+        const word = unifiedParser.getWordAtPosition(document, position);
         if (!word) {
             return undefined;
         }
 
         // Parse the document to get symbols
-        const symbols = prog8Parser.parseDocument(document);
+        const symbols = unifiedParser.parseDocument(document);
         
         // Get current scope for context
-        const currentScope = prog8Parser.getScopeAtPosition(symbols, position);
+        const currentScope = unifiedParser.getScopeAtPosition(symbols, position);
 
         // Find the symbol definition in current file
-        const symbol = prog8Parser.findSymbol(symbols, word, currentScope);
+        const symbol = unifiedParser.findSymbol(symbols, word, currentScope);
         
         if (symbol) {
             return new vscode.Location(symbol.uri, symbol.selectionRange);
@@ -67,7 +67,7 @@ export class Prog8DefinitionProvider implements vscode.DefinitionProvider {
 
             try {
                 const doc = await vscode.workspace.openTextDocument(fileUri);
-                const symbols = prog8Parser.parseDocument(doc);
+                const symbols = unifiedParser.parseDocument(doc);
 
                 // If it's a qualified name like "drawing.line_horizontal", look for that full path
                 if (blockName) {

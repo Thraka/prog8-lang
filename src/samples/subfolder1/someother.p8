@@ -13,7 +13,7 @@
 %zeropage basicsafe
 %option no_sysinit
 
-main {
+another {
 
     ; Constants
     const ubyte MAX_COUNT = 100
@@ -239,7 +239,7 @@ _loop:
 }
 
 ; Another block
-graphics_utils $c000 {
+graphics_utils2 $c000 {
     sub clear_screen() {
         sys.memset($0400, 1000, ' ')
     }

@@ -2,6 +2,19 @@
 
 ## Current State
 - Syntax highlighting is working (TextMate grammar)
+- **ProgB support fully mirrored** - All Phase 1 and completed Phase 2 features work for both `.p8` (Prog8) and `.pb` (ProgB) files
+
+## ProgB Parser Implementation
+A dedicated ProgB parser (`src/parser/progbParser.ts`) handles BASIC-style syntax:
+- `MODULE ... END MODULE` blocks
+- `SUB ... END SUB` and `FUNCTION ... END FUNCTION`
+- `ASMSUB ... END ASMSUB` and `EXTSUB` declarations
+- `DIM` variable declarations with `AS TYPE` syntax
+- `CONST name AS TYPE = value` constants
+- `TYPE ... END TYPE` structs
+- ProgB-style comments (`'` and `/' '/`)
+
+A unified parser interface (`src/parser/index.ts`) auto-detects the language and delegates appropriately.
 
 ## Goal
 Add full language support features to the VS Code extension for Prog8.

@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { prog8Parser, Prog8Symbol } from '../parser/prog8Parser';
+import { unifiedParser, UnifiedSymbol } from '../parser';
 
 /**
  * Provides "Find All References" for Prog8 files.
@@ -17,15 +17,15 @@ export class Prog8ReferenceProvider implements vscode.ReferenceProvider {
         token: vscode.CancellationToken
     ): Promise<vscode.Location[]> {
         
-        const word = prog8Parser.getWordAtPosition(document, position);
+        const word = unifiedParser.getWordAtPosition(document, position);
         if (!word) {
             return [];
         }
 
         // Parse the current document to find the symbol definition
-        const symbols = prog8Parser.parseDocument(document);
-        const currentScope = prog8Parser.getScopeAtPosition(symbols, position);
-        const symbol = prog8Parser.findSymbol(symbols, word, currentScope);
+        const symbols = unifiedParser.parseDocument(document);
+        const currentScope = unifiedParser.getScopeAtPosition(symbols, position);
+        const symbol = unifiedParser.findSymbol(symbols, word, currentScope);
 
         // Get the target name to search for
         // Use the simple name for searching, but we'll verify matches against full path
@@ -70,7 +70,7 @@ export class Prog8ReferenceProvider implements vscode.ReferenceProvider {
         const lines = text.split(/\r?\n/);
 
         // Parse symbols to understand scope context
-        const symbols = prog8Parser.parseDocument(document);
+        const symbols = unifiedParser.parseDocument(document);
 
         // Build a regex to find the identifier
         // Use word boundary approach - find the name and verify boundaries manually
@@ -159,20 +159,20 @@ export class Prog8ReferenceProvider implements vscode.ReferenceProvider {
         position: vscode.Position,
         searchName: string,
         targetFullPath: string | undefined,
-        symbols: Prog8Symbol[],
+        symbols: UnifiedSymbol[],
         includeDeclaration: boolean
     ): boolean {
         // Get the full word at this position (might include qualified path)
-        const wordAtPos = prog8Parser.getWordAtPosition(document, position);
+        const wordAtPos = unifiedParser.getWordAtPosition(document, position);
         if (!wordAtPos) {
             return false;
         }
 
         // Get the scope at this position
-        const scope = prog8Parser.getScopeAtPosition(symbols, position);
+        const scope = unifiedParser.getScopeAtPosition(symbols, position);
 
         // Try to resolve what symbol this reference points to
-        const referencedSymbol = prog8Parser.findSymbol(symbols, wordAtPos, scope);
+        const referencedSymbol = unifiedParser.findSymbol(symbols, wordAtPos, scope);
 
         // Check if this is the declaration itself
         if (!includeDeclaration && referencedSymbol) {

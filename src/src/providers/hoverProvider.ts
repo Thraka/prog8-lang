@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { prog8Parser, Prog8Symbol, SymbolKind } from '../parser/prog8Parser';
+import { unifiedParser, UnifiedSymbol, SymbolKind } from '../parser';
 import { findSubroutine, getAllBlocks, formatSubroutineSignature, SubroutineInfo, BlockInfo } from '../data/librarySymbols';
 
 /**
@@ -14,7 +14,7 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
         token: vscode.CancellationToken
     ): Promise<vscode.Hover | undefined> {
         
-        const word = prog8Parser.getWordAtPosition(document, position);
+        const word = unifiedParser.getWordAtPosition(document, position);
         if (!word) {
             return undefined;
         }
@@ -47,13 +47,13 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
         }
 
         // Parse the document to get symbols
-        const symbols = prog8Parser.parseDocument(document);
+        const symbols = unifiedParser.parseDocument(document);
         
         // Get current scope for context
-        const currentScope = prog8Parser.getScopeAtPosition(symbols, position);
+        const currentScope = unifiedParser.getScopeAtPosition(symbols, position);
 
         // Find the symbol in current file
-        const symbol = prog8Parser.findSymbol(symbols, word, currentScope);
+        const symbol = unifiedParser.findSymbol(symbols, word, currentScope);
         
         if (symbol) {
             return this.createHoverForSymbol(symbol);
@@ -99,7 +99,7 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
     /**
      * Create a hover for a symbol
      */
-    private createHoverForSymbol(symbol: Prog8Symbol): vscode.Hover {
+    private createHoverForSymbol(symbol: UnifiedSymbol): vscode.Hover {
         const markdown = new vscode.MarkdownString();
         
         switch (symbol.kind) {
@@ -432,13 +432,13 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
     }
 
     /**
-     * Search for a symbol in other Prog8 files in the same directory
+     * Search for a symbol in other Prog8/ProgB files in the same directory
      */
     private async findSymbolInOtherFiles(
         currentDocument: vscode.TextDocument,
         word: string,
         qualifiedName: string | undefined
-    ): Promise<Prog8Symbol | undefined> {
+    ): Promise<UnifiedSymbol | undefined> {
         
         const currentDir = path.dirname(currentDocument.uri.fsPath);
         const searchPattern = new vscode.RelativePattern(currentDir, '*.{p8,pb}');
@@ -458,7 +458,7 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
 
             try {
                 const doc = await vscode.workspace.openTextDocument(fileUri);
-                const symbols = prog8Parser.parseDocument(doc);
+                const symbols = unifiedParser.parseDocument(doc);
 
                 // If it's a qualified name like "drawing.line_horizontal", look for that full path
                 if (blockName) {
