@@ -58,18 +58,23 @@ Add full language support features to the VS Code extension for Prog8.
 ## Planned Language Server Features
 
 ### Phase 1: Core Navigation
-- [ ] Go to Definition
-- [ ] Peek Definition
+- [x] Go to Definition
+- [x] Peek Definition (uses same provider)
 - [ ] Find All References
-- [ ] Document Symbols (outline)
-- [ ] Workspace Symbols
+- [x] Document Symbols (outline)
+- [x] Workspace Symbols
 
 ### Phase 2: Intellisense
-- [ ] Hover information (type info, documentation)
+- [x] Hover information (type info, documentation)
+  - [x] Built-in functions (abs, mkword, peek, poke, etc.)
+  - [x] Keywords (if, for, while, ubyte, etc.)
+  - [x] User-defined symbols
+  - [x] Library functions (txt.print, sys.memset, etc.) - uses parsed skeleton files
 - [ ] Auto-completion
   - [ ] Local variables
   - [ ] Scoped names (qualified paths)
   - [ ] Built-in functions
+  - [ ] Library functions from parsed skeleton files
   - [ ] Keywords
 - [ ] Signature help for subroutines
 
@@ -99,6 +104,10 @@ Since everything is public with fully qualified names:
 - Need to parse `%import` directives to find related modules
 - Build a workspace-wide symbol index
 - Handle standard library imports (prog8 ships with library modules)
+- [x] **Library symbol data parsed from official skeleton files** (see `src/data/librarySymbols.ts`)
+  - Parsed from https://prog8.readthedocs.io/en/latest/_static/symboldumps/
+  - Contains 873 subroutines for cx16, 492 for c64
+  - Run `npx ts-node scripts/parseSkeletons.ts` to regenerate
 
 ### Reference Documentation
 - Main docs: https://prog8.readthedocs.io/en/latest/
@@ -129,4 +138,4 @@ Since everything is public with fully qualified names:
 ## Notes
 - For loops don't define the iteration variable; it must be defined before the loop
 - Trailing comma allowed in array literals: `[1, 2, 3,]`
-- Ternary operator uses if-expression: `if x then value1 else value2`
+- Ternary operator uses if-expression: `if x [then] value1 else value2`

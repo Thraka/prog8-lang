@@ -187,6 +187,7 @@ done:
     
     sub process_data(uword data_ptr, ubyte size) {
         ; Process the data...
+        graphics_utils.clear_screen()
         void txt.print("Processing data\n")
     }
     

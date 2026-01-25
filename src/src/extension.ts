@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { Prog8DocumentSymbolProvider } from './providers/documentSymbolProvider';
 import { Prog8DefinitionProvider } from './providers/definitionProvider';
 import { Prog8HoverProvider } from './providers/hoverProvider';
+import { Prog8WorkspaceSymbolProvider } from './providers/workspaceSymbolProvider';
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('Prog8 Language Support is now active');
@@ -33,6 +34,13 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.languages.registerHoverProvider(
             prog8Selector,
             new Prog8HoverProvider()
+        )
+    );
+
+    // Register Workspace Symbol Provider for "Go to Symbol in Workspace" (Ctrl+T)
+    context.subscriptions.push(
+        vscode.languages.registerWorkspaceSymbolProvider(
+            new Prog8WorkspaceSymbolProvider()
         )
     );
 }
