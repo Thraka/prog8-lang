@@ -1,0 +1,277 @@
+import * as vscode from 'vscode';
+import { prog8Parser, Prog8Symbol, SymbolKind } from '../parser/prog8Parser';
+
+/**
+ * Provides hover information for Prog8 files.
+ */
+export class Prog8HoverProvider implements vscode.HoverProvider {
+
+    provideHover(
+        document: vscode.TextDocument,
+        position: vscode.Position,
+        token: vscode.CancellationToken
+    ): vscode.ProviderResult<vscode.Hover> {
+        
+        const word = prog8Parser.getWordAtPosition(document, position);
+        if (!word) {
+            return undefined;
+        }
+
+        // Check if it's a built-in function
+        const builtinHover = this.getBuiltinHover(word);
+        if (builtinHover) {
+            return builtinHover;
+        }
+
+        // Check if it's a keyword
+        const keywordHover = this.getKeywordHover(word);
+        if (keywordHover) {
+            return keywordHover;
+        }
+
+        // Parse the document to get symbols
+        const symbols = prog8Parser.parseDocument(document);
+        
+        // Get current scope for context
+        const currentScope = prog8Parser.getScopeAtPosition(symbols, position);
+
+        // Find the symbol
+        const symbol = prog8Parser.findSymbol(symbols, word, currentScope);
+        
+        if (symbol) {
+            return this.createHoverForSymbol(symbol);
+        }
+
+        return undefined;
+    }
+
+    /**
+     * Create a hover for a symbol
+     */
+    private createHoverForSymbol(symbol: Prog8Symbol): vscode.Hover {
+        const markdown = new vscode.MarkdownString();
+        
+        switch (symbol.kind) {
+            case SymbolKind.Block:
+                markdown.appendCodeblock(`${symbol.name}${symbol.detail ? ' ' + symbol.detail : ''} { }`, 'prog8');
+                markdown.appendMarkdown('\n\n*Block (namespace)*');
+                break;
+
+            case SymbolKind.Subroutine:
+                const subSig = `sub ${symbol.name}(${symbol.parameters || ''})${symbol.returnType ? ' -> ' + symbol.returnType : ''}`;
+                markdown.appendCodeblock(subSig, 'prog8');
+                if (symbol.detail === 'inline') {
+                    markdown.appendMarkdown('\n\n*Inline subroutine*');
+                }
+                break;
+
+            case SymbolKind.AsmSubroutine:
+                const asmSig = `asmsub ${symbol.name}(${symbol.parameters || ''})`;
+                markdown.appendCodeblock(asmSig, 'prog8');
+                markdown.appendMarkdown('\n\n*Assembly subroutine*');
+                break;
+
+            case SymbolKind.ExtSubroutine:
+                const extSig = `extsub ${symbol.detail} = ${symbol.name}(${symbol.parameters || ''})`;
+                markdown.appendCodeblock(extSig, 'prog8');
+                markdown.appendMarkdown('\n\n*External ROM/library routine*');
+                break;
+
+            case SymbolKind.Constant:
+                markdown.appendCodeblock(`const ${symbol.type} ${symbol.name} = ${symbol.detail}`, 'prog8');
+                markdown.appendMarkdown('\n\n*Constant*');
+                break;
+
+            case SymbolKind.Variable:
+                let varDecl = `${symbol.type} ${symbol.name}`;
+                if (symbol.detail) {
+                    varDecl += ` ${symbol.detail}`;
+                }
+                markdown.appendCodeblock(varDecl, 'prog8');
+                if (symbol.type?.startsWith('&')) {
+                    markdown.appendMarkdown('\n\n*Memory-mapped variable*');
+                } else {
+                    markdown.appendMarkdown('\n\n*Variable*');
+                }
+                break;
+
+            case SymbolKind.Parameter:
+                markdown.appendCodeblock(`${symbol.type} ${symbol.name}`, 'prog8');
+                markdown.appendMarkdown('\n\n*Parameter*');
+                break;
+
+            case SymbolKind.Label:
+                markdown.appendCodeblock(`${symbol.name}:`, 'prog8');
+                markdown.appendMarkdown('\n\n*Label*');
+                break;
+
+            case SymbolKind.Struct:
+                markdown.appendCodeblock(`struct ${symbol.name} { }`, 'prog8');
+                markdown.appendMarkdown('\n\n*Struct type*');
+                break;
+
+            case SymbolKind.Alias:
+                markdown.appendCodeblock(`alias ${symbol.name} ${symbol.detail}`, 'prog8');
+                markdown.appendMarkdown('\n\n*Alias*');
+                break;
+        }
+
+        // Add full path if nested
+        if (symbol.parent) {
+            markdown.appendMarkdown(`\n\n*Defined in:* \`${symbol.fullPath}\``);
+        }
+
+        return new vscode.Hover(markdown);
+    }
+
+    /**
+     * Get hover for built-in functions
+     */
+    private getBuiltinHover(word: string): vscode.Hover | undefined {
+        const builtins: { [key: string]: { signature: string; description: string } } = {
+            // Math functions
+            'abs': { signature: 'abs(value) -> same type', description: 'Returns the absolute value of a number (integer or floating point)' },
+            'min': { signature: 'min(a, b) -> same type', description: 'Returns the minimum of two values' },
+            'max': { signature: 'max(a, b) -> same type', description: 'Returns the maximum of two values' },
+            'minf': { signature: 'minf(a, b) -> float', description: 'Returns the minimum of two floating point values' },
+            'maxf': { signature: 'maxf(a, b) -> float', description: 'Returns the maximum of two floating point values' },
+            'clamp': { signature: 'clamp(value, min, max) -> same type', description: 'Restricts value to be within the specified minimum and maximum bounds' },
+            'clampf': { signature: 'clampf(value, min, max) -> float', description: 'Restricts float value to be within the specified minimum and maximum bounds' },
+            'sgn': { signature: 'sgn(value) -> byte', description: 'Returns the sign of a number: -1 for negative, 0 for zero, 1 for positive' },
+            'sqrt': { signature: 'sqrt(value) -> ubyte', description: 'Returns the integer square root. For the reverse (squaring), just write x*x' },
+            'divmod': { signature: 'divmod(dividend, divisor, quotient, remainder)', description: 'Computes both quotient and remainder of division in one operation' },
+            
+            // Byte/word construction and extraction
+            'lsb': { signature: 'lsb(x) -> ubyte', description: 'Get the least significant (lower) byte of a word/long. Equivalent to x & 255' },
+            'msb': { signature: 'msb(x) -> ubyte', description: 'Get the most significant (highest) byte of a word or long value' },
+            'lsw': { signature: 'lsw(x) -> uword', description: 'Get the least significant (lower) word. Equivalent to x & 65535' },
+            'msw': { signature: 'msw(x) -> uword', description: 'Get the most significant (higher) word of a long value' },
+            'mkword': { signature: 'mkword(msb, lsb) -> uword', description: 'Efficiently create a word from two bytes. mkword($80, $22) = $8022. Note: args are MSB first, then LSB' },
+            'mklong': { signature: 'mklong(msb, b2, b1, lsb) -> long', description: 'Efficiently create a long from four bytes. mklong($12, $34, $56, $78) = $12345678' },
+            'mklong2': { signature: 'mklong2(msw, lsw) -> long', description: 'Efficiently create a long from two words. mklong2($1234, $abcd) = $1234abcd' },
+            'setlsb': { signature: 'setlsb(x, value)', description: 'Sets the least significant byte of word variable x to a new value. Leaves MSB untouched' },
+            'setmsb': { signature: 'setmsb(x, value)', description: 'Sets the most significant byte of word variable x to a new value. Leaves LSB untouched' },
+            
+            // Bit rotation
+            'rol': { signature: 'rol(variable)', description: 'Rotate left through carry flag (9-bit rotation for bytes, 17-bit for words). Modifies in-place' },
+            'ror': { signature: 'ror(variable)', description: 'Rotate right through carry flag (9-bit rotation for bytes, 17-bit for words). Modifies in-place' },
+            'rol2': { signature: 'rol2(variable)', description: 'Rotate left as pure 8/16-bit rotation (ignores carry). Modifies in-place. Can use @($addr) syntax' },
+            'ror2': { signature: 'ror2(variable)', description: 'Rotate right as pure 8/16-bit rotation (ignores carry). Modifies in-place. Can use @($addr) syntax' },
+            
+            // Memory functions
+            'sizeof': { signature: 'sizeof(name) -> ubyte', description: 'Returns the size in bytes of an object, number, or datatype. For element count, use len()' },
+            'len': { signature: 'len(array_or_string) -> ubyte', description: 'Returns the number of elements in an array, or characters in a string (excluding 0-byte). Determined at compile-time!' },
+            'memory': { signature: 'memory(name, size, alignment) -> uword', description: 'Reserves a block of uninitialized memory. Name must be a string literal. Returns address. Same name+size returns same address' },
+            'peek': { signature: 'peek(address) -> ubyte', description: 'Reads a byte from the given memory address. Same as @(address)' },
+            'peekw': { signature: 'peekw(address) -> uword', description: 'Reads a word (little-endian) from memory. Requires consecutive LSB/MSB bytes (not split arrays)' },
+            'peekl': { signature: 'peekl(address) -> long', description: 'Reads a signed long value (little-endian) from memory' },
+            'peekf': { signature: 'peekf(address) -> float', description: 'Reads a float from memory (5 bytes on CBM machines)' },
+            'poke': { signature: 'poke(address, value)', description: 'Writes a byte to memory. Same as @(address)=value' },
+            'pokew': { signature: 'pokew(address, value)', description: 'Writes a word to memory in little-endian byte order' },
+            'pokel': { signature: 'pokel(address, value)', description: 'Writes a signed long to memory in little-endian byte order' },
+            'pokef': { signature: 'pokef(address, value)', description: 'Writes a float to memory (5 bytes on CBM machines)' },
+            'pokemon': { signature: 'pokemon(address, value) -> ubyte', description: 'Like poke(), but also returns the previous value at the address' },
+            
+            // Array operations
+            'any': { signature: 'any(array) -> bool', description: 'Returns true if any element in the array is non-zero' },
+            'all': { signature: 'all(array) -> bool', description: 'Returns true if all elements in the array are non-zero' },
+            'reverse': { signature: 'reverse(array)', description: 'Reverses the array in place' },
+            'sort': { signature: 'sort(array)', description: 'Sorts the array in place (ascending order)' },
+            
+            // System/calling
+            'call': { signature: 'call(address) -> uword', description: 'Calls a subroutine at address. Returns value in AY. Use cx16.r0 etc for args. Creates indirect JSR' },
+            'callfar': { signature: 'callfar(bank, address, argumentword) -> uword', description: 'Calls routine in another bank. Loads arg into A+Y before call. Inefficient - use sparingly (cx16)' },
+            'callfar2': { signature: 'callfar2(bank, address, argA, argX, argY, argCarry) -> uword', description: 'Like callfar but with individual A, X, Y register args and Carry bit (cx16)' },
+            
+            // Comparisons
+            'cmp': { signature: 'cmp(a, b) -> byte', description: 'Compares two values, returns -1 (a<b), 0 (a==b), or 1 (a>b)' },
+            
+            // Random
+            'rnd': { signature: 'rnd() -> ubyte', description: 'Returns a pseudo-random byte' },
+            'rndw': { signature: 'rndw() -> uword', description: 'Returns a pseudo-random word' },
+        };
+
+        const info = builtins[word];
+        if (info) {
+            const markdown = new vscode.MarkdownString();
+            markdown.appendCodeblock(info.signature, 'prog8');
+            markdown.appendMarkdown(`\n\n${info.description}`);
+            markdown.appendMarkdown('\n\n*Built-in function*');
+            return new vscode.Hover(markdown);
+        }
+
+        return undefined;
+    }
+
+    /**
+     * Get hover for keywords
+     */
+    private getKeywordHover(word: string): vscode.Hover | undefined {
+        const keywords: { [key: string]: string } = {
+            // Types
+            'ubyte': 'Unsigned 8-bit integer (0-255)',
+            'byte': 'Signed 8-bit integer (-128 to 127)',
+            'uword': 'Unsigned 16-bit integer (0-65535)',
+            'word': 'Signed 16-bit integer (-32768 to 32767)',
+            'ulong': 'Unsigned 32-bit integer',
+            'long': 'Signed 32-bit integer',
+            'float': 'Floating point number (5 bytes on CBM systems)',
+            'bool': 'Boolean value (true or false)',
+            'str': 'String (null-terminated)',
+            
+            // Control flow
+            'if': 'Conditional statement',
+            'else': 'Alternative branch of an if statement',
+            'when': 'Multi-way branch (like switch/case)',
+            'for': 'For loop - note: loop variable must be declared before the loop',
+            'while': 'While loop - executes while condition is true',
+            'do': 'Do-until loop - executes at least once',
+            'until': 'Loop termination condition',
+            'repeat': 'Repeat loop - executes a fixed number of times',
+            'unroll': 'Unroll a loop at compile time',
+            'break': 'Exit the current loop',
+            'continue': 'Skip to the next iteration of the loop',
+            
+            // Subroutines
+            'sub': 'Subroutine definition',
+            'asmsub': 'Assembly subroutine with register parameters',
+            'extsub': 'External subroutine (ROM or library)',
+            'inline': 'Inline the subroutine at each call site',
+            'return': 'Return from subroutine',
+            'defer': 'Execute statement when leaving the current subroutine',
+            
+            // Other
+            'const': 'Constant value (compile-time)',
+            'struct': 'Structure type definition',
+            'alias': 'Create an alias for another identifier',
+            'goto': 'Jump to a label',
+            'void': 'Discard the return value of a function',
+            'on': 'On-goto computed jump',
+            
+            // Operators
+            'and': 'Logical AND operator',
+            'or': 'Logical OR operator',
+            'xor': 'Logical XOR operator',
+            'not': 'Logical NOT operator',
+            'in': 'Check if value is in array or range',
+            'to': 'Range specifier (ascending)',
+            'downto': 'Range specifier (descending)',
+            'step': 'Loop step value',
+            
+            // Literals
+            'true': 'Boolean true value',
+            'false': 'Boolean false value',
+        };
+
+        const description = keywords[word];
+        if (description) {
+            const markdown = new vscode.MarkdownString();
+            markdown.appendCodeblock(word, 'prog8');
+            markdown.appendMarkdown(`\n\n${description}`);
+            markdown.appendMarkdown('\n\n*Keyword*');
+            return new vscode.Hover(markdown);
+        }
+
+        return undefined;
+    }
+}
