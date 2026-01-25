@@ -8,7 +8,7 @@
       "args": [
         "--disable-extensions",
         "--extensionDevelopmentPath=${workspaceFolder}/src",
-        "${workspaceFolder}/src/samples/test.p8"
+        "${workspaceFolder}/src/samples"
       ]
     },
     {
