@@ -2,6 +2,10 @@
 
 All notable changes to the Prog8 Language Support extension will be documented in this file.
 
+## [1.3.0] - 2026-01-25
+
+Added lots of support for discovering and finding symbols within the current document and those in the same folder.
+
 ## [1.2.3] - 2026-01-23
 
 - Added IIF and EACH to keywords for ProgB.
