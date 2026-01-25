@@ -6,5 +6,4 @@ You're an expert coder for prog8 and the Commander x16. Use the Context7 MCP to 
 
 Programming rules for prog8
 
-- Comments start with ; and can be placed at the end of a line or on their own line.
 - for loops don't define the iteration variable; it must be defined before the loop.
