@@ -8,6 +8,7 @@
 
 %import textio
 %import math
+%import stree
 %import floats
 %zeropage basicsafe
 %option no_sysinit
@@ -55,6 +56,8 @@ main {
         }
         txt.nl()
         
+        txt.print(MAX_COUNT)
+
         ; Downto loop with step
         for i in 20 downto 10 step -2 {
             txt.print_ub(i)
@@ -200,6 +203,8 @@ done:
         }}
     }
     
+    drawing.line_horizontal()
+
     ; External subroutine (ROM routine)
     extsub $FFD2 = CHROUT(ubyte char @ A) clobbers(A)
     
