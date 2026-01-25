@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { prog8Parser, Prog8Symbol, SymbolKind } from '../parser/prog8Parser';
+import { findSubroutine, getAllBlocks, formatSubroutineSignature, SubroutineInfo, BlockInfo } from '../data/librarySymbols';
 
 /**
  * Provides hover information for Prog8 files.
@@ -17,6 +18,15 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
             return undefined;
         }
 
+        // Check if it's a qualified name (e.g., txt.print)
+        const qualifiedName = this.getQualifiedNameAtPosition(document, position);
+        if (qualifiedName && qualifiedName.includes('.')) {
+            const libraryHover = this.getLibraryHover(qualifiedName);
+            if (libraryHover) {
+                return libraryHover;
+            }
+        }
+
         // Check if it's a built-in function
         const builtinHover = this.getBuiltinHover(word);
         if (builtinHover) {
@@ -27,6 +37,12 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
         const keywordHover = this.getKeywordHover(word);
         if (keywordHover) {
             return keywordHover;
+        }
+
+        // Check if it's a library block name (e.g., txt, sys, cx16)
+        const blockHover = this.getLibraryBlockHover(word);
+        if (blockHover) {
+            return blockHover;
         }
 
         // Parse the document to get symbols
@@ -42,6 +58,34 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
             return this.createHoverForSymbol(symbol);
         }
 
+        return undefined;
+    }
+
+    /**
+     * Get the fully qualified name at a position (e.g., txt.print)
+     */
+    private getQualifiedNameAtPosition(document: vscode.TextDocument, position: vscode.Position): string | undefined {
+        const line = document.lineAt(position.line).text;
+        
+        // Find the start of the identifier chain
+        let start = position.character;
+        while (start > 0 && /[\w.]/.test(line[start - 1])) {
+            start--;
+        }
+        
+        // Find the end of the identifier chain
+        let end = position.character;
+        while (end < line.length && /[\w.]/.test(line[end])) {
+            end++;
+        }
+        
+        const fullName = line.substring(start, end);
+        
+        // Only return if it looks like a qualified name
+        if (fullName && /^\w+\.\w+$/.test(fullName)) {
+            return fullName;
+        }
+        
         return undefined;
     }
 
@@ -273,5 +317,110 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
         }
 
         return undefined;
+    }
+
+    /**
+     * Get hover for library subroutines (e.g., txt.print, sys.memset)
+     */
+    private getLibraryHover(qualifiedName: string): vscode.Hover | undefined {
+        const sub = findSubroutine(qualifiedName);
+        if (sub) {
+            return this.createHoverForLibrarySubroutine(sub, qualifiedName);
+        }
+        return undefined;
+    }
+
+    /**
+     * Get hover for library block names (e.g., txt, sys, cx16)
+     */
+    private getLibraryBlockHover(name: string): vscode.Hover | undefined {
+        const blocks = getAllBlocks();
+        const block = blocks.find(b => b.name === name);
+        
+        if (block) {
+            const markdown = new vscode.MarkdownString();
+            markdown.appendCodeblock(`${name} { }`, 'prog8');
+            
+            // Show a summary of what's in the block
+            const subCount = block.subroutines.length;
+            const varCount = block.variables.length;
+            const constCount = block.constants.length;
+            
+            markdown.appendMarkdown(`\n\n*Library module* with ${subCount} subroutines`);
+            if (varCount > 0) {
+                markdown.appendMarkdown(`, ${varCount} variables`);
+            }
+            if (constCount > 0) {
+                markdown.appendMarkdown(`, ${constCount} constants`);
+            }
+            
+            // Show some example functions
+            const examples = block.subroutines.slice(0, 5).map(s => s.name);
+            if (examples.length > 0) {
+                markdown.appendMarkdown(`\n\n**Functions:** \`${examples.join('`, `')}\``);
+                if (block.subroutines.length > 5) {
+                    markdown.appendMarkdown(`, ...`);
+                }
+            }
+            
+            return new vscode.Hover(markdown);
+        }
+        
+        return undefined;
+    }
+
+    /**
+     * Create hover for a library subroutine
+     */
+    private createHoverForLibrarySubroutine(sub: SubroutineInfo, qualifiedName: string): vscode.Hover {
+        const markdown = new vscode.MarkdownString();
+        
+        if (sub.isAlias) {
+            markdown.appendCodeblock(`${qualifiedName}  (alias for ${sub.isAlias})`, 'prog8');
+            markdown.appendMarkdown(`\n\n*Library function alias*`);
+        } else {
+            // Format the signature nicely
+            const params = sub.parameters.map(p => {
+                let s = `${p.type} ${p.name}`;
+                if (p.register) s += ` ${p.register}`;
+                return s;
+            }).join(', ');
+            
+            let sig = `${qualifiedName}(${params})`;
+            
+            if (sub.returns.length > 0) {
+                const rets = sub.returns.map(r => {
+                    let s = r.type;
+                    if (r.register) s += ` ${r.register}`;
+                    return s;
+                }).join(', ');
+                sig += ` -> ${rets}`;
+            }
+            
+            markdown.appendCodeblock(sig, 'prog8');
+            
+            // Add metadata
+            const metadata: string[] = [];
+            
+            if (sub.clobbers.length > 0) {
+                metadata.push(`Clobbers: ${sub.clobbers.join(', ')}`);
+            }
+            
+            if (sub.address) {
+                metadata.push(`ROM address: ${sub.address}`);
+            }
+            
+            if (sub.bank !== undefined) {
+                metadata.push(`Bank: ${sub.bank}`);
+            }
+            
+            if (metadata.length > 0) {
+                markdown.appendMarkdown(`\n\n${metadata.join(' | ')}`);
+            }
+            
+            markdown.appendMarkdown(`\n\n*Library function*`);
+        }
+        
+        return new vscode.Hover(markdown);
     }
 }

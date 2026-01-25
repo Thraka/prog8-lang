@@ -14,6 +14,11 @@
   "engines": {
     "vscode": "^1.80.0"
   },
+  "main": "./out/src/extension.js",
+  "activationEvents": [
+    "onLanguage:prog8",
+    "onLanguage:progb"
+  ],
   "categories": [
     "Programming Languages"
   ],
@@ -61,5 +66,14 @@
         "path": "./syntaxes/progb.tmLanguage.json"
       }
     ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.80.0",
+    "typescript": "^5.0.0"
   }
 }
