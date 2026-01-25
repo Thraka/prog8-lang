@@ -60,7 +60,7 @@ Add full language support features to the VS Code extension for Prog8.
 ### Phase 1: Core Navigation
 - [x] Go to Definition
 - [x] Peek Definition (uses same provider)
-- [ ] Find All References
+- [x] Find All References
 - [x] Document Symbols (outline)
 - [x] Workspace Symbols
 
