@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { unifiedParser, UnifiedSymbol, SymbolKind } from '../parser';
 import { findSubroutine, getAllBlocks, findModule, formatSubroutineSignature, SubroutineInfo, BlockInfo, ModuleInfo } from '../data/librarySymbols';
-import { parseImportedFileSymbols, findSymbolInImports } from '../parser/importResolver';
+import { parseImportedFileSymbols, findSymbolInImports, ImportedFileSymbols, resolveLocalImport } from '../parser/importResolver';
 import { isInImportStatement, getQualifiedNameAtPosition } from './providerUtils';
 
 /**
@@ -23,20 +23,44 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
 
         // Check if we're in an import statement - if so, only show module info
         if (isInImportStatement(document, position)) {
+            // Check library modules first
             const moduleHover = this.getLibraryModuleHover(word);
             if (moduleHover) {
                 return moduleHover;
+            }
+            // Check if it's a local module import
+            const localModuleHover = await this.getLocalModuleHover(document, word);
+            if (localModuleHover) {
+                return localModuleHover;
             }
             // In an import statement but not a known module - don't match anything else
             return undefined;
         }
 
+        // Parse imported file symbols once and reuse throughout
+        const importedFileSymbols = await parseImportedFileSymbols(document);
+
         // Check if it's a qualified name (e.g., txt.print)
         const qualifiedName = getQualifiedNameAtPosition(document, position);
         if (qualifiedName && qualifiedName.includes('.')) {
+            // First check library modules (from skeleton files)
             const libraryHover = this.getLibraryHover(qualifiedName);
             if (libraryHover) {
                 return libraryHover;
+            }
+            
+            // If not a library, check local imports for qualified names
+            // This handles cases like "localmodule.mysub" where localmodule is imported
+            const importedSymbol = findSymbolInImports(qualifiedName, importedFileSymbols);
+            if (importedSymbol) {
+                return this.createHoverForSymbol(importedSymbol, true);
+            }
+            
+            // Also check current file for qualified names (e.g., myblock.mysub within same file)
+            const symbols = unifiedParser.parseDocument(document);
+            const localQualifiedSymbol = symbols.find(s => s.fullPath === qualifiedName);
+            if (localQualifiedSymbol) {
+                return this.createHoverForSymbol(localQualifiedSymbol);
             }
         }
 
@@ -64,6 +88,12 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
             return blockHover;
         }
 
+        // Check if it's a block from an imported local file (e.g., helpers from %import myhelper)
+        const importedBlockHover = this.getImportedBlockHover(word, importedFileSymbols);
+        if (importedBlockHover) {
+            return importedBlockHover;
+        }
+
         // Parse the document to get symbols
         const symbols = unifiedParser.parseDocument(document);
         
@@ -77,8 +107,7 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
             return this.createHoverForSymbol(symbol);
         }
 
-        // Search in imported local files
-        const importedFileSymbols = await parseImportedFileSymbols(document);
+        // Search in imported local files for unqualified names
         const importedSymbol = findSymbolInImports(qualifiedName || word, importedFileSymbols, currentScope);
         if (importedSymbol) {
             return this.createHoverForSymbol(importedSymbol, true);
@@ -420,6 +449,90 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
             }
             
             return new vscode.Hover(markdown);
+        }
+        
+        return undefined;
+    }
+
+    /**
+     * Get hover for blocks from imported local files
+     * Shows information about blocks defined in imported files (not library modules)
+     */
+    private getImportedBlockHover(name: string, importedSymbols: ImportedFileSymbols[]): vscode.Hover | undefined {
+        for (const imported of importedSymbols) {
+            // Find a block with this name in the imported file
+            const block = imported.symbols.find((s: UnifiedSymbol) => s.name === name && s.kind === SymbolKind.Block && !s.parent);
+            if (block) {
+                const markdown = new vscode.MarkdownString();
+                markdown.appendCodeblock(`${name} { }`, 'prog8');
+                
+                // Count symbols in this block
+                const subroutines = imported.symbols.filter((s: UnifiedSymbol) => 
+                    (s.kind === SymbolKind.Subroutine || s.kind === SymbolKind.AsmSubroutine || s.kind === SymbolKind.ExtSubroutine) && 
+                    s.parent === name
+                );
+                const variables = imported.symbols.filter((s: UnifiedSymbol) => s.kind === SymbolKind.Variable && s.parent === name);
+                const constants = imported.symbols.filter((s: UnifiedSymbol) => s.kind === SymbolKind.Constant && s.parent === name);
+                
+                const fileName = path.basename(imported.filePath);
+                markdown.appendMarkdown(`\n\n*Block from imported file* \`${fileName}\``);
+                
+                if (subroutines.length > 0) {
+                    markdown.appendMarkdown(`\n\n${subroutines.length} subroutine${subroutines.length !== 1 ? 's' : ''}`);
+                }
+                if (variables.length > 0) {
+                    markdown.appendMarkdown(`, ${variables.length} variable${variables.length !== 1 ? 's' : ''}`);
+                }
+                if (constants.length > 0) {
+                    markdown.appendMarkdown(`, ${constants.length} constant${constants.length !== 1 ? 's' : ''}`);
+                }
+                
+                // Show some example functions
+                const examples = subroutines.slice(0, 5).map((s: UnifiedSymbol) => s.name);
+                if (examples.length > 0) {
+                    markdown.appendMarkdown(`\n\n**Functions:** \`${examples.join('`, `')}\``);
+                    if (subroutines.length > 5) {
+                        markdown.appendMarkdown(`, ...`);
+                    }
+                }
+                
+                return new vscode.Hover(markdown);
+            }
+        }
+        
+        return undefined;
+    }
+
+    /**
+     * Get hover for local module imports (non-library modules)
+     * Shows information about local files that can be imported
+     */
+    private async getLocalModuleHover(document: vscode.TextDocument, moduleName: string): Promise<vscode.Hover | undefined> {
+        const documentDir = path.dirname(document.uri.fsPath);
+        const localFilePath = resolveLocalImport(documentDir, moduleName);
+        
+        if (localFilePath) {
+            try {
+                const uri = vscode.Uri.file(localFilePath);
+                const importedDoc = await vscode.workspace.openTextDocument(uri);
+                const symbols = unifiedParser.parseDocument(importedDoc);
+                
+                const markdown = new vscode.MarkdownString();
+                markdown.appendCodeblock(`%import ${moduleName}`, 'prog8');
+                
+                const fileName = path.basename(localFilePath);
+                markdown.appendMarkdown(`\n\n*Local module* from \`${fileName}\``);
+                
+                // Count blocks and their contents
+                const blocks = symbols.filter((s: UnifiedSymbol) => s.kind === SymbolKind.Block && !s.parent);
+                if (blocks.length > 0) {
+                    markdown.appendMarkdown(`\n\n**Blocks:** \`${blocks.map((b: UnifiedSymbol) => b.name).join('`, `')}\``);
+                }
+                
+                return new vscode.Hover(markdown);
+            } catch (error) {
+                // File might not be readable
+            }
         }
         
         return undefined;
