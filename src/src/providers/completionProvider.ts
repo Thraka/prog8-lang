@@ -1,9 +1,17 @@
 import * as vscode from 'vscode';
 import { unifiedParser, UnifiedSymbol, SymbolKind } from '../parser';
+import { 
+    getAllBlocks, 
+    BlockInfo, 
+    SubroutineInfo, 
+    VariableInfo, 
+    ConstantInfo,
+    formatSubroutineSignature 
+} from '../data/librarySymbols';
 
 /**
  * Provides auto-completion for Prog8 and ProgB files.
- * Phase 2: Local variables completion.
+ * Phase 2: Local variables and scoped names completion.
  */
 export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
 
@@ -30,11 +38,229 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
             return completions;
         }
 
-        // Add local variable completions
-        const localVarCompletions = this.getLocalVariableCompletions(symbols, currentScope, position);
-        completions.push(...localVarCompletions);
+        // Check if we're completing a qualified name (e.g., "txt." or "main.start.")
+        const qualifiedPrefix = this.getQualifiedPrefix(linePrefix);
+        
+        if (qualifiedPrefix) {
+            // Scoped completion - show only members of the specified scope
+            const scopedCompletions = this.getScopedCompletions(qualifiedPrefix, symbols);
+            completions.push(...scopedCompletions);
+        } else {
+            // Regular completion - show local variables and accessible symbols
+            const localVarCompletions = this.getLocalVariableCompletions(symbols, currentScope, position);
+            completions.push(...localVarCompletions);
+            
+            // Also add library block names for qualified access
+            const libraryBlockCompletions = this.getLibraryBlockCompletions();
+            completions.push(...libraryBlockCompletions);
+        }
 
         return completions;
+    }
+
+    /**
+     * Extract the qualified prefix before the cursor (e.g., "txt" from "txt.")
+     * Returns undefined if not in a qualified context
+     */
+    private getQualifiedPrefix(linePrefix: string): string | undefined {
+        // Match identifiers followed by a dot at the end
+        // e.g., "txt." -> "txt", "main.start." -> "main.start"
+        const match = linePrefix.match(/([a-zA-Z_][\w]*(?:\.[a-zA-Z_][\w]*)*)\.$/);
+        if (match) {
+            return match[1];
+        }
+        return undefined;
+    }
+
+    /**
+     * Get completions for members of a specific scope (qualified name completion)
+     */
+    private getScopedCompletions(prefix: string, symbols: UnifiedSymbol[]): vscode.CompletionItem[] {
+        const completions: vscode.CompletionItem[] = [];
+        const addedNames = new Set<string>();
+
+        // First, check if this is a library block (e.g., "txt", "sys", "cx16")
+        const libraryCompletions = this.getLibraryMemberCompletions(prefix);
+        completions.push(...libraryCompletions);
+        libraryCompletions.forEach(item => addedNames.add(item.label as string));
+
+        // Then, check local symbols that belong to this scope
+        for (const symbol of symbols) {
+            // Check if this symbol's parent matches the prefix
+            if (symbol.parent === prefix || symbol.fullPath.startsWith(prefix + '.')) {
+                // Only add direct children, not nested ones
+                const relativePath = symbol.fullPath.substring(prefix.length + 1);
+                if (!relativePath.includes('.')) {
+                    if (!addedNames.has(symbol.name)) {
+                        addedNames.add(symbol.name);
+                        const item = this.createCompletionItem(symbol);
+                        completions.push(item);
+                    }
+                }
+            }
+        }
+
+        return completions;
+    }
+
+    /**
+     * Get completions for library block members (e.g., txt.print, sys.memset)
+     */
+    private getLibraryMemberCompletions(blockName: string): vscode.CompletionItem[] {
+        const completions: vscode.CompletionItem[] = [];
+        
+        // Get all library blocks (defaults to cx16 target)
+        const blocks = getAllBlocks();
+        const block = blocks.find(b => b.name === blockName);
+        
+        if (!block) {
+            return completions;
+        }
+
+        // Add subroutines
+        for (const sub of block.subroutines) {
+            const item = this.createLibrarySubroutineCompletion(sub, blockName);
+            completions.push(item);
+        }
+
+        // Add variables
+        for (const variable of block.variables) {
+            const item = this.createLibraryVariableCompletion(variable, blockName);
+            completions.push(item);
+        }
+
+        // Add constants
+        for (const constant of block.constants) {
+            const item = this.createLibraryConstantCompletion(constant, blockName);
+            completions.push(item);
+        }
+
+        return completions;
+    }
+
+    /**
+     * Get completions for library block names (txt, sys, cx16, etc.)
+     */
+    private getLibraryBlockCompletions(): vscode.CompletionItem[] {
+        const completions: vscode.CompletionItem[] = [];
+        const addedBlocks = new Set<string>();
+        
+        const blocks = getAllBlocks();
+        for (const block of blocks) {
+            if (addedBlocks.has(block.name)) {
+                continue;
+            }
+            addedBlocks.add(block.name);
+            
+            const item = new vscode.CompletionItem(block.name);
+            item.kind = vscode.CompletionItemKind.Module;
+            item.detail = `library module`;
+            
+            const memberCount = block.subroutines.length + block.variables.length + block.constants.length;
+            const doc = new vscode.MarkdownString();
+            doc.appendMarkdown(`**${block.name}** - Prog8 library module\n\n`);
+            doc.appendMarkdown(`Contains ${block.subroutines.length} subroutines`);
+            if (block.variables.length > 0) {
+                doc.appendMarkdown(`, ${block.variables.length} variables`);
+            }
+            if (block.constants.length > 0) {
+                doc.appendMarkdown(`, ${block.constants.length} constants`);
+            }
+            item.documentation = doc;
+            
+            // Trigger completion after inserting the block name
+            item.command = {
+                command: 'editor.action.triggerSuggest',
+                title: 'Trigger Suggest'
+            };
+            
+            completions.push(item);
+        }
+        
+        return completions;
+    }
+
+    /**
+     * Create a completion item for a library subroutine
+     */
+    private createLibrarySubroutineCompletion(sub: SubroutineInfo, blockName: string): vscode.CompletionItem {
+        const item = new vscode.CompletionItem(sub.name);
+        item.kind = vscode.CompletionItemKind.Function;
+        
+        // Format parameters for detail
+        const params = sub.parameters.map(p => `${p.type} ${p.name}`).join(', ');
+        let detail = `(${params})`;
+        if (sub.returns.length > 0) {
+            const rets = sub.returns.map(r => r.type).join(', ');
+            detail += ` -> ${rets}`;
+        }
+        item.detail = detail;
+        
+        // Create snippet for insertion
+        if (sub.parameters.length > 0) {
+            item.insertText = new vscode.SnippetString(`${sub.name}($1)`);
+        } else {
+            item.insertText = new vscode.SnippetString(`${sub.name}()`);
+        }
+        
+        // Documentation
+        const doc = new vscode.MarkdownString();
+        doc.appendCodeblock(formatSubroutineSignature(sub), 'prog8');
+        doc.appendMarkdown(`\n\nFrom library: \`${blockName}\``);
+        if (sub.address) {
+            doc.appendMarkdown(`\n\nAddress: \`${sub.address}\``);
+        }
+        item.documentation = doc;
+        
+        return item;
+    }
+
+    /**
+     * Create a completion item for a library variable
+     */
+    private createLibraryVariableCompletion(variable: VariableInfo, blockName: string): vscode.CompletionItem {
+        const item = new vscode.CompletionItem(variable.name);
+        item.kind = vscode.CompletionItemKind.Variable;
+        item.detail = variable.type;
+        
+        const doc = new vscode.MarkdownString();
+        let decl = `${variable.type} ${variable.name}`;
+        if (variable.isMemoryMapped) {
+            decl = `&${decl}`;
+        }
+        doc.appendCodeblock(decl, 'prog8');
+        doc.appendMarkdown(`\n\nFrom library: \`${blockName}\``);
+        
+        const flags: string[] = [];
+        if (variable.isMemoryMapped) flags.push('memory-mapped');
+        if (variable.isShared) flags.push('shared');
+        if (variable.isZeroPage) flags.push('zeropage');
+        if (flags.length > 0) {
+            doc.appendMarkdown(`\n\n*${flags.join(', ')}*`);
+        }
+        
+        item.documentation = doc;
+        return item;
+    }
+
+    /**
+     * Create a completion item for a library constant
+     */
+    private createLibraryConstantCompletion(constant: ConstantInfo, blockName: string): vscode.CompletionItem {
+        const item = new vscode.CompletionItem(constant.name);
+        item.kind = vscode.CompletionItemKind.Constant;
+        item.detail = `const ${constant.type}` + (constant.value ? ` = ${constant.value}` : '');
+        
+        const doc = new vscode.MarkdownString();
+        let decl = `const ${constant.type} ${constant.name}`;
+        if (constant.value) {
+            decl += ` = ${constant.value}`;
+        }
+        doc.appendCodeblock(decl, 'prog8');
+        doc.appendMarkdown(`\n\nFrom library: \`${blockName}\``);
+        item.documentation = doc;
+        
+        return item;
     }
 
     /**
