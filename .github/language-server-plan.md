@@ -84,7 +84,7 @@ Add full language support features to the VS Code extension for Prog8.
   - [x] User-defined symbols
   - [x] Library functions (txt.print, sys.memset, etc.) - uses parsed skeleton files
 - [ ] Auto-completion
-  - [ ] Local variables
+  - [x] Local variables
   - [ ] Scoped names (qualified paths)
   - [ ] Built-in functions
   - [ ] Library functions from parsed skeleton files

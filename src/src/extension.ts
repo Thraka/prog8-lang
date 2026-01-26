@@ -4,6 +4,7 @@ import { Prog8DefinitionProvider } from './providers/definitionProvider';
 import { Prog8HoverProvider } from './providers/hoverProvider';
 import { Prog8WorkspaceSymbolProvider } from './providers/workspaceSymbolProvider';
 import { Prog8ReferenceProvider } from './providers/referenceProvider';
+import { Prog8CompletionProvider } from './providers/completionProvider';
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('Prog8 Language Support is now active');
@@ -50,6 +51,16 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.languages.registerReferenceProvider(
             prog8Selector,
             new Prog8ReferenceProvider()
+        )
+    );
+
+    // Register Completion Provider for auto-completion (Ctrl+Space)
+    context.subscriptions.push(
+        vscode.languages.registerCompletionItemProvider(
+            prog8Selector,
+            new Prog8CompletionProvider(),
+            '.', // Trigger on dot for qualified names
+            '@'  // Trigger on @ for tags
         )
     );
 }
