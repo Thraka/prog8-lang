@@ -14,6 +14,7 @@ import {
     ImportedFileSymbols,
     getBlocksFromImports 
 } from '../parser/importResolver';
+import { isInComment, isTypingImport, getQualifiedPrefix } from './providerUtils';
 
 /**
  * Provides auto-completion for Prog8 and ProgB files.
@@ -40,12 +41,12 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
         const linePrefix = document.lineAt(position).text.substring(0, position.character);
         
         // Skip completion in comments
-        if (this.isInComment(document, position)) {
+        if (isInComment(document, position)) {
             return completions;
         }
 
         // Check if we're in an import statement - show only module names
-        if (this.isInImportStatement(linePrefix, document)) {
+        if (isTypingImport(linePrefix)) {
             const moduleCompletions = this.getLibraryModuleCompletions();
             completions.push(...moduleCompletions);
             return completions;
@@ -55,11 +56,11 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
         const importedFileSymbols = await parseImportedFileSymbols(document);
 
         // Check if we're completing a qualified name (e.g., "txt." or "main.start.")
-        const qualifiedPrefix = this.getQualifiedPrefix(linePrefix);
+        const qualifiedPrefixValue = getQualifiedPrefix(linePrefix);
         
-        if (qualifiedPrefix) {
+        if (qualifiedPrefixValue) {
             // Scoped completion - show only members of the specified scope
-            const scopedCompletions = this.getScopedCompletions(qualifiedPrefix, symbols, importedFileSymbols);
+            const scopedCompletions = this.getScopedCompletions(qualifiedPrefixValue, symbols, importedFileSymbols);
             completions.push(...scopedCompletions);
         } else {
             // Regular completion - show local variables and accessible symbols
@@ -76,26 +77,6 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
         }
 
         return completions;
-    }
-
-    /**
-     * Check if we're in an import statement context
-     * Prog8: %import modulename
-     * ProgB: IMPORT modulename
-     */
-    private isInImportStatement(linePrefix: string, document: vscode.TextDocument): boolean {
-        
-        // Prog8 style: %import
-        if (/^%import\s+\w*$/i.test(linePrefix)) {
-            return true;
-        }
-        
-        // ProgB style: IMPORT (case insensitive)
-        if (/^import\s+\w*$/i.test(linePrefix)) {
-            return true;
-        }
-        
-        return false;
     }
 
     /**
@@ -150,20 +131,6 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
         }
         
         return completions;
-    }
-
-    /**
-     * Extract the qualified prefix before the cursor (e.g., "txt" from "txt.")
-     * Returns undefined if not in a qualified context
-     */
-    private getQualifiedPrefix(linePrefix: string): string | undefined {
-        // Match identifiers followed by a dot at the end
-        // e.g., "txt." -> "txt", "main.start." -> "main.start"
-        const match = linePrefix.match(/([a-zA-Z_][\w]*(?:\.[a-zA-Z_][\w]*)*)\.$/);
-        if (match) {
-            return match[1];
-        }
-        return undefined;
     }
 
     /**
@@ -676,43 +643,6 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
             default:
                 return symbol.name;
         }
-    }
-
-    /**
-     * Check if the position is inside a comment
-     */
-    private isInComment(document: vscode.TextDocument, position: vscode.Position): boolean {
-        const line = document.lineAt(position.line).text;
-        const textBeforeCursor = line.substring(0, position.character);
-
-        // Check for line comment (;)
-        const semiColonIndex = textBeforeCursor.indexOf(';');
-        if (semiColonIndex !== -1) {
-            // Make sure it's not inside a string
-            const beforeSemi = textBeforeCursor.substring(0, semiColonIndex);
-            const quoteCount = (beforeSemi.match(/"/g) || []).length;
-            if (quoteCount % 2 === 0) {
-                return true;
-            }
-        }
-
-        // Check for block comment - scan from the start of file
-        const text = document.getText(new vscode.Range(new vscode.Position(0, 0), position));
-        let inBlockComment = false;
-        let i = 0;
-        while (i < text.length) {
-            if (!inBlockComment && text[i] === '/' && text[i + 1] === '*') {
-                inBlockComment = true;
-                i += 2;
-            } else if (inBlockComment && text[i] === '*' && text[i + 1] === '/') {
-                inBlockComment = false;
-                i += 2;
-            } else {
-                i++;
-            }
-        }
-
-        return inBlockComment;
     }
 
     /**

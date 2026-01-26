@@ -3,6 +3,7 @@ import * as path from 'path';
 import { unifiedParser, UnifiedSymbol, SymbolKind } from '../parser';
 import { findSubroutine, getAllBlocks, findModule, formatSubroutineSignature, SubroutineInfo, BlockInfo, ModuleInfo } from '../data/librarySymbols';
 import { parseImportedFileSymbols, findSymbolInImports } from '../parser/importResolver';
+import { isInImportStatement, getQualifiedNameAtPosition } from './providerUtils';
 
 /**
  * Provides hover information for Prog8 files.
@@ -20,8 +21,18 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
             return undefined;
         }
 
+        // Check if we're in an import statement - if so, only show module info
+        if (isInImportStatement(document, position)) {
+            const moduleHover = this.getLibraryModuleHover(word);
+            if (moduleHover) {
+                return moduleHover;
+            }
+            // In an import statement but not a known module - don't match anything else
+            return undefined;
+        }
+
         // Check if it's a qualified name (e.g., txt.print)
-        const qualifiedName = this.getQualifiedNameAtPosition(document, position);
+        const qualifiedName = getQualifiedNameAtPosition(document, position);
         if (qualifiedName && qualifiedName.includes('.')) {
             const libraryHover = this.getLibraryHover(qualifiedName);
             if (libraryHover) {
@@ -79,34 +90,6 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
             return this.createHoverForSymbol(crossFileSymbol);
         }
 
-        return undefined;
-    }
-
-    /**
-     * Get the fully qualified name at a position (e.g., txt.print)
-     */
-    private getQualifiedNameAtPosition(document: vscode.TextDocument, position: vscode.Position): string | undefined {
-        const line = document.lineAt(position.line).text;
-        
-        // Find the start of the identifier chain
-        let start = position.character;
-        while (start > 0 && /[\w.]/.test(line[start - 1])) {
-            start--;
-        }
-        
-        // Find the end of the identifier chain
-        let end = position.character;
-        while (end < line.length && /[\w.]/.test(line[end])) {
-            end++;
-        }
-        
-        const fullName = line.substring(start, end);
-        
-        // Only return if it looks like a qualified name
-        if (fullName && /^\w+\.\w+$/.test(fullName)) {
-            return fullName;
-        }
-        
         return undefined;
     }
 

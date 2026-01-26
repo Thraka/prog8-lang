@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { unifiedParser, UnifiedSymbol } from '../parser';
+import { isPositionInLineComment } from './providerUtils';
 
 /**
  * Provides "Find All References" for Prog8 files.
@@ -99,7 +100,7 @@ export class Prog8ReferenceProvider implements vscode.ReferenceProvider {
                 const position = new vscode.Position(lineIndex, col);
                 
                 // Skip if this is inside a comment
-                if (this.isInComment(line, col)) {
+                if (isPositionInLineComment(line, col)) {
                     continue;
                 }
 
@@ -203,22 +204,6 @@ export class Prog8ReferenceProvider implements vscode.ReferenceProvider {
 
         // If no target path, just match by name
         return wordAtPos === searchName || wordAtPos.endsWith('.' + searchName);
-    }
-
-    /**
-     * Check if a position is inside a line comment
-     */
-    private isInComment(line: string, col: number): boolean {
-        const commentIndex = line.indexOf(';');
-        if (commentIndex !== -1 && col > commentIndex) {
-            // Make sure the semicolon isn't inside a string
-            const beforeComment = line.substring(0, commentIndex);
-            const quoteCount = (beforeComment.match(/"/g) || []).length;
-            if (quoteCount % 2 === 0) {
-                return true;
-            }
-        }
-        return false;
     }
 
     /**
