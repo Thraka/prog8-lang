@@ -26170,6 +26170,34 @@ export function getAllBlocks(target?: string): BlockInfo[] {
 }
 
 /**
+ * Get all modules for a target
+ */
+export function getAllModules(target?: string): ModuleInfo[] {
+    const results: ModuleInfo[] = [];
+    const targetLibs = target ? [libraries[target]].filter(Boolean) : Object.values(libraries);
+    
+    for (const lib of targetLibs) {
+        results.push(...lib.modules);
+    }
+    
+    return results;
+}
+
+/**
+ * Find a module by name
+ */
+export function findModule(moduleName: string, target?: string): ModuleInfo | undefined {
+    const targetLibs = target ? [libraries[target]].filter(Boolean) : Object.values(libraries);
+    
+    for (const lib of targetLibs) {
+        const mod = lib.modules.find(m => m.name === moduleName);
+        if (mod) return mod;
+    }
+    
+    return undefined;
+}
+
+/**
  * Format a subroutine signature for display
  */
 export function formatSubroutineSignature(sub: SubroutineInfo): string {

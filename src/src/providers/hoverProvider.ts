@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { unifiedParser, UnifiedSymbol, SymbolKind } from '../parser';
-import { findSubroutine, getAllBlocks, formatSubroutineSignature, SubroutineInfo, BlockInfo } from '../data/librarySymbols';
+import { findSubroutine, getAllBlocks, findModule, formatSubroutineSignature, SubroutineInfo, BlockInfo, ModuleInfo } from '../data/librarySymbols';
 
 /**
  * Provides hover information for Prog8 files.
@@ -38,6 +38,12 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
         const keywordHover = this.getKeywordHover(word);
         if (keywordHover) {
             return keywordHover;
+        }
+
+        // Check if it's a library module name (e.g., buffers, textio)
+        const moduleHover = this.getLibraryModuleHover(word);
+        if (moduleHover) {
+            return moduleHover;
         }
 
         // Check if it's a library block name (e.g., txt, sys, cx16)
@@ -338,7 +344,51 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
     }
 
     /**
+     * Get hover for library module names (e.g., buffers, textio, math)
+     * Modules are what you %import - they contain one or more blocks
+     */
+    private getLibraryModuleHover(name: string): vscode.Hover | undefined {
+        const mod = findModule(name);
+        
+        if (mod) {
+            const markdown = new vscode.MarkdownString();
+            markdown.appendCodeblock(`%import ${name}`, 'prog8');
+            
+            // Count total items across all blocks
+            let totalSubs = 0;
+            let totalVars = 0;
+            let totalConsts = 0;
+            
+            for (const block of mod.blocks) {
+                totalSubs += block.subroutines.length;
+                totalVars += block.variables.length;
+                totalConsts += block.constants.length;
+            }
+            
+            markdown.appendMarkdown(`\n\n*Library module* with ${mod.blocks.length} block${mod.blocks.length !== 1 ? 's' : ''}`);
+            markdown.appendMarkdown(`, ${totalSubs} subroutines`);
+            if (totalVars > 0) {
+                markdown.appendMarkdown(`, ${totalVars} variables`);
+            }
+            if (totalConsts > 0) {
+                markdown.appendMarkdown(`, ${totalConsts} constants`);
+            }
+            
+            // Show the blocks this module provides
+            const blockNames = mod.blocks.map(b => b.name);
+            if (blockNames.length > 0) {
+                markdown.appendMarkdown(`\n\n**Blocks:** \`${blockNames.join('`, `')}\``);
+            }
+            
+            return new vscode.Hover(markdown);
+        }
+        
+        return undefined;
+    }
+
+    /**
      * Get hover for library block names (e.g., txt, sys, cx16)
+     * Blocks are namespaces inside modules that you access with qualified names
      */
     private getLibraryBlockHover(name: string): vscode.Hover | undefined {
         const blocks = getAllBlocks();
@@ -353,7 +403,7 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
             const varCount = block.variables.length;
             const constCount = block.constants.length;
             
-            markdown.appendMarkdown(`\n\n*Library module* with ${subCount} subroutines`);
+            markdown.appendMarkdown(`\n\n*Library block* with ${subCount} subroutines`);
             if (varCount > 0) {
                 markdown.appendMarkdown(`, ${varCount} variables`);
             }
