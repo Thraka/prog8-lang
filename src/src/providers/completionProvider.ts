@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { unifiedParser, UnifiedSymbol, SymbolKind } from '../parser';
 import { 
     getAllBlocks, 
+    getAllModules,
     BlockInfo, 
     SubroutineInfo, 
     VariableInfo, 
@@ -38,6 +39,13 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
             return completions;
         }
 
+        // Check if we're in an import statement - show only module names
+        if (this.isInImportStatement(linePrefix, document)) {
+            const moduleCompletions = this.getLibraryModuleCompletions();
+            completions.push(...moduleCompletions);
+            return completions;
+        }
+
         // Check if we're completing a qualified name (e.g., "txt." or "main.start.")
         const qualifiedPrefix = this.getQualifiedPrefix(linePrefix);
         
@@ -55,6 +63,80 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
             completions.push(...libraryBlockCompletions);
         }
 
+        return completions;
+    }
+
+    /**
+     * Check if we're in an import statement context
+     * Prog8: %import modulename
+     * ProgB: IMPORT modulename
+     */
+    private isInImportStatement(linePrefix: string, document: vscode.TextDocument): boolean {
+        
+        // Prog8 style: %import
+        if (/^%import\s+\w*$/i.test(linePrefix)) {
+            return true;
+        }
+        
+        // ProgB style: IMPORT (case insensitive)
+        if (/^import\s+\w*$/i.test(linePrefix)) {
+            return true;
+        }
+        
+        return false;
+    }
+
+    /**
+     * Get completions for library module names (for import statements)
+     */
+    private getLibraryModuleCompletions(): vscode.CompletionItem[] {
+        const completions: vscode.CompletionItem[] = [];
+        const addedModules = new Set<string>();
+        
+        const modules = getAllModules();
+        for (const mod of modules) {
+            if (addedModules.has(mod.name)) {
+                continue;
+            }
+            addedModules.add(mod.name);
+            
+            const item = new vscode.CompletionItem(mod.name);
+            item.kind = vscode.CompletionItemKind.Module;
+            
+            // Count contents
+            let totalSubs = 0;
+            let totalVars = 0;
+            let totalConsts = 0;
+            for (const block of mod.blocks) {
+                totalSubs += block.subroutines.length;
+                totalVars += block.variables.length;
+                totalConsts += block.constants.length;
+            }
+            
+            item.detail = `${mod.blocks.length} block${mod.blocks.length !== 1 ? 's' : ''}, ${totalSubs} subroutines`;
+            
+            const doc = new vscode.MarkdownString();
+            doc.appendCodeblock(`%import ${mod.name}`, 'prog8');
+            doc.appendMarkdown(`\n\n*Library module*\n\n`);
+            
+            // Show blocks this module provides
+            const blockNames = mod.blocks.map(b => b.name);
+            if (blockNames.length > 0) {
+                doc.appendMarkdown(`**Provides blocks:** \`${blockNames.join('`, `')}\`\n\n`);
+            }
+            
+            doc.appendMarkdown(`Contains ${totalSubs} subroutines`);
+            if (totalVars > 0) {
+                doc.appendMarkdown(`, ${totalVars} variables`);
+            }
+            if (totalConsts > 0) {
+                doc.appendMarkdown(`, ${totalConsts} constants`);
+            }
+            
+            item.documentation = doc;
+            completions.push(item);
+        }
+        
         return completions;
     }
 
