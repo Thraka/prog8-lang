@@ -83,11 +83,15 @@ Add full language support features to the VS Code extension for Prog8.
   - [x] Keywords (if, for, while, ubyte, etc.)
   - [x] User-defined symbols
   - [x] Library functions (txt.print, sys.memset, etc.) - uses parsed skeleton files
-- [ ] Auto-completion
-  - [x] Local variables
-  - [x] Scoped names (qualified paths)
+  - [x] Library modules (for import statements) - distinguishes modules vs blocks
+  - [x] Symbols from locally imported files
+- [x] Auto-completion
+  - [x] Local variables, constants, parameters
+  - [x] Scoped names (qualified paths like `txt.print`, `myblock.mysub`)
+  - [x] Library blocks and their members (from parsed skeleton files)
+  - [x] Library modules (context-aware: only shown in import statements)
+  - [x] Blocks from locally imported files
   - [ ] Built-in functions
-  - [x] Library functions from parsed skeleton files
   - [ ] Keywords
 - [ ] Signature help for subroutines
 
@@ -121,6 +125,11 @@ Since everything is public with fully qualified names:
   - Parsed from https://prog8.readthedocs.io/en/latest/_static/symboldumps/
   - Contains 873 subroutines for cx16, 492 for c64
   - Run `npx ts-node scripts/parseSkeletons.ts` to regenerate
+  - Helper functions: `findModule()`, `getAllModules()`, `getAllBlocks()`, `findSubroutine()`
+- [x] **Local file import resolution** (see `src/parser/importResolver.ts`)
+  - Parses `%import` and `IMPORT` statements from documents
+  - Resolves non-library imports to local `.p8`/`.pb` files
+  - Provides symbols for intellisense without recursive import following
 
 ### Reference Documentation
 - Main docs: https://prog8.readthedocs.io/en/latest/
