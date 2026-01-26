@@ -2,6 +2,13 @@
 
 All notable changes to the Prog8 Language Support extension will be documented in this file.
 
+## [1.4.0] - 2026-01-26
+
+- Local intellisense working.
+- Scoped intellisense working (referencing blocks defined in the same file).
+- Import intellisense working, lists the modules picked up by the skeleton file importer.
+- Imported file module intellisense working!! Referencing a file brings the modules blocks into local intellisense. Navigation and hovering works on these members too!
+
 ## [1.3.0] - 2026-01-25
 
 Added lots of support for discovering and finding symbols within the current document and those in the same folder.

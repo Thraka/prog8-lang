@@ -9,6 +9,11 @@ import {
     ConstantInfo,
     formatSubroutineSignature 
 } from '../data/librarySymbols';
+import { 
+    parseImportedFileSymbols, 
+    ImportedFileSymbols,
+    getBlocksFromImports 
+} from '../parser/importResolver';
 
 /**
  * Provides auto-completion for Prog8 and ProgB files.
@@ -16,12 +21,12 @@ import {
  */
 export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
 
-    provideCompletionItems(
+    async provideCompletionItems(
         document: vscode.TextDocument,
         position: vscode.Position,
         token: vscode.CancellationToken,
         context: vscode.CompletionContext
-    ): vscode.CompletionItem[] | vscode.CompletionList {
+    ): Promise<vscode.CompletionItem[] | vscode.CompletionList> {
         
         const completions: vscode.CompletionItem[] = [];
 
@@ -46,17 +51,24 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
             return completions;
         }
 
+        // Parse imported local files for their symbols
+        const importedFileSymbols = await parseImportedFileSymbols(document);
+
         // Check if we're completing a qualified name (e.g., "txt." or "main.start.")
         const qualifiedPrefix = this.getQualifiedPrefix(linePrefix);
         
         if (qualifiedPrefix) {
             // Scoped completion - show only members of the specified scope
-            const scopedCompletions = this.getScopedCompletions(qualifiedPrefix, symbols);
+            const scopedCompletions = this.getScopedCompletions(qualifiedPrefix, symbols, importedFileSymbols);
             completions.push(...scopedCompletions);
         } else {
             // Regular completion - show local variables and accessible symbols
             const localVarCompletions = this.getLocalVariableCompletions(symbols, currentScope, position);
             completions.push(...localVarCompletions);
+            
+            // Add blocks from imported local files
+            const importedBlockCompletions = this.getImportedBlockCompletions(importedFileSymbols);
+            completions.push(...importedBlockCompletions);
             
             // Also add library block names for qualified access
             const libraryBlockCompletions = this.getLibraryBlockCompletions();
@@ -157,7 +169,11 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
     /**
      * Get completions for members of a specific scope (qualified name completion)
      */
-    private getScopedCompletions(prefix: string, symbols: UnifiedSymbol[]): vscode.CompletionItem[] {
+    private getScopedCompletions(
+        prefix: string, 
+        symbols: UnifiedSymbol[], 
+        importedFileSymbols: ImportedFileSymbols[] = []
+    ): vscode.CompletionItem[] {
         const completions: vscode.CompletionItem[] = [];
         const addedNames = new Set<string>();
 
@@ -179,6 +195,64 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
                         completions.push(item);
                     }
                 }
+            }
+        }
+
+        // Check imported file symbols for the prefix
+        for (const imported of importedFileSymbols) {
+            for (const symbol of imported.symbols) {
+                // Check if this symbol's parent matches the prefix or is a direct child
+                if (symbol.parent === prefix || symbol.fullPath.startsWith(prefix + '.')) {
+                    const relativePath = symbol.fullPath.substring(prefix.length + 1);
+                    if (!relativePath.includes('.')) {
+                        if (!addedNames.has(symbol.name)) {
+                            addedNames.add(symbol.name);
+                            const item = this.createCompletionItem(symbol, imported.moduleName);
+                            completions.push(item);
+                        }
+                    }
+                }
+            }
+        }
+
+        return completions;
+    }
+
+    /**
+     * Get completions for blocks from imported local files
+     */
+    private getImportedBlockCompletions(importedFileSymbols: ImportedFileSymbols[]): vscode.CompletionItem[] {
+        const completions: vscode.CompletionItem[] = [];
+        const addedBlocks = new Set<string>();
+
+        for (const imported of importedFileSymbols) {
+            for (const symbol of imported.symbols) {
+                if (symbol.kind !== SymbolKind.Block) {
+                    continue;
+                }
+
+                if (addedBlocks.has(symbol.name)) {
+                    continue;
+                }
+                addedBlocks.add(symbol.name);
+
+                const item = new vscode.CompletionItem(symbol.name);
+                item.kind = vscode.CompletionItemKind.Module;
+                item.detail = `from ${imported.moduleName}`;
+
+                const doc = new vscode.MarkdownString();
+                doc.appendCodeblock(`${symbol.name} { }`, 'prog8');
+                doc.appendMarkdown(`\n\n*Block from imported file*\n\n`);
+                doc.appendMarkdown(`Source: \`${imported.moduleName}\``);
+                item.documentation = doc;
+
+                // Trigger completion after inserting the block name
+                item.command = {
+                    command: 'editor.action.triggerSuggest',
+                    title: 'Trigger Suggest'
+                };
+
+                completions.push(item);
             }
         }
 
@@ -478,8 +552,10 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
 
     /**
      * Create a completion item for a symbol
+     * @param symbol The symbol to create a completion item for
+     * @param sourceModule Optional source module name for imported symbols
      */
-    private createCompletionItem(symbol: UnifiedSymbol): vscode.CompletionItem {
+    private createCompletionItem(symbol: UnifiedSymbol, sourceModule?: string): vscode.CompletionItem {
         const item = new vscode.CompletionItem(symbol.name);
         
         // Set the kind based on symbol type
@@ -537,11 +613,19 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
                 item.kind = vscode.CompletionItemKind.Text;
         }
 
+        // Add source module to detail if provided
+        if (sourceModule) {
+            item.detail = (item.detail || '') + ` (from ${sourceModule})`;
+        }
+
         // Add documentation
         const doc = new vscode.MarkdownString();
         doc.appendCodeblock(this.formatSymbolSignature(symbol), 'prog8');
         if (symbol.parent) {
             doc.appendMarkdown(`\n\nDefined in: \`${symbol.parent}\``);
+        }
+        if (sourceModule) {
+            doc.appendMarkdown(`\n\nSource: \`${sourceModule}\``);
         }
         item.documentation = doc;
 

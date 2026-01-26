@@ -76,3 +76,15 @@ export const unifiedParser = new UnifiedParser();
 // Also re-export the individual parsers for direct access if needed
 export { prog8Parser } from './prog8Parser';
 export { progbParser } from './progbParser';
+
+// Re-export import resolver utilities
+export { 
+    parseImports, 
+    parseImportedFileSymbols, 
+    isLibraryModule, 
+    resolveLocalImport,
+    findSymbolInImports,
+    getBlocksFromImports,
+    type ImportInfo,
+    type ImportedFileSymbols
+} from './importResolver';

@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { unifiedParser, UnifiedSymbol, SymbolKind } from '../parser';
 import { findSubroutine, getAllBlocks, findModule, formatSubroutineSignature, SubroutineInfo, BlockInfo, ModuleInfo } from '../data/librarySymbols';
+import { parseImportedFileSymbols, findSymbolInImports } from '../parser/importResolver';
 
 /**
  * Provides hover information for Prog8 files.
@@ -65,6 +66,13 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
             return this.createHoverForSymbol(symbol);
         }
 
+        // Search in imported local files
+        const importedFileSymbols = await parseImportedFileSymbols(document);
+        const importedSymbol = findSymbolInImports(qualifiedName || word, importedFileSymbols, currentScope);
+        if (importedSymbol) {
+            return this.createHoverForSymbol(importedSymbol, true);
+        }
+
         // If not found locally, search other Prog8 files in the same directory
         const crossFileSymbol = await this.findSymbolInOtherFiles(document, word, qualifiedName);
         if (crossFileSymbol) {
@@ -104,8 +112,10 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
 
     /**
      * Create a hover for a symbol
+     * @param symbol The symbol to create a hover for
+     * @param isImported Whether the symbol comes from an imported file
      */
-    private createHoverForSymbol(symbol: UnifiedSymbol): vscode.Hover {
+    private createHoverForSymbol(symbol: UnifiedSymbol, isImported: boolean = false): vscode.Hover {
         const markdown = new vscode.MarkdownString();
         
         switch (symbol.kind) {
@@ -176,6 +186,12 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
         // Add full path if nested
         if (symbol.parent) {
             markdown.appendMarkdown(`\n\n*Defined in:* \`${symbol.fullPath}\``);
+        }
+
+        // Add source file info for imported symbols
+        if (isImported && symbol.uri) {
+            const fileName = path.basename(symbol.uri.fsPath);
+            markdown.appendMarkdown(`\n\n*From imported file:* \`${fileName}\``);
         }
 
         return new vscode.Hover(markdown);
