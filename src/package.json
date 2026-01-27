@@ -65,7 +65,17 @@
         "scopeName": "source.progb",
         "path": "./syntaxes/progb.tmLanguage.json"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Prog8",
+      "properties": {
+        "prog8.completion.showBuiltinFunctions": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show built-in functions (abs, len, peek, poke, etc.) in IntelliSense completions"
+        }
+      }
+    }
   },
   "scripts": {
     "compile": "tsc -p ./",

@@ -15,6 +15,7 @@ import {
     getBlocksFromImports 
 } from '../parser/importResolver';
 import { isInComment, isTypingImport, getQualifiedPrefix } from './providerUtils';
+import { builtinFunctions, BuiltinFunctionInfo } from '../data/builtinFunctions';
 
 /**
  * Provides auto-completion for Prog8 and ProgB files.
@@ -74,6 +75,14 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
             // Also add library block names for qualified access
             const libraryBlockCompletions = this.getLibraryBlockCompletions();
             completions.push(...libraryBlockCompletions);
+
+            // Add built-in functions if enabled in settings
+            const config = vscode.workspace.getConfiguration('prog8');
+            const showBuiltins = config.get<boolean>('completion.showBuiltinFunctions', true);
+            if (showBuiltins) {
+                const builtinCompletions = this.getBuiltinFunctionCompletions();
+                completions.push(...builtinCompletions);
+            }
         }
 
         return completions;
@@ -300,6 +309,41 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
             completions.push(item);
         }
         
+        return completions;
+    }
+
+    /**
+     * Get completions for built-in functions (abs, len, peek, poke, etc.)
+     */
+    private getBuiltinFunctionCompletions(): vscode.CompletionItem[] {
+        const completions: vscode.CompletionItem[] = [];
+
+        for (const [name, info] of Object.entries(builtinFunctions)) {
+            const item = new vscode.CompletionItem(name);
+            item.kind = vscode.CompletionItemKind.Function;
+            item.detail = `built-in`;
+            
+            // Lower sort priority so local/imported symbols appear first
+            item.sortText = `zzz_${name}`;
+            
+            // Create snippet for insertion with parentheses
+            const hasParams = !info.signature.includes('()');
+            if (hasParams) {
+                item.insertText = new vscode.SnippetString(`${name}($1)`);
+            } else {
+                item.insertText = new vscode.SnippetString(`${name}()`);
+            }
+            
+            // Documentation
+            const doc = new vscode.MarkdownString();
+            doc.appendCodeblock(info.signature, 'prog8');
+            doc.appendMarkdown(`\n\n${info.description}`);
+            doc.appendMarkdown(`\n\n*Built-in function* (${info.category})`);
+            item.documentation = doc;
+            
+            completions.push(item);
+        }
+
         return completions;
     }
 

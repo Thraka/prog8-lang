@@ -91,7 +91,7 @@ Add full language support features to the VS Code extension for Prog8.
   - [x] Library blocks and their members (from parsed skeleton files)
   - [x] Library modules (context-aware: only shown in import statements)
   - [x] Blocks from locally imported files
-  - [ ] Built-in functions
+  - [x] Built-in functions
   - [ ] Keywords
 - [ ] Signature help for subroutines
 
