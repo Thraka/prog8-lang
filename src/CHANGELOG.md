@@ -2,6 +2,12 @@
 
 All notable changes to the Prog8 Language Support extension will be documented in this file.
 
+## [1.4.1] - 2026-01-26
+
+- Improved hover for modules.
+- Moved built-in subs to a data file.
+- Add built-in subs to intellisense (at the end of the list and config option to turn off).
+
 ## [1.4.0] - 2026-01-26
 
 - Local intellisense working.
