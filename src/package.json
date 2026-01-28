@@ -73,6 +73,11 @@
           "type": "boolean",
           "default": true,
           "description": "Show built-in functions (abs, len, peek, poke, etc.) in IntelliSense completions"
+        },
+        "prog8.completion.showKeywords": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show language keywords (if, for, ubyte, etc.) in IntelliSense completions"
         }
       }
     }

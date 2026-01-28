@@ -16,6 +16,7 @@ import {
 } from '../parser/importResolver';
 import { isInComment, isTypingImport, getQualifiedPrefix } from './providerUtils';
 import { builtinFunctions, BuiltinFunctionInfo } from '../data/builtinFunctions';
+import { getKeywordsForLanguage } from '../data/keywords';
 
 /**
  * Provides auto-completion for Prog8 and ProgB files.
@@ -43,6 +44,13 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
         
         // Skip completion in comments
         if (isInComment(document, position)) {
+            return completions;
+        }
+
+        // Check if we're typing a directive (starts with %) - Prog8 only
+        if (this.isTypingDirective(linePrefix, document)) {
+            const directiveCompletions = this.getDirectiveCompletions(document);
+            completions.push(...directiveCompletions);
             return completions;
         }
 
@@ -82,6 +90,13 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
             if (showBuiltins) {
                 const builtinCompletions = this.getBuiltinFunctionCompletions();
                 completions.push(...builtinCompletions);
+            }
+
+            // Add keyword completions
+            const showKeywords = config.get<boolean>('completion.showKeywords', true);
+            if (showKeywords) {
+                const keywordCompletions = this.getKeywordCompletions(document);
+                completions.push(...keywordCompletions);
             }
         }
 
@@ -339,6 +354,93 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
             doc.appendCodeblock(info.signature, 'prog8');
             doc.appendMarkdown(`\n\n${info.description}`);
             doc.appendMarkdown(`\n\n*Built-in function* (${info.category})`);
+            item.documentation = doc;
+            
+            completions.push(item);
+        }
+
+        return completions;
+    }
+
+    /**
+     * Check if we're typing a directive (line starts with %) - Prog8 only
+     */
+    private isTypingDirective(linePrefix: string, document: vscode.TextDocument): boolean {
+        const isProgB = document.languageId === 'progb' || document.fileName.endsWith('.pb');
+        // ProgB doesn't use % directives
+        if (isProgB) {
+            return false;
+        }
+        const trimmed = linePrefix.trim();
+        // Check if line starts with % and we're still typing the directive name
+        return /^%\w*$/.test(trimmed);
+    }
+
+    /**
+     * Get completions for directives (keywords starting with %)
+     */
+    private getDirectiveCompletions(document: vscode.TextDocument): vscode.CompletionItem[] {
+        const completions: vscode.CompletionItem[] = [];
+        const languageId = 'prog8';
+
+        const keywords = getKeywordsForLanguage(false); // Always prog8 for % directives
+
+        // Filter to only directives
+        for (const [name, info] of Object.entries(keywords)) {
+            if (info.category !== 'directive') {
+                continue;
+            }
+
+            // For prog8 directives starting with %, show name without % as label
+            // since user already typed the %
+            const displayName = name.startsWith('%') ? name.substring(1) : name;
+            
+            const item = new vscode.CompletionItem(displayName);
+            item.kind = vscode.CompletionItemKind.Keyword;
+            item.detail = name; // Show full directive in detail
+            item.insertText = displayName; // Insert without % since user already typed it
+            
+            // Documentation
+            const doc = new vscode.MarkdownString();
+            doc.appendCodeblock(name, languageId);
+            doc.appendMarkdown(`\n\n${info.description}`);
+            doc.appendMarkdown(`\n\n*Directive*`);
+            item.documentation = doc;
+            
+            completions.push(item);
+        }
+
+        return completions;
+    }
+
+    /**
+     * Get completions for language keywords
+     */
+    private getKeywordCompletions(document: vscode.TextDocument): vscode.CompletionItem[] {
+        const completions: vscode.CompletionItem[] = [];
+        const isProgB = document.languageId === 'progb' || document.fileName.endsWith('.pb');
+        const languageId = isProgB ? 'progb' : 'prog8';
+
+        const keywords = getKeywordsForLanguage(isProgB);
+
+        for (const [name, info] of Object.entries(keywords)) {
+            // Skip directives - they are handled separately when typing %
+            if (info.category === 'directive') {
+                continue;
+            }
+
+            const item = new vscode.CompletionItem(name);
+            item.kind = vscode.CompletionItemKind.Keyword;
+            item.detail = info.category;
+            
+            // Lower sort priority so local/imported symbols appear first
+            item.sortText = `zzzz_${name}`;
+            
+            // Documentation
+            const doc = new vscode.MarkdownString();
+            doc.appendCodeblock(name, languageId);
+            doc.appendMarkdown(`\n\n${info.description}`);
+            doc.appendMarkdown(`\n\n*Keyword* (${info.category})`);
             item.documentation = doc;
             
             completions.push(item);

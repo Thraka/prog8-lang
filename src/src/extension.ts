@@ -55,9 +55,21 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     // Register Completion Provider for auto-completion (Ctrl+Space)
+    // Prog8 gets % trigger for directives
     context.subscriptions.push(
         vscode.languages.registerCompletionItemProvider(
-            prog8Selector,
+            { language: 'prog8', scheme: 'file' },
+            new Prog8CompletionProvider(),
+            '.', // Trigger on dot for qualified names
+            '@', // Trigger on @ for tags
+            '%'  // Trigger on % for directives (Prog8 only)
+        )
+    );
+
+    // ProgB does not use % directives
+    context.subscriptions.push(
+        vscode.languages.registerCompletionItemProvider(
+            { language: 'progb', scheme: 'file' },
             new Prog8CompletionProvider(),
             '.', // Trigger on dot for qualified names
             '@'  // Trigger on @ for tags
