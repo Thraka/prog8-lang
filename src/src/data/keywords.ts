@@ -255,3 +255,39 @@ export const progbKeywords: { [key: string]: KeywordInfo } = {
 export function getKeywordsForLanguage(isProgB: boolean): { [key: string]: KeywordInfo } {
     return isProgB ? progbKeywords : prog8Keywords;
 }
+
+/**
+ * ProgB block pairs for folding, casing, and validation.
+ * These define the start/end keyword pairs for block structures.
+ */
+export interface BlockPair {
+    start: string;
+    end: string;
+}
+
+export const progbBlockPairs: BlockPair[] = [
+    { start: 'MODULE', end: 'END MODULE' },
+    { start: 'SUB', end: 'END SUB' },
+    { start: 'FUNCTION', end: 'END FUNCTION' },
+    { start: 'ASMSUB', end: 'END ASMSUB' },
+    { start: 'IF', end: 'END IF' },
+    { start: 'SELECT', end: 'END SELECT' },
+    { start: 'TYPE', end: 'END TYPE' },
+    { start: 'FOR', end: 'NEXT' },
+    { start: 'WHILE', end: 'WEND' },
+    { start: 'DO', end: 'LOOP' },
+    { start: 'REPEAT', end: 'END REPEAT' },
+    { start: 'DEFER', end: 'END DEFER' },
+    { start: 'ASM', end: 'END ASM' },
+    { start: 'IR', end: 'END IR' },
+    { start: 'UNROLL', end: 'END UNROLL' },
+];
+
+/**
+ * Get all ProgB keywords as a flat list (for casing purposes).
+ * This includes both single keywords and compound keywords like "END IF".
+ */
+export function getAllProgBKeywords(): string[] {
+    const keywords = Object.keys(progbKeywords);
+    return keywords;
+}

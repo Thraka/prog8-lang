@@ -95,6 +95,16 @@ Add full language support features to the VS Code extension for Prog8.
   - [x] Keywords
 - [ ] Signature help for subroutines
 
+### Phase 2.5: ProgB Keyword Casing
+
+- [x] keywords.ts updated with block pairs from language-configuration-progb.json
+- [ ] Migrate language-configuration-progb.json to use keywords.ts as its source of truth (future)
+- [x] Add Enum option for setting how ProgB keywords are cased: Upper, Lower, Camel, Disabled
+- [x] Auto case lines edited (with 150ms debounce for smooth typing)
+- [x] Command to format entire document: `ProgB: Format Keyword Casing`
+- [x] Auto case blocks when closed: END IF, END SUB, END MODULE (optional enhancement)
+
+
 ### Phase 3: Diagnostics
 - [ ] Syntax error reporting
 - [ ] Undefined symbol warnings
