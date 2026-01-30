@@ -8,16 +8,16 @@
 
 %import textio
 %import math
-%import floats
+%import stree
 %zeropage basicsafe
 %option no_sysinit
 
-main {
+another {
 
     ; Constants
     const ubyte MAX_COUNT = 100
     const float PI_VALUE = 3.14159
-    
+
     ; Variables with various types
     ubyte counter, counter2 = 0
     byte signed_val = -42
@@ -27,7 +27,7 @@ main {
     float pi = 3.14159
     bool flag = true
     str message = "Hello, World!\n"
-    
+
     ; Arrays
     ubyte[10] buffer
     ubyte[] data = [1, 2, 3, 4, 5]
@@ -69,7 +69,7 @@ main {
         while counter < 5 {
             counter++
         }
-
+        
         ; Do-until loop
         do {
             counter--
@@ -184,6 +184,7 @@ done:
     }
     
     sub calculate(ubyte a, ubyte b) -> ubyte {
+        
         return a + b
     }
     
@@ -238,7 +239,10 @@ _loop:
 }
 
 ; Another block
-graphics_utils $c000 {
+graphics_utils2 $c000 {
+
+    ubyte var1 = $22
+
     sub clear_screen() {
         sys.memset($0400, 1000, ' ')
     }

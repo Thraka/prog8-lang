@@ -2,6 +2,28 @@
 
 All notable changes to the Prog8 Language Support extension will be documented in this file.
 
+## [1.5.0] - 2026-01-30
+
+- Target platform support: CX16, C64, C128, PET32, Virtual. This affects the intellisense for modules and blocks.
+- ProgBasic supports a automatic casing, configurable in UPPER, lower, CamelCase, disabled.
+
+## [1.4.1] - 2026-01-26
+
+- Improved hover for modules.
+- Moved built-in subs to a data file.
+- Add built-in subs to intellisense (at the end of the list and config option to turn off).
+
+## [1.4.0] - 2026-01-26
+
+- Local intellisense working.
+- Scoped intellisense working (referencing blocks defined in the same file).
+- Import intellisense working, lists the modules picked up by the skeleton file importer.
+- Imported file module intellisense working!! Referencing a file brings the modules blocks into local intellisense. Navigation and hovering works on these members too!
+
+## [1.3.0] - 2026-01-25
+
+Added lots of support for discovering and finding symbols within the current document and those in the same folder.
+
 ## [1.2.3] - 2026-01-23
 
 - Added IIF and EACH to keywords for ProgB.

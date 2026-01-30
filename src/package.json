@@ -2,7 +2,7 @@
   "name": "prog8-lang",
   "displayName": "Prog8 Language Support",
   "description": "Syntax highlighting and language support for Prog8, a structured programming language for 8-bit 6502/65c02 microprocessors",
-  "version": "1.2.3",
+  "version": "1.5.0",
   "publisher": "SadLogic",
   "author": "Thraka",
   "license": "MIT",
@@ -14,6 +14,11 @@
   "engines": {
     "vscode": "^1.80.0"
   },
+  "main": "./out/src/extension.js",
+  "activationEvents": [
+    "onLanguage:prog8",
+    "onLanguage:progb"
+  ],
   "categories": [
     "Programming Languages"
   ],
@@ -60,6 +65,61 @@
         "scopeName": "source.progb",
         "path": "./syntaxes/progb.tmLanguage.json"
       }
+    ],
+    "configuration": {
+      "title": "Prog8",
+      "properties": {
+        "prog8.completion.showBuiltinFunctions": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show built-in functions (abs, len, peek, poke, etc.) in IntelliSense completions"
+        },
+        "prog8.completion.showKeywords": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show language keywords (if, for, ubyte, etc.) in IntelliSense completions"
+        },
+        "progb.keywordCasing": {
+          "type": "string",
+          "enum": ["upper", "lower", "camel", "disabled"],
+          "enumDescriptions": [
+            "UPPERCASE - END IF, MODULE, DIM",
+            "lowercase - end if, module, dim",
+            "Camel Case - End If, Module, Dim",
+            "Disabled - no automatic casing"
+          ],
+          "default": "upper",
+          "description": "Automatically format ProgB keywords to the specified casing style when editing"
+        },
+        "prog8.targetPlatform": {
+          "type": "string",
+          "enum": ["cx16", "c64", "c128", "pet32", "virtual"],
+          "enumDescriptions": [
+            "Commander X16",
+            "Commodore 64",
+            "Commodore 128",
+            "Commodore PET 32K",
+            "Virtual (testing)"
+          ],
+          "default": "cx16",
+          "description": "Target platform for Prog8 compilation. Affects library completions and hover information."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "prog8.selectTargetPlatform",
+        "title": "Prog8: Select Target Platform"
+      }
     ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.80.0",
+    "typescript": "^5.0.0"
   }
 }
