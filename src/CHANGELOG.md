@@ -2,6 +2,11 @@
 
 All notable changes to the Prog8 Language Support extension will be documented in this file.
 
+## [1.5.0] - 2026-01-30
+
+- Target platform support: CX16, C64, C128, PET32, Virtual. This affects the intellisense for modules and blocks.
+- ProgBasic supports a automatic casing, configurable in UPPER, lower, CamelCase, disabled.
+
 ## [1.4.1] - 2026-01-26
 
 - Improved hover for modules.

@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { unifiedParser, UnifiedSymbol } from './index';
 import { findModule } from '../data/librarySymbolsHelpers';
+import { getTargetPlatform } from '../utils/targetPlatform';
 
 /**
  * Represents an import declaration in a Prog8/ProgB file
@@ -69,7 +70,7 @@ export function parseImports(document: vscode.TextDocument): ImportInfo[] {
  * Check if a module name refers to a built-in library module
  */
 export function isLibraryModule(moduleName: string): boolean {
-    return findModule(moduleName) !== undefined;
+    return findModule(moduleName, getTargetPlatform()) !== undefined;
 }
 
 /**

@@ -7,9 +7,18 @@ import { Prog8ReferenceProvider } from './providers/referenceProvider';
 import { Prog8CompletionProvider } from './providers/completionProvider';
 import { ProgBFormattingProvider } from './providers/formattingProvider';
 import { applyKeywordCasingToLine, applyKeywordCasingToLineRange, getKeywordCasingStyle, findBlockStart } from './utils/keywordCasing';
+import { createStatusBarItem, selectTargetPlatform } from './utils/targetPlatform';
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('Prog8 Language Support is now active');
+
+    // Register the target platform selection command
+    context.subscriptions.push(
+        vscode.commands.registerCommand('prog8.selectTargetPlatform', selectTargetPlatform)
+    );
+
+    // Create and show the target platform status bar item
+    createStatusBarItem(context);
 
     // Document selectors for both prog8 and progb
     const prog8Selector: vscode.DocumentSelector = [

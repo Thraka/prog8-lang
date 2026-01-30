@@ -9,7 +9,6 @@
 %import textio
 %import math
 %import stree
-%import floats
 %zeropage basicsafe
 %option no_sysinit
 
@@ -28,7 +27,7 @@ another {
     float pi = 3.14159
     bool flag = true
     str message = "Hello, World!\n"
-    
+
     ; Arrays
     ubyte[10] buffer
     ubyte[] data = [1, 2, 3, 4, 5]
@@ -185,6 +184,7 @@ done:
     }
     
     sub calculate(ubyte a, ubyte b) -> ubyte {
+        
         return a + b
     }
     
@@ -240,6 +240,9 @@ _loop:
 
 ; Another block
 graphics_utils2 $c000 {
+
+    ubyte var1 = $22
+
     sub clear_screen() {
         sys.memset($0400, 1000, ' ')
     }

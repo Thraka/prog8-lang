@@ -8,7 +8,6 @@
 
 %import textio
 %import math
-%import stree
 %import floats
 %zeropage basicsafe
 %option no_sysinit
@@ -18,7 +17,7 @@ main {
     ; Constants
     const ubyte MAX_COUNT = 100
     const float PI_VALUE = 3.14159
-
+    
     ; Variables with various types
     ubyte counter, counter2 = 0
     byte signed_val = -42
@@ -70,7 +69,7 @@ main {
         while counter < 5 {
             counter++
         }
-        
+
         ; Do-until loop
         do {
             counter--

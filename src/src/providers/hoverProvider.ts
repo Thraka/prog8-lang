@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { unifiedParser, UnifiedSymbol, SymbolKind } from '../parser';
 import { findSubroutine, getAllBlocks, findModule, formatSubroutineSignature, SubroutineInfo, BlockInfo, ModuleInfo } from '../data/librarySymbolsHelpers';
+import { getTargetPlatform } from '../utils/targetPlatform';
 import { parseImportedFileSymbols, findSymbolInImports, ImportedFileSymbols, resolveLocalImport } from '../parser/importResolver';
 import { isInImportStatement, getQualifiedNameAtPosition } from './providerUtils';
 import { getBuiltinFunction } from '../data/builtinFunctions';
@@ -302,7 +303,7 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
      * Get hover for library subroutines (e.g., txt.print, sys.memset)
      */
     private getLibraryHover(qualifiedName: string): vscode.Hover | undefined {
-        const sub = findSubroutine(qualifiedName);
+        const sub = findSubroutine(qualifiedName, getTargetPlatform());
         if (sub) {
             return this.createHoverForLibrarySubroutine(sub, qualifiedName);
         }
@@ -314,7 +315,7 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
      * Modules are what you %import - they contain one or more blocks
      */
     private getLibraryModuleHover(name: string): vscode.Hover | undefined {
-        const mod = findModule(name);
+        const mod = findModule(name, getTargetPlatform());
         
         if (mod) {
             const markdown = new vscode.MarkdownString();
@@ -357,7 +358,7 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
      * Blocks are namespaces inside modules that you access with qualified names
      */
     private getLibraryBlockHover(name: string): vscode.Hover | undefined {
-        const blocks = getAllBlocks();
+        const blocks = getAllBlocks(getTargetPlatform());
         const block = blocks.find(b => b.name === name);
         
         if (block) {

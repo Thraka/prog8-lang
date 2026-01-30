@@ -104,6 +104,12 @@ Add full language support features to the VS Code extension for Prog8.
 - [x] Command to format entire document: `ProgB: Format Keyword Casing`
 - [x] Auto case blocks when closed: END IF, END SUB, END MODULE (optional enhancement)
 
+### Phase 2.8: Target filtering
+
+- [x] Update skeleton symbol import script to handle all of Prog8's targets
+- [x] Add configuration to extension that sets the target platform
+- [x] Expose target platform as dropdown in the bottom bar
+- [x] Intellisense and hover providers filter by selected target
 
 ### Phase 3: Diagnostics
 - [ ] Syntax error reporting

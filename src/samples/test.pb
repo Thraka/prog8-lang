@@ -52,7 +52,7 @@ MODULE mainOther
     SUB demonstrate_loops()
         DIM i AS UBYTE
         DIM values[] AS UWORD = [100, 200, 300, 400, 500]
-        
+        maino
         ' Range-based FOR loop
         FOR i = 0 TO 9
             txt.print_ub(i)
@@ -97,6 +97,7 @@ MODULE mainOther
             CASE ELSE
                 txt.print("other")
         END SELECT
+        
     END SUB
     
     ' Inline assembly example
@@ -115,6 +116,7 @@ END MODULE
 
 ' Another module with address
 MODULE data AT $c000
+    DIM origin AS Point
     DIM screen_colors[256] AS UBYTE @align256
     
     ' Struct definition
@@ -123,6 +125,5 @@ MODULE data AT $c000
         y AS UBYTE
     END TYPE
     
-    DIM origin AS Point
     
 END MODULE

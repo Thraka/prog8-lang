@@ -9,6 +9,7 @@ import {
     ConstantInfo,
     formatSubroutineSignature 
 } from '../data/librarySymbolsHelpers';
+import { getTargetPlatform } from '../utils/targetPlatform';
 import { 
     parseImportedFileSymbols, 
     ImportedFileSymbols,
@@ -110,7 +111,7 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
         const completions: vscode.CompletionItem[] = [];
         const addedModules = new Set<string>();
         
-        const modules = getAllModules();
+        const modules = getAllModules(getTargetPlatform());
         for (const mod of modules) {
             if (addedModules.has(mod.name)) {
                 continue;
@@ -256,8 +257,8 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
     private getLibraryMemberCompletions(blockName: string): vscode.CompletionItem[] {
         const completions: vscode.CompletionItem[] = [];
         
-        // Get all library blocks (defaults to cx16 target)
-        const blocks = getAllBlocks();
+        // Get library blocks for the selected target platform
+        const blocks = getAllBlocks(getTargetPlatform());
         const block = blocks.find(b => b.name === blockName);
         
         if (!block) {
@@ -292,7 +293,7 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
         const completions: vscode.CompletionItem[] = [];
         const addedBlocks = new Set<string>();
         
-        const blocks = getAllBlocks();
+        const blocks = getAllBlocks(getTargetPlatform());
         for (const block of blocks) {
             if (addedBlocks.has(block.name)) {
                 continue;
