@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { unifiedParser, UnifiedSymbol } from './index';
-import { findModule } from '../data/librarySymbols';
+import { findModule } from '../data/librarySymbolsHelpers';
 
 /**
  * Represents an import declaration in a Prog8/ProgB file

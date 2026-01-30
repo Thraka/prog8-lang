@@ -8,7 +8,7 @@ import {
     VariableInfo, 
     ConstantInfo,
     formatSubroutineSignature 
-} from '../data/librarySymbols';
+} from '../data/librarySymbolsHelpers';
 import { 
     parseImportedFileSymbols, 
     ImportedFileSymbols,

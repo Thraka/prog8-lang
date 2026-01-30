@@ -385,63 +385,12 @@ function parseSkeleton(content: string, target: string): LibraryData {
 
 function generateTypeScript(libraries: LibraryData[]): string {
     let output = `/**
- * Auto-generated Prog8 library symbol data.
- * Generated from official Prog8 skeleton files.
- * DO NOT EDIT MANUALLY - run parseSkeletons.ts to regenerate.
- */
+* Auto-generated Prog8 library symbol data.
+* Generated from official Prog8 skeleton files.
+* DO NOT EDIT MANUALLY - run parseSkeletons.ts to regenerate.
+*/
 
-export interface Parameter {
-    name: string;
-    type: string;
-    register?: string;
-}
-
-export interface ReturnType {
-    type: string;
-    register?: string;
-}
-
-export interface SubroutineInfo {
-    name: string;
-    parameters: Parameter[];
-    returns: ReturnType[];
-    clobbers: string[];
-    address?: string;
-    bank?: number;
-    isAlias?: string;
-}
-
-export interface VariableInfo {
-    name: string;
-    type: string;
-    isMemoryMapped: boolean;
-    isShared: boolean;
-    isZeroPage: boolean;
-}
-
-export interface ConstantInfo {
-    name: string;
-    type: string;
-    value?: string;
-}
-
-export interface BlockInfo {
-    name: string;
-    subroutines: SubroutineInfo[];
-    variables: VariableInfo[];
-    constants: ConstantInfo[];
-}
-
-export interface ModuleInfo {
-    name: string;
-    blocks: BlockInfo[];
-}
-
-export interface LibraryData {
-    target: string;
-    version: string;
-    modules: ModuleInfo[];
-}
+import { LibraryData } from "./librarySymbolsHelpers";
 
 `;
 
@@ -458,105 +407,6 @@ export interface LibraryData {
 export const libraries: Record<string, LibraryData> = {
 ${libraries.map(lib => `    '${lib.target}': library_${lib.target.replace(/-/g, '_')}`).join(',\n')}
 };
-
-/**
- * Get all subroutines for a given block across all targets
- */
-export function getSubroutinesForBlock(blockName: string, target?: string): SubroutineInfo[] {
-    const results: SubroutineInfo[] = [];
-    const targetLibs = target ? [libraries[target]].filter(Boolean) : Object.values(libraries);
-    
-    for (const lib of targetLibs) {
-        for (const mod of lib.modules) {
-            for (const block of mod.blocks) {
-                if (block.name === blockName) {
-                    results.push(...block.subroutines);
-                }
-            }
-        }
-    }
-    
-    return results;
-}
-
-/**
- * Find a subroutine by fully qualified name (e.g., "txt.print", "sys.memset")
- */
-export function findSubroutine(qualifiedName: string, target?: string): SubroutineInfo | undefined {
-    const [blockName, subName] = qualifiedName.split('.');
-    if (!blockName || !subName) return undefined;
-    
-    const targetLibs = target ? [libraries[target]].filter(Boolean) : Object.values(libraries);
-    
-    for (const lib of targetLibs) {
-        for (const mod of lib.modules) {
-            for (const block of mod.blocks) {
-                if (block.name === blockName) {
-                    const sub = block.subroutines.find(s => s.name === subName);
-                    if (sub) return sub;
-                }
-            }
-        }
-    }
-    
-    return undefined;
-}
-
-/**
- * Get all blocks across all modules for a target
- */
-export function getAllBlocks(target?: string): BlockInfo[] {
-    const results: BlockInfo[] = [];
-    const targetLibs = target ? [libraries[target]].filter(Boolean) : Object.values(libraries);
-    
-    for (const lib of targetLibs) {
-        for (const mod of lib.modules) {
-            results.push(...mod.blocks);
-        }
-    }
-    
-    return results;
-}
-
-/**
- * Format a subroutine signature for display
- */
-export function formatSubroutineSignature(sub: SubroutineInfo): string {
-    if (sub.isAlias) {
-        return \`\${sub.name}  (alias for \${sub.isAlias})\`;
-    }
-    
-    const params = sub.parameters.map(p => {
-        let s = \`\${p.type} \${p.name}\`;
-        if (p.register) s += \` \${p.register}\`;
-        return s;
-    }).join(', ');
-    
-    let sig = \`\${sub.name}(\${params})\`;
-    
-    if (sub.returns.length > 0) {
-        const rets = sub.returns.map(r => {
-            let s = r.type;
-            if (r.register) s += \` \${r.register}\`;
-            return s;
-        }).join(', ');
-        sig += \` -> \${rets}\`;
-    }
-    
-    if (sub.clobbers.length > 0) {
-        sig += \`  clobbers (\${sub.clobbers.join(',')})\`;
-    }
-    
-    if (sub.address) {
-        sig += \`  = \${sub.address}\`;
-    }
-    
-    if (sub.bank !== undefined) {
-        sig += \`  @bank \${sub.bank}\`;
-    }
-    
-    return sig;
-}
 `;
 
     return output;
@@ -568,6 +418,9 @@ async function main() {
     const targets = [
         { name: 'cx16', url: 'https://prog8.readthedocs.io/en/latest/_static/symboldumps/skeletons-cx16.txt' },
         { name: 'c64', url: 'https://prog8.readthedocs.io/en/latest/_static/symboldumps/skeletons-c64.txt' },
+        { name: 'c128', url: 'https://prog8.readthedocs.io/en/latest/_static/symboldumps/skeletons-c128.txt' },
+        { name: 'pet32', url: 'https://prog8.readthedocs.io/en/latest/_static/symboldumps/skeletons-pet32.txt' },
+        { name: 'virtual', url: 'https://prog8.readthedocs.io/en/latest/_static/symboldumps/skeletons-virtual.txt' },
     ];
     
     const libraries: LibraryData[] = [];
