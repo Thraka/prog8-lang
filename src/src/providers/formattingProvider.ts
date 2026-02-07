@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
-import { applyKeywordCasingToLine, getKeywordCasingStyle } from '../utils/keywordCasing';
+import { applyKeywordCasingToLine, getKeywordCasingStyle, applyCommaSpacingToLine, getFormatCommaSpacing } from '../utils/keywordCasing';
 
 /**
  * Provides document formatting for ProgB files.
- * Formats keyword casing according to the progb.keywordCasing setting.
+ * Formats keyword casing and comma spacing according to settings.
  */
 export class ProgBFormattingProvider implements vscode.DocumentFormattingEditProvider, vscode.DocumentRangeFormattingEditProvider {
     
@@ -34,8 +34,10 @@ export class ProgBFormattingProvider implements vscode.DocumentFormattingEditPro
      * Format a range of lines and return the edits
      */
     private formatRange(document: vscode.TextDocument, startLine: number, endLine: number): vscode.TextEdit[] {
-        const style = getKeywordCasingStyle();
-        if (style === 'disabled') {
+        const casingStyle = getKeywordCasingStyle();
+        const commaSpacing = getFormatCommaSpacing();
+        
+        if (casingStyle === 'disabled' && !commaSpacing) {
             return [];
         }
         
@@ -43,10 +45,29 @@ export class ProgBFormattingProvider implements vscode.DocumentFormattingEditPro
         
         for (let lineNum = startLine; lineNum <= endLine && lineNum < document.lineCount; lineNum++) {
             const line = document.lineAt(lineNum);
-            const transformedText = applyKeywordCasingToLine(line.text, style);
+            let text = line.text;
+            let changed = false;
             
-            if (transformedText !== null) {
-                edits.push(vscode.TextEdit.replace(line.range, transformedText));
+            // Apply keyword casing first
+            if (casingStyle !== 'disabled') {
+                const casedText = applyKeywordCasingToLine(text, casingStyle);
+                if (casedText !== null) {
+                    text = casedText;
+                    changed = true;
+                }
+            }
+            
+            // Then apply comma spacing
+            if (commaSpacing) {
+                const spacedText = applyCommaSpacingToLine(text);
+                if (spacedText !== null) {
+                    text = spacedText;
+                    changed = true;
+                }
+            }
+            
+            if (changed) {
+                edits.push(vscode.TextEdit.replace(line.range, text));
             }
         }
         

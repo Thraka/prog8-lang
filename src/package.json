@@ -2,7 +2,7 @@
   "name": "prog8-lang",
   "displayName": "Prog8 Language Support",
   "description": "Syntax highlighting and language support for Prog8, a structured programming language for 8-bit 6502/65c02 microprocessors",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "publisher": "SadLogic",
   "author": "Thraka",
   "license": "MIT",
@@ -90,6 +90,11 @@
           ],
           "default": "upper",
           "description": "Automatically format ProgB keywords to the specified casing style when editing"
+        },
+        "progb.formatCommaSpacing": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically add a space after commas in ProgB code (e.g., 'func(a,b,c)' becomes 'func(a, b, c)')"
         },
         "prog8.targetPlatform": {
           "type": "string",

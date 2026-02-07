@@ -6,7 +6,7 @@ import { Prog8WorkspaceSymbolProvider } from './providers/workspaceSymbolProvide
 import { Prog8ReferenceProvider } from './providers/referenceProvider';
 import { Prog8CompletionProvider } from './providers/completionProvider';
 import { ProgBFormattingProvider } from './providers/formattingProvider';
-import { applyKeywordCasingToLine, applyKeywordCasingToLineRange, getKeywordCasingStyle, findBlockStart } from './utils/keywordCasing';
+import { applyKeywordCasingToLine, applyKeywordCasingToLineRange, getKeywordCasingStyle, findBlockStart, applyCommaSpacingToLine, applyCommaSpacingToLineRange, getFormatCommaSpacing } from './utils/keywordCasing';
 import { createStatusBarItem, selectTargetPlatform } from './utils/targetPlatform';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -96,12 +96,14 @@ export function activate(context: vscode.ExtensionContext) {
     const pendingLines = new Set<number>();
 
     /**
-     * Apply keyword casing to a single line, and if it's an END block,
+     * Apply keyword casing and comma spacing to a single line, and if it's an END block,
      * format the entire block from opener to closer.
      */
-    async function applyKeywordCasingToLineWithBlockCheck(document: vscode.TextDocument, lineNum: number): Promise<void> {
+    async function applyFormattingToLine(document: vscode.TextDocument, lineNum: number): Promise<void> {
         const style = getKeywordCasingStyle();
-        if (style === 'disabled') {
+        const commaSpacing = getFormatCommaSpacing();
+        
+        if (style === 'disabled' && !commaSpacing) {
             return;
         }
         
@@ -115,25 +117,51 @@ export function activate(context: vscode.ExtensionContext) {
         const blockStartLine = findBlockStart(document, lineNum);
         
         if (blockStartLine !== null && blockStartLine < lineNum) {
-            // Format the entire block from opener to closer
-            await applyKeywordCasingToLineRange(document, blockStartLine, lineNum, style);
+            // Format the entire block from opener to closer (keyword casing)
+            if (style !== 'disabled') {
+                await applyKeywordCasingToLineRange(document, blockStartLine, lineNum, style);
+            }
+            // Also apply comma spacing to the block range
+            if (commaSpacing) {
+                await applyCommaSpacingToLineRange(document, blockStartLine, lineNum);
+            }
         } else {
             // Just format this single line
-            const transformedText = applyKeywordCasingToLine(lineText, style);
-            if (transformedText !== null) {
+            let text = lineText;
+            let changed = false;
+            
+            if (style !== 'disabled') {
+                const casedText = applyKeywordCasingToLine(text, style);
+                if (casedText !== null) {
+                    text = casedText;
+                    changed = true;
+                }
+            }
+            
+            if (commaSpacing) {
+                const spacedText = applyCommaSpacingToLine(text);
+                if (spacedText !== null) {
+                    text = spacedText;
+                    changed = true;
+                }
+            }
+            
+            if (changed) {
                 const workspaceEdit = new vscode.WorkspaceEdit();
-                workspaceEdit.replace(document.uri, document.lineAt(lineNum).range, transformedText);
+                workspaceEdit.replace(document.uri, document.lineAt(lineNum).range, text);
                 await vscode.workspace.applyEdit(workspaceEdit);
             }
         }
     }
 
     /**
-     * Apply keyword casing to all pending lines (from paste operations)
+     * Apply formatting to all pending lines (from paste operations)
      */
-    async function applyKeywordCasingToPendingLines(document: vscode.TextDocument): Promise<void> {
+    async function applyFormattingToPendingLines(document: vscode.TextDocument): Promise<void> {
         const style = getKeywordCasingStyle();
-        if (style === 'disabled' || pendingLines.size === 0) {
+        const commaSpacing = getFormatCommaSpacing();
+        
+        if ((style === 'disabled' && !commaSpacing) || pendingLines.size === 0) {
             pendingLines.clear();
             return;
         }
@@ -147,7 +175,12 @@ export function activate(context: vscode.ExtensionContext) {
         const maxLine = lines[lines.length - 1];
         
         if (minLine >= 0 && maxLine < document.lineCount) {
-            await applyKeywordCasingToLineRange(document, minLine, maxLine, style);
+            if (style !== 'disabled') {
+                await applyKeywordCasingToLineRange(document, minLine, maxLine, style);
+            }
+            if (commaSpacing) {
+                await applyCommaSpacingToLineRange(document, minLine, maxLine);
+            }
         }
     }
 
@@ -159,7 +192,7 @@ export function activate(context: vscode.ExtensionContext) {
                 return;
             }
             
-            if (getKeywordCasingStyle() === 'disabled') {
+            if (getKeywordCasingStyle() === 'disabled' && !getFormatCommaSpacing()) {
                 return;
             }
             
@@ -203,11 +236,11 @@ export function activate(context: vscode.ExtensionContext) {
                 // Check if we have pending lines from a paste operation
                 if (pendingLines.size > 1) {
                     // Multi-line change detected, format all pending lines
-                    await applyKeywordCasingToPendingLines(document);
+                    await applyFormattingToPendingLines(document);
                 } else {
                     // Single line edit, apply with block check
                     pendingLines.clear();
-                    await applyKeywordCasingToLineWithBlockCheck(document, previousLine);
+                    await applyFormattingToLine(document, previousLine);
                 }
             }
             
@@ -223,10 +256,10 @@ export function activate(context: vscode.ExtensionContext) {
             // Apply casing to pending lines or previous line before switching editors
             if (previousDocument !== undefined && previousDocument.languageId === 'progb') {
                 if (pendingLines.size > 1) {
-                    await applyKeywordCasingToPendingLines(previousDocument);
+                    await applyFormattingToPendingLines(previousDocument);
                 } else if (previousLine !== undefined) {
                     pendingLines.clear();
-                    await applyKeywordCasingToLineWithBlockCheck(previousDocument, previousLine);
+                    await applyFormattingToLine(previousDocument, previousLine);
                 }
             }
             

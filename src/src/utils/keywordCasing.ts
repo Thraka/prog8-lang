@@ -7,6 +7,14 @@ import { progbKeywords, progbBlockPairs } from '../data/keywords';
 export type KeywordCasingStyle = 'upper' | 'lower' | 'camel' | 'disabled';
 
 /**
+ * Gets the configured comma spacing setting from VS Code settings
+ */
+export function getFormatCommaSpacing(): boolean {
+    const config = vscode.workspace.getConfiguration('progb');
+    return config.get<boolean>('formatCommaSpacing', true);
+}
+
+/**
  * Gets the configured keyword casing style from VS Code settings
  */
 export function getKeywordCasingStyle(): KeywordCasingStyle {
@@ -180,6 +188,47 @@ function findKeywordsInLine(line: string): KeywordMatch[] {
 }
 
 /**
+ * Add spaces after commas in a line of ProgB code, but not inside strings.
+ * Returns the transformed line, or null if no changes were needed.
+ */
+export function applyCommaSpacingToLine(line: string): string | null {
+    let result = '';
+    let inString = false;
+    let hasChanges = false;
+
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        const prevChar = i > 0 ? line[i - 1] : '';
+
+        // Check for line comment start outside strings
+        if (!inString && char === "'") {
+            // Rest of line is a comment — append as-is
+            result += line.substring(i);
+            break;
+        }
+
+        // Toggle string state on unescaped quotes
+        if (char === '"' && prevChar !== '\\') {
+            inString = !inString;
+        }
+
+        result += char;
+
+        // If we just wrote a comma and we are NOT in a string,
+        // ensure the next character is a space (unless end-of-line or already a space)
+        if (char === ',' && !inString) {
+            const next = i + 1 < line.length ? line[i + 1] : undefined;
+            if (next !== undefined && next !== ' ' && next !== '\t') {
+                result += ' ';
+                hasChanges = true;
+            }
+        }
+    }
+
+    return hasChanges ? result : null;
+}
+
+/**
  * Apply keyword casing to a single line of ProgB code.
  * Returns the transformed line, or null if no changes were needed.
  */
@@ -289,6 +338,33 @@ export async function applyKeywordCasingToLineRange(
         
         if (transformedText !== null) {
             workspaceEdit.replace(document.uri, line.range, transformedText);
+            hasEdits = true;
+        }
+    }
+    
+    if (hasEdits) {
+        await vscode.workspace.applyEdit(workspaceEdit);
+    }
+}
+
+/**
+ * Apply comma spacing to a range of lines in a document.
+ * Used for formatting pasted code or entire blocks.
+ */
+export async function applyCommaSpacingToLineRange(
+    document: vscode.TextDocument,
+    startLine: number,
+    endLine: number
+): Promise<void> {
+    const workspaceEdit = new vscode.WorkspaceEdit();
+    let hasEdits = false;
+    
+    for (let lineNum = startLine; lineNum <= endLine && lineNum < document.lineCount; lineNum++) {
+        const line = document.lineAt(lineNum);
+        const spacedText = applyCommaSpacingToLine(line.text);
+        
+        if (spacedText !== null) {
+            workspaceEdit.replace(document.uri, line.range, spacedText);
             hasEdits = true;
         }
     }

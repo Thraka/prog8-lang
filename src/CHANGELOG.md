@@ -2,6 +2,12 @@
 
 All notable changes to the Prog8 Language Support extension will be documented in this file.
 
+## [1.5.1] - 2026-02-06
+
+- Fixed symbol detection on parameters of subs declared in the builtin modules.
+- ProgB: Fixed the REM keyword not coloring correctly.
+- ProgB: The auto formatter will space parameters used and declared in sub/function.
+
 ## [1.5.0] - 2026-01-30
 
 - Target platform support: CX16, C64, C128, PET32, Virtual. This affects the intellisense for modules and blocks.
