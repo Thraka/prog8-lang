@@ -2,7 +2,7 @@
 
 All notable changes to the Prog8 Language Support extension will be documented in this file.
 
-## [1.6.0] - 2026-02-06
+## [1.6.1] - 2026-02-06
 
 - New project system!
 - F5 now compiles the current code file if you don't have a project file in the same folder as the current file.

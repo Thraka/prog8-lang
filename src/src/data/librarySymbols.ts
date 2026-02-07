@@ -36112,6 +36112,22 @@ export const library_pet32: LibraryData = {
               ]
             },
             {
+              "name": "FREADUY",
+              "parameters": [
+                {
+                  "name": "value",
+                  "type": "ubyte",
+                  "register": "@Y"
+                }
+              ],
+              "returns": [],
+              "clobbers": [
+                "A",
+                "X",
+                "Y"
+              ]
+            },
+            {
               "name": "FSUB",
               "parameters": [
                 {
