@@ -8,7 +8,16 @@ All notable changes to the Prog8 Language Support extension will be documented i
 - F5 now compiles the current code file if you don't have a project file in the same folder as the current file.
 - Use the command `Prog8: Initialize Project` to generate a project file in the current directory.
 - Paths to the emulator, java (or compiled binary) of the compiler, and 64tass, are configured in the project or extension if no project defined.
-- 
+
+Example project file:
+```json
+{
+  "name": "My Project 1",
+  "main": "start.p8",
+  "target": "cx16",
+  "launchEmu": true
+}
+```
 
 ## [1.5.1] - 2026-02-06
 

@@ -202,13 +202,23 @@ export async function buildProject(project: Prog8Project, runAfterBuild: boolean
     const terminal = getTerminal();
     terminal.show();
     
+    // Build the header to display project info
+    const projectName = project.name || path.basename(project.projectDir);
+    const isWindows = process.platform === 'win32';
+    
+    let headerCommand: string;
+    if (isWindows) {
+        headerCommand = `Write-Host ""; Write-Host "Building: ${projectName}" -ForegroundColor Cyan; Write-Host "  Target: ${project.target}" -ForegroundColor Gray; Write-Host "  Main: ${project.main}" -ForegroundColor Gray; Write-Host "";`;
+    } else {
+        headerCommand = `echo ""; echo -e "\\033[36mBuilding: ${projectName}\\033[0m"; echo "  Target: ${project.target}"; echo "  Main: ${project.main}"; echo "";`;
+    }
+    
     // Change to project directory and run the command
     // Use && for directory change so we don't run in wrong dir if cd fails
-    const isWindows = process.platform === 'win32';
     const cdCommand = isWindows 
         ? `cd ${quotePath(project.projectDir)};`
         : `cd ${quotePath(project.projectDir)} &&`;
-    const fullCommand = `${cdCommand} ${pathPrefix}${compileCommand}${postCommand}`;
+    const fullCommand = `${headerCommand} ${cdCommand} ${pathPrefix}${compileCommand}${postCommand}`;
     
     terminal.sendText(fullCommand);
     
