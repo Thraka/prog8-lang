@@ -704,6 +704,47 @@ END IF
 |-------|-------|
 | `@(address)` | `PEEK(address)` or `@(address)` |
 | `@(address) = value` | `POKE address, value` or `@(address) = value` |
+| `peekw(address)` | `PEEKW(address)` |
+| `pokew(address, value)` | `POKEW address, value` |
+| `peekl(address)` | `PEEKL(address)` |
+| `pokel(address, value)` | `POKEL address, value` |
+| `peekbool(address)` | `PEEKBOOL(address)` |
+| `pokebool(address, value)` | `POKEBOOL address, value` |
+| `peekf(address)` | `PEEKF(address)` |
+| `pokef(address, value)` | `POKEF address, value` |
+
+#### Typed PEEK/POKE Variants
+
+ProgB provides typed variants for reading and writing multi-byte values:
+
+| Type | Read (Expression) | Write (Statement) |
+|------|-------------------|-------------------|
+| Byte (default) | `PEEK(address)` | `POKE address, value` |
+| Word (16-bit) | `PEEKW(address)` | `POKEW address, value` |
+| Long (32-bit) | `PEEKL(address)` | `POKEL address, value` |
+| Bool | `PEEKBOOL(address)` | `POKEBOOL address, value` |
+| Float | `PEEKF(address)` | `POKEF address, value` |
+
+**Example:**
+```basic
+DIM addr AS UWORD = $1000
+
+' Reading typed values
+DIM b AS UBYTE = PEEK(addr)           ' read byte
+DIM w AS UWORD = PEEKW(addr)          ' read word
+DIM l AS LONG = PEEKL(addr)           ' read long
+DIM flag AS BOOL = PEEKBOOL(addr)     ' read bool
+DIM f AS FLOAT = PEEKF(addr)          ' read float
+
+' Writing typed values
+POKE addr, $42                        ' write byte
+POKEW addr, $1234                     ' write word
+POKEL addr, $12345678                 ' write long
+POKEBOOL addr, TRUE                   ' write bool
+POKEF addr, 3.14                      ' write float
+```
+
+**Note:** These map to the Prog8 builtin functions `peekw()`, `pokew()`, etc.
 
 ### Conditional Expression
 
