@@ -327,7 +327,7 @@ export function applyKeywordCasingToLine(line: string, style: KeywordCasingStyle
  * Apply keyword casing to an entire document (useful for format document command)
  */
 export async function applyKeywordCasingToDocument(document: vscode.TextDocument): Promise<void> {
-    const style = getKeywordCasingStyle();
+    const style = getKeywordCasingStyle(document);
     if (style === 'disabled') {
         return;
     }
