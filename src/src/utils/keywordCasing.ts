@@ -75,7 +75,25 @@ function buildKeywordList(): string[] {
     return keywords.sort((a, b) => b.length - a.length);
 }
 
+/**
+ * Pre-compile regex patterns for all keywords to avoid repeated creation
+ */
+function buildKeywordRegexMap(): Map<string, RegExp> {
+    const map = new Map<string, RegExp>();
+    const keywords = buildKeywordList();
+
+    for (const keyword of keywords) {
+        // Handle compound keywords with flexible whitespace
+        const keywordPattern = keyword.replace(/\s+/g, '\\s+');
+        const regex = new RegExp(`\\b${keywordPattern}\\b`, 'gi');
+        map.set(keyword, regex);
+    }
+
+    return map;
+}
+
 const allKeywords = buildKeywordList();
+const keywordRegexMap = buildKeywordRegexMap();
 
 /**
  * Transform a keyword to the specified casing style
@@ -178,16 +196,17 @@ interface KeywordMatch {
  */
 function findKeywordsInLine(line: string): KeywordMatch[] {
     const matches: KeywordMatch[] = [];
-    const lineUpper = line.toUpperCase();
     
     // Track which positions we've already matched to avoid overlapping
     const matchedPositions = new Set<number>();
     
     for (const keyword of allKeywords) {
-        // Build a regex that matches the keyword as a whole word
-        // Handle compound keywords with flexible whitespace
-        const keywordPattern = keyword.replace(/\s+/g, '\\s+');
-        const regex = new RegExp(`\\b${keywordPattern}\\b`, 'gi');
+        // Get pre-compiled regex for this keyword
+        const regex = keywordRegexMap.get(keyword);
+        if (!regex) continue;
+        
+        // Reset regex state for reuse
+        regex.lastIndex = 0;
         
         let match;
         while ((match = regex.exec(line)) !== null) {
