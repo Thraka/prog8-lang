@@ -132,6 +132,10 @@ export function transformKeyword(keyword: string, style: KeywordCasingStyle): st
             return keyword.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
         case 'disabled':
             return keyword; // No change
+        default:
+            // Exhaustiveness check - TypeScript error if a case is missing
+            const _exhaustive: never = style;
+            return _exhaustive;
     }
 }
 
