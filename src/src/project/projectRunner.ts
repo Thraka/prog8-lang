@@ -35,7 +35,7 @@ function getTerminal(): vscode.Terminal {
 }
 
 /**
- * Get compiler configuration from settings
+ * Get compiler configuration from settings, with project-level overrides
  */
 interface CompilerConfig {
     compilerPath: string;
@@ -44,13 +44,13 @@ interface CompilerConfig {
     emulatorPath: string;
 }
 
-function getCompilerConfig(): CompilerConfig {
+function getCompilerConfig(project?: Prog8Project): CompilerConfig {
     const config = vscode.workspace.getConfiguration('prog8');
     return {
-        compilerPath: config.get<string>('compiler.path', ''),
-        javaPath: config.get<string>('compiler.javaPath', 'java'),
-        tassPath: config.get<string>('tools.tassPath', ''),
-        emulatorPath: config.get<string>('emulator.path', '')
+        compilerPath: project?.compilerPath || config.get<string>('compiler.path', ''),
+        javaPath: project?.javaPath || config.get<string>('compiler.javaPath', 'java'),
+        tassPath: project?.tassPath || config.get<string>('tools.tassPath', ''),
+        emulatorPath: project?.emulatorPath || config.get<string>('emulator.path', '')
     };
 }
 
@@ -122,8 +122,8 @@ function validateCompilerConfig(config: CompilerConfig): string[] {
  * @returns True if validation passed and build was started
  */
 export async function buildProject(project: Prog8Project, runAfterBuild: boolean = false): Promise<boolean> {
-    // Validate configuration
-    const config = getCompilerConfig();
+    // Validate configuration (with project overrides)
+    const config = getCompilerConfig(project);
     const configErrors = validateCompilerConfig(config);
     
     if (configErrors.length > 0) {

@@ -123,8 +123,8 @@ export function activate(context: vscode.ExtensionContext) {
      * format the entire block from opener to closer.
      */
     async function applyFormattingToLine(document: vscode.TextDocument, lineNum: number): Promise<void> {
-        const style = getKeywordCasingStyle();
-        const commaSpacing = getFormatCommaSpacing();
+        const style = getKeywordCasingStyle(document);
+        const commaSpacing = getFormatCommaSpacing(document);
         
         if (style === 'disabled' && !commaSpacing) {
             return;
@@ -181,8 +181,8 @@ export function activate(context: vscode.ExtensionContext) {
      * Apply formatting to all pending lines (from paste operations)
      */
     async function applyFormattingToPendingLines(document: vscode.TextDocument): Promise<void> {
-        const style = getKeywordCasingStyle();
-        const commaSpacing = getFormatCommaSpacing();
+        const style = getKeywordCasingStyle(document);
+        const commaSpacing = getFormatCommaSpacing(document);
         
         if ((style === 'disabled' && !commaSpacing) || pendingLines.size === 0) {
             pendingLines.clear();
@@ -215,7 +215,7 @@ export function activate(context: vscode.ExtensionContext) {
                 return;
             }
             
-            if (getKeywordCasingStyle() === 'disabled' && !getFormatCommaSpacing()) {
+            if (getKeywordCasingStyle(event.document) === 'disabled' && !getFormatCommaSpacing(event.document)) {
                 return;
             }
             

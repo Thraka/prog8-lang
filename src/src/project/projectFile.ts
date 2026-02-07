@@ -9,6 +9,14 @@ import { TargetPlatform, getTargetPlatform } from '../utils/targetPlatform';
 export const PROJECT_FILE_NAME = 'prog8.project.json';
 
 /**
+ * ProgB-specific settings
+ */
+export interface ProgBSettings {
+    keywordCasing?: 'upper' | 'lower' | 'camel' | 'disabled';
+    formatCommaSpacing?: boolean;
+}
+
+/**
  * Prog8 project configuration
  */
 export interface Prog8Project {
@@ -24,6 +32,16 @@ export interface Prog8Project {
     launchEmu?: boolean;
     /** Custom script/executable to run after compilation (alternative to launchEmu) */
     run?: string;
+    /** Path to prog8c compiler (overrides extension setting) */
+    compilerPath?: string;
+    /** Path to Java executable (overrides extension setting) */
+    javaPath?: string;
+    /** Folder containing 64tass (overrides extension setting) */
+    tassPath?: string;
+    /** Folder containing emulators (overrides extension setting) */
+    emulatorPath?: string;
+    /** ProgB-specific settings (overrides extension settings) */
+    progb?: ProgBSettings;
     /** Full path to the project file */
     projectFilePath: string;
     /** Directory containing the project file */
@@ -40,6 +58,11 @@ interface ProjectFileJson {
     outputDir?: string;
     launchEmu?: boolean;
     run?: string;
+    compilerPath?: string;
+    javaPath?: string;
+    tassPath?: string;
+    emulatorPath?: string;
+    progb?: ProgBSettings;
 }
 
 /**
@@ -82,6 +105,11 @@ export function loadProjectFile(projectFilePath: string): Prog8Project {
         outputDir: json.outputDir,
         launchEmu: json.launchEmu,
         run: json.run,
+        compilerPath: json.compilerPath,
+        javaPath: json.javaPath,
+        tassPath: json.tassPath,
+        emulatorPath: json.emulatorPath,
+        progb: json.progb,
         projectFilePath,
         projectDir
     };

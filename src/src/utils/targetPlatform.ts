@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
+import * as fs from 'fs';
 
 /**
  * Available target platforms for Prog8 compilation
@@ -22,12 +24,17 @@ export const TARGET_DISPLAY_NAMES: Record<TargetPlatform, string> = {
 export const ALL_TARGETS: TargetPlatform[] = ['cx16', 'c64', 'c128', 'pet32', 'virtual'];
 
 /**
+ * Project file name
+ */
+const PROJECT_FILE_NAME = 'prog8.project.json';
+
+/**
  * Status bar item for target platform selection
  */
 let statusBarItem: vscode.StatusBarItem | undefined;
 
 /**
- * Get the currently configured target platform
+ * Get the currently configured target platform from settings
  */
 export function getTargetPlatform(): TargetPlatform {
     const config = vscode.workspace.getConfiguration('prog8');
@@ -38,6 +45,30 @@ export function getTargetPlatform(): TargetPlatform {
         return target as TargetPlatform;
     }
     return 'cx16';
+}
+
+/**
+ * Get the target platform for a specific document, checking project file first
+ */
+export function getTargetPlatformForDocument(document?: vscode.TextDocument): TargetPlatform {
+    if (document) {
+        const dir = path.dirname(document.uri.fsPath);
+        const projectPath = path.join(dir, PROJECT_FILE_NAME);
+        
+        if (fs.existsSync(projectPath)) {
+            try {
+                const content = fs.readFileSync(projectPath, 'utf-8');
+                const json = JSON.parse(content);
+                if (json.target && ALL_TARGETS.includes(json.target as TargetPlatform)) {
+                    return json.target as TargetPlatform;
+                }
+            } catch {
+                // Fall through to default
+            }
+        }
+    }
+    
+    return getTargetPlatform();
 }
 
 /**

@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { unifiedParser, UnifiedSymbol } from './index';
 import { findModule } from '../data/librarySymbolsHelpers';
-import { getTargetPlatform } from '../utils/targetPlatform';
+import { getTargetPlatform, getTargetPlatformForDocument } from '../utils/targetPlatform';
 
 /**
  * Represents an import declaration in a Prog8/ProgB file

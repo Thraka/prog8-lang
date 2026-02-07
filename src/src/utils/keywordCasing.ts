@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
+import * as fs from 'fs';
 import { progbKeywords, progbBlockPairs } from '../data/keywords';
 
 /**
@@ -7,17 +9,58 @@ import { progbKeywords, progbBlockPairs } from '../data/keywords';
 export type KeywordCasingStyle = 'upper' | 'lower' | 'camel' | 'disabled';
 
 /**
- * Gets the configured comma spacing setting from VS Code settings
+ * Project file name
  */
-export function getFormatCommaSpacing(): boolean {
+const PROJECT_FILE_NAME = 'prog8.project.json';
+
+/**
+ * Get project-level ProgB settings if available
+ */
+function getProjectProgbSettings(document?: vscode.TextDocument): { keywordCasing?: KeywordCasingStyle; formatCommaSpacing?: boolean } | undefined {
+    if (!document) {
+        return undefined;
+    }
+    
+    const dir = path.dirname(document.uri.fsPath);
+    const projectPath = path.join(dir, PROJECT_FILE_NAME);
+    
+    if (!fs.existsSync(projectPath)) {
+        return undefined;
+    }
+    
+    try {
+        const content = fs.readFileSync(projectPath, 'utf-8');
+        const json = JSON.parse(content);
+        return json.progb;
+    } catch {
+        return undefined;
+    }
+}
+
+/**
+ * Gets the configured comma spacing setting from VS Code settings or project file
+ */
+export function getFormatCommaSpacing(document?: vscode.TextDocument): boolean {
+    // Check project-level override first
+    const projectSettings = getProjectProgbSettings(document);
+    if (projectSettings?.formatCommaSpacing !== undefined) {
+        return projectSettings.formatCommaSpacing;
+    }
+    
     const config = vscode.workspace.getConfiguration('progb');
     return config.get<boolean>('formatCommaSpacing', true);
 }
 
 /**
- * Gets the configured keyword casing style from VS Code settings
+ * Gets the configured keyword casing style from VS Code settings or project file
  */
-export function getKeywordCasingStyle(): KeywordCasingStyle {
+export function getKeywordCasingStyle(document?: vscode.TextDocument): KeywordCasingStyle {
+    // Check project-level override first
+    const projectSettings = getProjectProgbSettings(document);
+    if (projectSettings?.keywordCasing !== undefined) {
+        return projectSettings.keywordCasing;
+    }
+    
     const config = vscode.workspace.getConfiguration('progb');
     return config.get<KeywordCasingStyle>('keywordCasing', 'upper');
 }

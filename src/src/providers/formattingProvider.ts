@@ -34,8 +34,8 @@ export class ProgBFormattingProvider implements vscode.DocumentFormattingEditPro
      * Format a range of lines and return the edits
      */
     private formatRange(document: vscode.TextDocument, startLine: number, endLine: number): vscode.TextEdit[] {
-        const casingStyle = getKeywordCasingStyle();
-        const commaSpacing = getFormatCommaSpacing();
+        const casingStyle = getKeywordCasingStyle(document);
+        const commaSpacing = getFormatCommaSpacing(document);
         
         if (casingStyle === 'disabled' && !commaSpacing) {
             return [];

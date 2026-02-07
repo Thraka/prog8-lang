@@ -11,7 +11,7 @@ import {
     Parameter,
     formatSubroutineSignature 
 } from '../data/librarySymbolsHelpers';
-import { getTargetPlatform } from '../utils/targetPlatform';
+import { getTargetPlatform, getTargetPlatformForDocument } from '../utils/targetPlatform';
 import { 
     parseImportedFileSymbols, 
     ImportedFileSymbols,
@@ -26,6 +26,9 @@ import { getKeywordsForLanguage } from '../data/keywords';
  * Phase 2: Local variables and scoped names completion.
  */
 export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
+    
+    /** Current document being processed (set during provideCompletionItems) */
+    private currentDocument: vscode.TextDocument | undefined;
 
     async provideCompletionItems(
         document: vscode.TextDocument,
@@ -33,6 +36,9 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
         token: vscode.CancellationToken,
         context: vscode.CompletionContext
     ): Promise<vscode.CompletionItem[] | vscode.CompletionList> {
+        
+        // Store document for use by helper methods
+        this.currentDocument = document;
         
         const completions: vscode.CompletionItem[] = [];
 
@@ -113,7 +119,7 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
         const completions: vscode.CompletionItem[] = [];
         const addedModules = new Set<string>();
         
-        const modules = getAllModules(getTargetPlatform());
+        const modules = getAllModules(getTargetPlatformForDocument(this.currentDocument));
         for (const mod of modules) {
             if (addedModules.has(mod.name)) {
                 continue;
@@ -303,7 +309,7 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
     private getLibrarySubMemberCompletions(prefix: string): vscode.CompletionItem[] {
         const completions: vscode.CompletionItem[] = [];
 
-        const params = getSubroutineMembers(prefix, getTargetPlatform());
+        const params = getSubroutineMembers(prefix, getTargetPlatformForDocument(this.currentDocument));
         for (const param of params) {
             const item = new vscode.CompletionItem(param.name);
             item.kind = vscode.CompletionItemKind.Field;

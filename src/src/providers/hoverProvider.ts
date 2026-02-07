@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { unifiedParser, UnifiedSymbol, SymbolKind } from '../parser';
 import { findSubroutine, findVariable, findConstant, findSubroutineParameter, getAllBlocks, findModule, formatSubroutineSignature, SubroutineInfo, BlockInfo, ModuleInfo, VariableInfo, ConstantInfo, Parameter } from '../data/librarySymbolsHelpers';
-import { getTargetPlatform } from '../utils/targetPlatform';
+import { getTargetPlatform, getTargetPlatformForDocument } from '../utils/targetPlatform';
 import { parseImportedFileSymbols, findSymbolInImports, ImportedFileSymbols, resolveLocalImport } from '../parser/importResolver';
 import { isInImportStatement, getQualifiedNameAtPosition } from './providerUtils';
 import { getBuiltinFunction } from '../data/builtinFunctions';

@@ -38,6 +38,44 @@
     "run": {
       "type": "string",
       "description": "Custom script or executable to run after compilation (alternative to launchEmu). Environment variables PRG_PATH and PROJECT_DIR will be set."
+    },
+    "compilerPath": {
+      "type": "string",
+      "description": "Path to prog8c compiler (executable or .jar file). Overrides extension setting."
+    },
+    "javaPath": {
+      "type": "string",
+      "description": "Path to Java executable (only needed if compiler is a .jar file). Overrides extension setting."
+    },
+    "tassPath": {
+      "type": "string",
+      "description": "Folder containing the 64tass assembler binary. Overrides extension setting."
+    },
+    "emulatorPath": {
+      "type": "string",
+      "description": "Folder containing emulators (x16emu, x64sc, x128, xpet). Overrides extension setting."
+    },
+    "progb": {
+      "type": "object",
+      "description": "ProgB-specific settings (overrides extension settings)",
+      "properties": {
+        "keywordCasing": {
+          "type": "string",
+          "description": "Automatically format ProgB keywords to the specified casing style",
+          "enum": ["upper", "lower", "camel", "disabled"],
+          "enumDescriptions": [
+            "UPPERCASE - END IF, MODULE, DIM",
+            "lowercase - end if, module, dim",
+            "Camel Case - End If, Module, Dim",
+            "Disabled - no automatic casing"
+          ]
+        },
+        "formatCommaSpacing": {
+          "type": "boolean",
+          "description": "Automatically add a space after commas in ProgB code"
+        }
+      },
+      "additionalProperties": false
     }
   },
   "required": ["main", "target"],
