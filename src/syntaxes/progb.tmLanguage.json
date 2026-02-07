@@ -34,10 +34,7 @@
         },
         {
           "name": "comment.line.rem.progb",
-          "match": "(?i)\\b(REM)\\b.*$",
-          "captures": {
-            "1": { "name": "keyword.control.progb" }
-          }
+          "match": "(?i)\\bREM\\b.*$"
         }
       ]
     },
