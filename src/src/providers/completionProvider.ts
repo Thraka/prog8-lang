@@ -3,10 +3,12 @@ import { unifiedParser, UnifiedSymbol, SymbolKind } from '../parser';
 import { 
     getAllBlocks, 
     getAllModules,
+    getSubroutineMembers,
     BlockInfo, 
     SubroutineInfo, 
     VariableInfo, 
     ConstantInfo,
+    Parameter,
     formatSubroutineSignature 
 } from '../data/librarySymbolsHelpers';
 import { getTargetPlatform } from '../utils/targetPlatform';
@@ -174,6 +176,14 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
         completions.push(...libraryCompletions);
         libraryCompletions.forEach(item => addedNames.add(item.label as string));
 
+        // Check if prefix is a library block.sub path (e.g., "diskio.lf_start_list")
+        // to offer subroutine parameter completions
+        if (prefix.includes('.') && libraryCompletions.length === 0) {
+            const subMemberCompletions = this.getLibrarySubMemberCompletions(prefix);
+            completions.push(...subMemberCompletions);
+            subMemberCompletions.forEach(item => addedNames.add(item.label as string));
+        }
+
         // Then, check local symbols that belong to this scope
         for (const symbol of symbols) {
             // Check if this symbol's parent matches the prefix
@@ -280,6 +290,33 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
         // Add constants
         for (const constant of block.constants) {
             const item = this.createLibraryConstantCompletion(constant, blockName);
+            completions.push(item);
+        }
+
+        return completions;
+    }
+
+    /**
+     * Get completions for library subroutine members (parameters).
+     * Handles prefixes like "diskio.lf_start_list" to offer parameter completions.
+     */
+    private getLibrarySubMemberCompletions(prefix: string): vscode.CompletionItem[] {
+        const completions: vscode.CompletionItem[] = [];
+
+        const params = getSubroutineMembers(prefix, getTargetPlatform());
+        for (const param of params) {
+            const item = new vscode.CompletionItem(param.name);
+            item.kind = vscode.CompletionItemKind.Field;
+            item.detail = `${param.type} (parameter)`;
+
+            const doc = new vscode.MarkdownString();
+            let decl = `${param.type} ${prefix}.${param.name}`;
+            if (param.register) {
+                decl += ` @${param.register}`;
+            }
+            doc.appendCodeblock(decl, 'prog8');
+            doc.appendMarkdown(`\n\n*Subroutine parameter*`);
+            item.documentation = doc;
             completions.push(item);
         }
 

@@ -161,8 +161,9 @@ export function getQualifiedNameAtPosition(document: vscode.TextDocument, positi
     
     const fullName = line.substring(start, end);
     
-    // Only return if it looks like a qualified name
-    if (fullName && /^\w+\.\w+$/.test(fullName)) {
+    // Return if it looks like a qualified name (2 or more dot-separated parts)
+    // e.g., "txt.print", "diskio.lf_start_list.pattern_ptr"
+    if (fullName && /^\w+(\.\w+)+$/.test(fullName)) {
         return fullName;
     }
     

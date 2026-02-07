@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { unifiedParser, UnifiedSymbol, SymbolKind } from '../parser';
-import { findSubroutine, getAllBlocks, findModule, formatSubroutineSignature, SubroutineInfo, BlockInfo, ModuleInfo } from '../data/librarySymbolsHelpers';
+import { findSubroutine, findVariable, findConstant, findSubroutineParameter, getAllBlocks, findModule, formatSubroutineSignature, SubroutineInfo, BlockInfo, ModuleInfo, VariableInfo, ConstantInfo, Parameter } from '../data/librarySymbolsHelpers';
 import { getTargetPlatform } from '../utils/targetPlatform';
 import { parseImportedFileSymbols, findSymbolInImports, ImportedFileSymbols, resolveLocalImport } from '../parser/importResolver';
 import { isInImportStatement, getQualifiedNameAtPosition } from './providerUtils';
@@ -300,13 +300,39 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
     }
 
     /**
-     * Get hover for library subroutines (e.g., txt.print, sys.memset)
+     * Get hover for library symbols: subroutines, variables, constants,
+     * and subroutine parameters accessed via scoped paths.
+     * Handles 2-part (block.member) and 3-part (block.sub.param) names.
      */
     private getLibraryHover(qualifiedName: string): vscode.Hover | undefined {
-        const sub = findSubroutine(qualifiedName, getTargetPlatform());
+        const target = getTargetPlatform();
+        const parts = qualifiedName.split('.');
+
+        // 3-part name: block.sub.parameter (e.g., diskio.lf_start_list.pattern_ptr)
+        if (parts.length === 3) {
+            const paramResult = findSubroutineParameter(qualifiedName, target);
+            if (paramResult) {
+                return this.createHoverForLibraryParameter(paramResult.parameter, paramResult.sub, qualifiedName);
+            }
+            return undefined;
+        }
+
+        // 2-part name: check subroutine, then variable, then constant
+        const sub = findSubroutine(qualifiedName, target);
         if (sub) {
             return this.createHoverForLibrarySubroutine(sub, qualifiedName);
         }
+
+        const varResult = findVariable(qualifiedName, target);
+        if (varResult) {
+            return this.createHoverForLibraryVariable(varResult.variable, qualifiedName);
+        }
+
+        const constResult = findConstant(qualifiedName, target);
+        if (constResult) {
+            return this.createHoverForLibraryConstant(constResult.constant, qualifiedName);
+        }
+
         return undefined;
     }
 
@@ -529,6 +555,55 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
             markdown.appendMarkdown(`\n\n*Library function*`);
         }
         
+        return new vscode.Hover(markdown);
+    }
+
+    /**
+     * Create hover for a library variable
+     */
+    private createHoverForLibraryVariable(variable: VariableInfo, qualifiedName: string): vscode.Hover {
+        const markdown = new vscode.MarkdownString();
+        let decl = `${variable.type} ${qualifiedName}`;
+        markdown.appendCodeblock(decl, 'prog8');
+
+        const tags: string[] = [];
+        if (variable.isMemoryMapped) tags.push('memory-mapped');
+        if (variable.isShared) tags.push('shared');
+        if (variable.isZeroPage) tags.push('zeropage');
+
+        if (tags.length > 0) {
+            markdown.appendMarkdown(`\n\n${tags.join(' | ')}`);
+        }
+        markdown.appendMarkdown('\n\n*Library variable*');
+        return new vscode.Hover(markdown);
+    }
+
+    /**
+     * Create hover for a library constant
+     */
+    private createHoverForLibraryConstant(constant: ConstantInfo, qualifiedName: string): vscode.Hover {
+        const markdown = new vscode.MarkdownString();
+        let decl = `const ${constant.type} ${qualifiedName}`;
+        if (constant.value) {
+            decl += ` = ${constant.value}`;
+        }
+        markdown.appendCodeblock(decl, 'prog8');
+        markdown.appendMarkdown('\n\n*Library constant*');
+        return new vscode.Hover(markdown);
+    }
+
+    /**
+     * Create hover for a subroutine parameter accessed via scoped path
+     */
+    private createHoverForLibraryParameter(parameter: Parameter, sub: SubroutineInfo, qualifiedName: string): vscode.Hover {
+        const markdown = new vscode.MarkdownString();
+        let decl = `${parameter.type} ${qualifiedName}`;
+        if (parameter.register) {
+            decl += ` @${parameter.register}`;
+        }
+        markdown.appendCodeblock(decl, 'prog8');
+        markdown.appendMarkdown(`\n\n*Parameter of* \`${sub.name}()\``);
+        markdown.appendMarkdown('\n\n*Library symbol*');
         return new vscode.Hover(markdown);
     }
 
