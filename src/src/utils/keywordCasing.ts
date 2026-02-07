@@ -14,7 +14,13 @@ export type KeywordCasingStyle = 'upper' | 'lower' | 'camel' | 'disabled';
 const PROJECT_FILE_NAME = 'prog8.project.json';
 
 /**
- * Get project-level ProgB settings if available
+ * Cache for project settings to avoid repeated file reads
+ * Key: project directory path, Value: { settings, mtime }
+ */
+const projectSettingsCache = new Map<string, { settings: any; mtime: number }>();
+
+/**
+ * Get project-level ProgB settings if available, with caching
  */
 function getProjectProgbSettings(document?: vscode.TextDocument): { keywordCasing?: KeywordCasingStyle; formatCommaSpacing?: boolean } | undefined {
     if (!document) {
@@ -29,12 +35,33 @@ function getProjectProgbSettings(document?: vscode.TextDocument): { keywordCasin
     }
     
     try {
+        // Check cache first
+        const stats = fs.statSync(projectPath);
+        const cached = projectSettingsCache.get(projectPath);
+        
+        if (cached && cached.mtime === stats.mtimeMs) {
+            return cached.settings;
+        }
+        
+        // Read and parse file
         const content = fs.readFileSync(projectPath, 'utf-8');
         const json = JSON.parse(content);
-        return json.progb;
+        const settings = json.progb;
+        
+        // Update cache
+        projectSettingsCache.set(projectPath, { settings, mtime: stats.mtimeMs });
+        
+        return settings;
     } catch {
         return undefined;
     }
+}
+
+/**
+ * Clear the project settings cache (useful for testing or manual reload)
+ */
+export function clearProjectSettingsCache(): void {
+    projectSettingsCache.clear();
 }
 
 /**
