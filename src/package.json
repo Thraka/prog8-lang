@@ -2,7 +2,7 @@
   "name": "prog8-lang",
   "displayName": "Prog8 Language Support",
   "description": "Syntax highlighting and language support for Prog8, a structured programming language for 8-bit 6502/65c02 microprocessors",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "publisher": "SadLogic",
   "author": "Thraka",
   "license": "MIT",
@@ -17,7 +17,8 @@
   "main": "./out/src/extension.js",
   "activationEvents": [
     "onLanguage:prog8",
-    "onLanguage:progb"
+    "onLanguage:progb",
+    "onDebugResolve:prog8"
   ],
   "categories": [
     "Programming Languages"
@@ -66,6 +67,12 @@
         "path": "./syntaxes/progb.tmLanguage.json"
       }
     ],
+    "jsonValidation": [
+      {
+        "fileMatch": "prog8.project.json",
+        "url": "./schemas/prog8.project.schema.json"
+      }
+    ],
     "configuration": {
       "title": "Prog8",
       "properties": {
@@ -108,6 +115,26 @@
           ],
           "default": "cx16",
           "description": "Target platform for Prog8 compilation. Affects library completions and hover information."
+        },
+        "prog8.compiler.path": {
+          "type": "string",
+          "default": "",
+          "description": "Path to prog8c compiler (executable or .jar file)"
+        },
+        "prog8.compiler.javaPath": {
+          "type": "string",
+          "default": "java",
+          "description": "Path to Java executable (only needed if compiler is a .jar file)"
+        },
+        "prog8.tools.tassPath": {
+          "type": "string",
+          "default": "",
+          "description": "Folder containing the 64tass assembler binary"
+        },
+        "prog8.emulator.path": {
+          "type": "string",
+          "default": "",
+          "description": "Folder containing emulators (x16emu, x64sc, x128, xpet)"
         }
       }
     },
@@ -115,6 +142,53 @@
       {
         "command": "prog8.selectTargetPlatform",
         "title": "Prog8: Select Target Platform"
+      },
+      {
+        "command": "prog8.initProject",
+        "title": "Prog8: Initialize Project"
+      },
+      {
+        "command": "prog8.runProject",
+        "title": "Prog8: Run Project"
+      },
+      {
+        "command": "prog8.buildProject",
+        "title": "Prog8: Build Project"
+      }
+    ],
+    "debuggers": [
+      {
+        "type": "prog8",
+        "label": "Prog8",
+        "languages": ["prog8", "progb"],
+        "configurationAttributes": {
+          "launch": {
+            "properties": {
+              "projectFile": {
+                "type": "string",
+                "description": "Path to prog8.project.json (optional, auto-detected from current file)"
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "type": "prog8",
+            "request": "launch",
+            "name": "Run Prog8 Project"
+          }
+        ],
+        "configurationSnippets": [
+          {
+            "label": "Prog8: Run Project",
+            "description": "Compile and run a Prog8 project",
+            "body": {
+              "type": "prog8",
+              "request": "launch",
+              "name": "Run Prog8 Project"
+            }
+          }
+        ]
       }
     ]
   },

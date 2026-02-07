@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Prog8 Project",
+  "description": "Configuration file for Prog8 projects",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Project name (for display purposes)"
+    },
+    "main": {
+      "type": "string",
+      "description": "Main source file to compile (.p8 or .pb)",
+      "pattern": ".*\\.(p8|pb)$"
+    },
+    "target": {
+      "type": "string",
+      "description": "Target platform for compilation",
+      "enum": ["cx16", "c64", "c128", "pet32", "virtual"],
+      "enumDescriptions": [
+        "Commander X16",
+        "Commodore 64",
+        "Commodore 128",
+        "Commodore PET 32K",
+        "Virtual (testing)"
+      ],
+      "default": "cx16"
+    },
+    "outputDir": {
+      "type": "string",
+      "description": "Output directory for compiled files (relative to project folder)"
+    },
+    "launchEmu": {
+      "type": "boolean",
+      "description": "Launch emulator after successful compilation (uses compiler -emu flag)",
+      "default": true
+    },
+    "run": {
+      "type": "string",
+      "description": "Custom script or executable to run after compilation (alternative to launchEmu). Environment variables PRG_PATH and PROJECT_DIR will be set."
+    }
+  },
+  "required": ["main", "target"],
+  "additionalProperties": false
+}

@@ -8,6 +8,9 @@ import { Prog8CompletionProvider } from './providers/completionProvider';
 import { ProgBFormattingProvider } from './providers/formattingProvider';
 import { applyKeywordCasingToLine, applyKeywordCasingToLineRange, getKeywordCasingStyle, findBlockStart, applyCommaSpacingToLine, applyCommaSpacingToLineRange, getFormatCommaSpacing } from './utils/keywordCasing';
 import { createStatusBarItem, selectTargetPlatform } from './utils/targetPlatform';
+import { Prog8DebugConfigurationProvider, Prog8DebugAdapterDescriptorFactory } from './project/debugConfigProvider';
+import { runCurrentProject, buildCurrentProject } from './project/projectRunner';
+import { initializeProject } from './project/projectFile';
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('Prog8 Language Support is now active');
@@ -15,6 +18,26 @@ export function activate(context: vscode.ExtensionContext) {
     // Register the target platform selection command
     context.subscriptions.push(
         vscode.commands.registerCommand('prog8.selectTargetPlatform', selectTargetPlatform)
+    );
+
+    // Register project build/run commands
+    context.subscriptions.push(
+        vscode.commands.registerCommand('prog8.initProject', initializeProject)
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand('prog8.runProject', runCurrentProject)
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand('prog8.buildProject', buildCurrentProject)
+    );
+
+    // Register debug configuration provider for F5 support
+    const debugProvider = new Prog8DebugConfigurationProvider();
+    context.subscriptions.push(
+        vscode.debug.registerDebugConfigurationProvider('prog8', debugProvider)
+    );
+    context.subscriptions.push(
+        vscode.debug.registerDebugAdapterDescriptorFactory('prog8', new Prog8DebugAdapterDescriptorFactory())
     );
 
     // Create and show the target platform status bar item
