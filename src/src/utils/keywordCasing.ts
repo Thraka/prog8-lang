@@ -2,16 +2,12 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { progbKeywords, progbBlockPairs } from '../data/keywords';
+import { PROJECT_FILE_NAME } from '../project/projectFile';
 
 /**
  * Supported keyword casing styles for ProgB
  */
 export type KeywordCasingStyle = 'upper' | 'lower' | 'camel' | 'disabled';
-
-/**
- * Project file name
- */
-const PROJECT_FILE_NAME = 'prog8.project.json';
 
 /**
  * Cache for project settings to avoid repeated file reads

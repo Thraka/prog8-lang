@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import { PROJECT_FILE_NAME } from '../project/projectFile';
 
 /**
  * Available target platforms for Prog8 compilation
@@ -22,11 +23,6 @@ export const TARGET_DISPLAY_NAMES: Record<TargetPlatform, string> = {
  * All available targets
  */
 export const ALL_TARGETS: TargetPlatform[] = ['cx16', 'c64', 'c128', 'pet32', 'virtual'];
-
-/**
- * Project file name
- */
-const PROJECT_FILE_NAME = 'prog8.project.json';
 
 /**
  * Status bar item for target platform selection
