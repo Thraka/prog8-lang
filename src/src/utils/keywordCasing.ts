@@ -140,47 +140,19 @@ export function transformKeyword(keyword: string, style: KeywordCasingStyle): st
 }
 
 /**
- * Check if a position is inside a string literal or comment.
- * This prevents modifying keywords that appear in strings or comments.
+ * Parse a line of ProgB code and return metadata about string and comment regions.
+ * This is the single source of truth for string/comment detection logic.
  */
-function isInsideStringOrComment(line: string, position: number): boolean {
-    let inString = false;
-    let stringChar = '';
-    
-    for (let i = 0; i < position; i++) {
-        const char = line[i];
-        const prevChar = i > 0 ? line[i - 1] : '';
-        
-        // Check for line comment (ProgB uses ' for comments)
-        if (!inString && char === "'") {
-            return true; // Rest of line is a comment
-        }
-        
-        // Check for block comment start /'
-        if (!inString && char === '/' && line[i + 1] === "'") {
-            return true; // Inside block comment
-        }
-        
-        // Toggle string state
-        if (char === '"' && prevChar !== '\\') {
-            if (!inString) {
-                inString = true;
-                stringChar = char;
-            } else if (stringChar === char) {
-                inString = false;
-            }
-        }
-    }
-    
-    return inString;
+interface LineParseResult {
+    /** Position where comment starts, or -1 if no comment */
+    commentStart: number;
+    /** Set of positions that are inside string literals */
+    stringPositions: Set<number>;
 }
 
-/**
- * Strip comments from a line of ProgB code.
- * Handles inline comments (') and preserves content inside strings.
- */
-function stripComments(line: string): string {
-    let result = '';
+function parseLineForStringsAndComments(line: string): LineParseResult {
+    const stringPositions = new Set<number>();
+    let commentStart = -1;
     let inString = false;
     
     for (let i = 0; i < line.length; i++) {
@@ -189,23 +161,58 @@ function stripComments(line: string): string {
         
         // Check for line comment start (ProgB uses ' for comments)
         if (!inString && char === "'") {
+            commentStart = i;
             break; // Rest of line is a comment
         }
         
         // Check for block comment start /'
         if (!inString && char === '/' && line[i + 1] === "'") {
+            commentStart = i;
             break; // Rest is a block comment (simplification - doesn't handle closing)
         }
         
-        // Toggle string state
+        // Toggle string state on unescaped quotes
         if (char === '"' && prevChar !== '\\') {
             inString = !inString;
         }
         
-        result += char;
+        // Track positions inside strings
+        if (inString) {
+            stringPositions.add(i);
+        }
     }
     
-    return result;
+    return { commentStart, stringPositions };
+}
+
+/**
+ * Check if a position is inside a string literal or comment.
+ * This prevents modifying keywords that appear in strings or comments.
+ */
+function isInsideStringOrComment(line: string, position: number): boolean {
+    const parsed = parseLineForStringsAndComments(line);
+    
+    // Check if position is in a comment
+    if (parsed.commentStart !== -1 && position >= parsed.commentStart) {
+        return true;
+    }
+    
+    // Check if position is in a string
+    return parsed.stringPositions.has(position);
+}
+
+/**
+ * Strip comments from a line of ProgB code.
+ * Handles inline comments (') and preserves content inside strings.
+ */
+function stripComments(line: string): string {
+    const parsed = parseLineForStringsAndComments(line);
+    
+    if (parsed.commentStart === -1) {
+        return line;
+    }
+    
+    return line.substring(0, parsed.commentStart);
 }
 
 /**
@@ -281,31 +288,24 @@ function findKeywordsInLine(line: string): KeywordMatch[] {
  * Returns the transformed line, or null if no changes were needed.
  */
 export function applyCommaSpacingToLine(line: string): string | null {
+    const parsed = parseLineForStringsAndComments(line);
     let result = '';
-    let inString = false;
     let hasChanges = false;
 
     for (let i = 0; i < line.length; i++) {
         const char = line[i];
-        const prevChar = i > 0 ? line[i - 1] : '';
-
-        // Check for line comment start outside strings
-        if (!inString && char === "'") {
-            // Rest of line is a comment — append as-is
+        
+        // If we hit a comment, append the rest as-is and stop
+        if (parsed.commentStart !== -1 && i >= parsed.commentStart) {
             result += line.substring(i);
             break;
-        }
-
-        // Toggle string state on unescaped quotes
-        if (char === '"' && prevChar !== '\\') {
-            inString = !inString;
         }
 
         result += char;
 
         // If we just wrote a comma and we are NOT in a string,
         // ensure the next character is a space (unless end-of-line or already a space)
-        if (char === ',' && !inString) {
+        if (char === ',' && !parsed.stringPositions.has(i)) {
             const next = i + 1 < line.length ? line[i + 1] : undefined;
             if (next !== undefined && next !== ' ' && next !== '\t') {
                 result += ' ';
