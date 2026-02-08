@@ -2,7 +2,12 @@
 
 All notable changes to the Prog8 Language Support extension will be documented in this file.
 
-## [1.6.7] - 2026-02-07
+## [1.6.8] - 2026-02-08
+
+- `srcdirs` is supported by the project system now!
+- Symbol resolution and syntax coloring works with `srcdirs`.
+
+## [1.6.7] - 2026-02-08
 
 - Aggregate the symbol providers to a single API. This helps a lot of the little coloring issues.
 - ProgB: Auto formatting only happens when you edit lines now, instead of when the caret leaves the line.
