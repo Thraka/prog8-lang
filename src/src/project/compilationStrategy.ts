@@ -8,6 +8,18 @@ import {
 } from './settingsResolver';
 
 /**
+ * Check if a value looks like a specific file/folder path (contains directory separators)
+ * vs a bare command name that should be resolved via the system PATH.
+ * Examples:
+ *   "prog8c.exe" → false (bare command)
+ *   "..\\prog8c.jar" → true (relative path)
+ *   "C:\\tools\\prog8c.jar" → true (absolute path)
+ */
+function isFilePath(value: string): boolean {
+    return value.includes('/') || value.includes('\\');
+}
+
+/**
  * Validation result with errors and warnings
  */
 export interface ValidationResult {
@@ -200,7 +212,7 @@ export class BinaryCompilerStrategy extends CompilationStrategy {
                 'compilerPath',
                 'prog8.compiler.path'
             ));
-        } else if (!fs.existsSync(config.compilerPath.value)) {
+        } else if (isFilePath(config.compilerPath.value) && !fs.existsSync(config.compilerPath.value)) {
             errors.push(`Compiler not found: ${config.compilerPath.value}`);
         }
         
