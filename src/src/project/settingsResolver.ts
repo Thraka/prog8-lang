@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { Prog8Project } from './projectFile';
 
 /**
@@ -47,7 +48,11 @@ export class SettingsResolver {
     ): ResolvedSetting<string> {
         // 1. Check project file first - if found, return immediately without checking workspace
         if (project && project[settingKey]) {
-            const projectValue = project[settingKey] as string;
+            let projectValue = project[settingKey] as string;
+            // Resolve relative paths against the project file directory
+            if (!path.isAbsolute(projectValue)) {
+                projectValue = path.resolve(project.projectDir, projectValue);
+            }
             // IMPORTANT: We return here, workspace config is NOT consulted at all
             return {
                 value: projectValue,
