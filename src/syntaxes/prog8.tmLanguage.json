@@ -161,6 +161,18 @@
     },
     "storage-types": {
       "patterns": [
+        { "include": "#storage-type-declarations" },
+        {
+          "comment": "Additional variables in comma-separated declarations (excludes type keywords)",
+          "match": ",\\s*(?!(byte|ubyte|word|uword|long|float|bool|str)\\b)([a-zA-Z_][a-zA-Z0-9_]*)",
+          "captures": {
+            "2": { "name": "variable.other.declaration.prog8" }
+          }
+        }
+      ]
+    },
+    "storage-type-declarations": {
+      "patterns": [
         {
           "comment": "Memory-mapped variable declarations: &type or &&type followed by identifier",
           "match": "(&|&&)(byte|ubyte|word|uword|long|float|bool|str)(\\s+)([a-zA-Z_][a-zA-Z0-9_]*)",
@@ -176,13 +188,6 @@
           "captures": {
             "1": { "name": "storage.type.prog8" },
             "3": { "name": "variable.other.declaration.prog8" }
-          }
-        },
-        {
-          "comment": "Additional variables in comma-separated declarations (excludes type keywords)",
-          "match": ",\\s*(?!(byte|ubyte|word|uword|long|float|bool|str)\\b)([a-zA-Z_][a-zA-Z0-9_]*)",
-          "captures": {
-            "2": { "name": "variable.other.declaration.prog8" }
           }
         },
         {
@@ -354,25 +359,69 @@
     "function-calls": {
       "patterns": [
         {
-          "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)(\\s*)\\(",
-          "captures": {
-            "1": { "name": "entity.name.function.prog8" }
-          }
-        },
-        {
-          "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)(\\s*)\\(",
-          "captures": {
-            "1": { "name": "entity.name.namespace.prog8" },
-            "2": { "name": "entity.name.function.prog8" }
-          }
-        },
-        {
-          "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)(\\s*)\\(",
-          "captures": {
+          "comment": "Double-namespaced function call: ns1.ns2.name(",
+          "begin": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)(\\s*)\\(",
+          "beginCaptures": {
             "1": { "name": "entity.name.namespace.prog8" },
             "2": { "name": "entity.name.namespace.prog8" },
             "3": { "name": "entity.name.function.prog8" }
-          }
+          },
+          "end": "\\)",
+          "patterns": [
+            { "include": "#function-call-arguments" }
+          ]
+        },
+        {
+          "comment": "Namespaced function call: ns.name(",
+          "begin": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)(\\s*)\\(",
+          "beginCaptures": {
+            "1": { "name": "entity.name.namespace.prog8" },
+            "2": { "name": "entity.name.function.prog8" }
+          },
+          "end": "\\)",
+          "patterns": [
+            { "include": "#function-call-arguments" }
+          ]
+        },
+        {
+          "comment": "Simple function call: name(",
+          "begin": "\\b([a-zA-Z_][a-zA-Z0-9_]*)(\\s*)\\(",
+          "beginCaptures": {
+            "1": { "name": "entity.name.function.prog8" }
+          },
+          "end": "\\)",
+          "patterns": [
+            { "include": "#function-call-arguments" }
+          ]
+        }
+      ]
+    },
+    "function-call-arguments": {
+      "patterns": [
+        { "include": "#comments" },
+        { "include": "#strings" },
+        { "include": "#characters" },
+        { "include": "#numbers" },
+        { "include": "#keywords" },
+        { "include": "#storage-type-declarations" },
+        { "include": "#storage-modifiers" },
+        { "include": "#constants" },
+        { "include": "#builtins" },
+        { "include": "#operators" },
+        { "include": "#function-calls" },
+        { "include": "#identifiers" },
+        {
+          "comment": "Nested parentheses in expressions",
+          "begin": "\\(",
+          "end": "\\)",
+          "patterns": [
+            { "include": "#function-call-arguments" }
+          ]
+        },
+        {
+          "comment": "General variable references used as arguments",
+          "name": "variable.other.prog8",
+          "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
         }
       ]
     },

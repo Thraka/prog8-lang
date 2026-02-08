@@ -149,6 +149,18 @@
     },
     "storage-types": {
       "patterns": [
+        { "include": "#storage-type-declarations" },
+        {
+          "comment": "Additional variables after comma in DIM (excludes type keywords)",
+          "match": ",\\s*(?!([Uu][Bb][Yy][Tt][Ee]|[Bb][Yy][Tt][Ee]|[Uu][Ww][Oo][Rr][Dd]|[Ww][Oo][Rr][Dd]|[Ll][Oo][Nn][Gg]|[Ff][Ll][Oo][Aa][Tt]|[Bb][Oo][Oo][Ll]|[Ss][Tt][Rr][Ii][Nn][Gg]|[Pp][Tt][Rr])\\b)([a-zA-Z_][a-zA-Z0-9_]*)(?:\\s*\\[[^\\]]*\\])?",
+          "captures": {
+            "2": { "name": "variable.other.declaration.progb" }
+          }
+        }
+      ]
+    },
+    "storage-type-declarations": {
+      "patterns": [
         {
           "comment": "Parameter declarations: name AS TYPE (for function/sub parameters)",
           "match": "(?i)\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s+(AS)\\s+(UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|PTR)\\b",
@@ -163,13 +175,6 @@
           "match": "(?i)\\b(DIM)\\s+([a-zA-Z_][a-zA-Z0-9_]*)(?:\\s*\\[[^\\]]*\\])?",
           "captures": {
             "1": { "name": "keyword.other.progb" },
-            "2": { "name": "variable.other.declaration.progb" }
-          }
-        },
-        {
-          "comment": "Additional variables after comma in DIM (excludes type keywords)",
-          "match": ",\\s*(?!([Uu][Bb][Yy][Tt][Ee]|[Bb][Yy][Tt][Ee]|[Uu][Ww][Oo][Rr][Dd]|[Ww][Oo][Rr][Dd]|[Ll][Oo][Nn][Gg]|[Ff][Ll][Oo][Aa][Tt]|[Bb][Oo][Oo][Ll]|[Ss][Tt][Rr][Ii][Nn][Gg]|[Pp][Tt][Rr])\\b)([a-zA-Z_][a-zA-Z0-9_]*)(?:\\s*\\[[^\\]]*\\])?",
-          "captures": {
             "2": { "name": "variable.other.declaration.progb" }
           }
         },
@@ -398,25 +403,69 @@
     "function-calls": {
       "patterns": [
         {
-          "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)(\\s*)\\(",
-          "captures": {
-            "1": { "name": "entity.name.function.progb" }
-          }
-        },
-        {
-          "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)(\\s*)\\(",
-          "captures": {
-            "1": { "name": "entity.name.namespace.progb" },
-            "2": { "name": "entity.name.function.progb" }
-          }
-        },
-        {
-          "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)(\\s*)\\(",
-          "captures": {
+          "comment": "Double-namespaced function call: ns1.ns2.name(",
+          "begin": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)(\\s*)\\(",
+          "beginCaptures": {
             "1": { "name": "entity.name.namespace.progb" },
             "2": { "name": "entity.name.namespace.progb" },
             "3": { "name": "entity.name.function.progb" }
-          }
+          },
+          "end": "\\)",
+          "patterns": [
+            { "include": "#function-call-arguments" }
+          ]
+        },
+        {
+          "comment": "Namespaced function call: ns.name(",
+          "begin": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)(\\s*)\\(",
+          "beginCaptures": {
+            "1": { "name": "entity.name.namespace.progb" },
+            "2": { "name": "entity.name.function.progb" }
+          },
+          "end": "\\)",
+          "patterns": [
+            { "include": "#function-call-arguments" }
+          ]
+        },
+        {
+          "comment": "Simple function call: name(",
+          "begin": "\\b([a-zA-Z_][a-zA-Z0-9_]*)(\\s*)\\(",
+          "beginCaptures": {
+            "1": { "name": "entity.name.function.progb" }
+          },
+          "end": "\\)",
+          "patterns": [
+            { "include": "#function-call-arguments" }
+          ]
+        }
+      ]
+    },
+    "function-call-arguments": {
+      "patterns": [
+        { "include": "#comments" },
+        { "include": "#strings" },
+        { "include": "#characters" },
+        { "include": "#numbers" },
+        { "include": "#keywords" },
+        { "include": "#storage-type-declarations" },
+        { "include": "#storage-modifiers" },
+        { "include": "#constants" },
+        { "include": "#builtins" },
+        { "include": "#operators" },
+        { "include": "#function-calls" },
+        { "include": "#identifiers" },
+        {
+          "comment": "Nested parentheses in expressions",
+          "begin": "\\(",
+          "end": "\\)",
+          "patterns": [
+            { "include": "#function-call-arguments" }
+          ]
+        },
+        {
+          "comment": "General variable references used as arguments",
+          "name": "variable.other.progb",
+          "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
         }
       ]
     },
