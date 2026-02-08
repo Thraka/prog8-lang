@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { TargetPlatform, getTargetPlatform } from '../utils/targetPlatform';
+import { CompilationMode } from './compilationStrategy';
 
 /**
  * Project file name
@@ -32,14 +33,20 @@ export interface Prog8Project {
     launchEmu?: boolean;
     /** Custom script/executable to run after compilation (alternative to launchEmu) */
     run?: string;
+    /** Whether to pass the main file path as an argument to the custom script (default: true) */
+    passMainToScript?: boolean;
+    /** Compilation mode: auto (detect), standard (prog8c + tass), or custom-script */
+    compilationMode?: CompilationMode;
     /** Path to prog8c compiler (overrides extension setting) */
     compilerPath?: string;
     /** Path to Java executable (overrides extension setting) */
     javaPath?: string;
-    /** Folder containing 64tass (overrides extension setting) */
-    tassPath?: string;
+    /** Folder containing 64tass assembler (overrides extension setting) */
+    assemblerFolder?: string;
     /** Folder containing emulators (overrides extension setting) */
-    emulatorPath?: string;
+    emulatorFolder?: string;
+    /** Additional arguments to pass to the compiler or custom script */
+    compilerArgs?: string[];
     /** ProgB-specific settings (overrides extension settings) */
     progb?: ProgBSettings;
     /** Full path to the project file */
@@ -58,10 +65,13 @@ interface ProjectFileJson {
     outputDir?: string;
     launchEmu?: boolean;
     run?: string;
+    passMainToScript?: boolean;
+    compilationMode?: CompilationMode;
     compilerPath?: string;
     javaPath?: string;
-    tassPath?: string;
-    emulatorPath?: string;
+    assemblerFolder?: string;
+    emulatorFolder?: string;
+    compilerArgs?: string[];
     progb?: ProgBSettings;
 }
 
@@ -105,10 +115,13 @@ export function loadProjectFile(projectFilePath: string): Prog8Project {
         outputDir: json.outputDir,
         launchEmu: json.launchEmu,
         run: json.run,
+        passMainToScript: json.passMainToScript !== false, // default to true
+        compilationMode: json.compilationMode || 'auto',
         compilerPath: json.compilerPath,
         javaPath: json.javaPath,
-        tassPath: json.tassPath,
-        emulatorPath: json.emulatorPath,
+        assemblerFolder: json.assemblerFolder,
+        emulatorFolder: json.emulatorFolder,
+        compilerArgs: json.compilerArgs,
         progb: json.progb,
         projectFilePath,
         projectDir

@@ -2,7 +2,7 @@
   "name": "prog8-lang",
   "displayName": "Prog8 Language Support",
   "description": "Syntax highlighting and language support for Prog8, a structured programming language for 8-bit 6502/65c02 microprocessors",
-  "version": "1.6.1",
+  "version": "1.6.2",
   "publisher": "SadLogic",
   "author": "Thraka",
   "license": "MIT",
@@ -126,12 +126,12 @@
           "default": "java",
           "description": "Path to Java executable (only needed if compiler is a .jar file)"
         },
-        "prog8.tools.tassPath": {
+        "prog8.compiler.assemblerFolder": {
           "type": "string",
           "default": "",
-          "description": "Folder containing the 64tass assembler binary"
+          "description": "Folder containing the 64tass assembler binary (required by compiler)"
         },
-        "prog8.emulator.path": {
+        "prog8.emulator.folder": {
           "type": "string",
           "default": "",
           "description": "Folder containing emulators (x16emu, x64sc, x128, xpet)"

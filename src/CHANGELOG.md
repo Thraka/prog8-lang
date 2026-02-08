@@ -2,6 +2,15 @@
 
 All notable changes to the Prog8 Language Support extension will be documented in this file.
 
+## [1.6.2] - 2026-02-07
+
+- Project file now handles all folder resolutions.
+- Project file has a compile mode that can be set to just run a script instead of a jar/binary.
+- Project setting names disambiguate between folder and path; descriptions are also clearer.
+- When an invalid path/folder is used, the popup opens to the correct settings now.
+- Can turn off passing the main file to the custom compile script.
+- Improvements to ProgBasic language.
+
 ## [1.6.1] - 2026-02-06
 
 - New project system!

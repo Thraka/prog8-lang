@@ -3,6 +3,12 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { Prog8Project, getProjectForFile, validateProject } from './projectFile';
 import { TargetPlatform } from '../utils/targetPlatform';
+import { 
+    determineCompilationStrategy, 
+    CompilationOptions,
+    CommandInfo
+} from './compilationStrategy';
+import { resolveAllCompilerSettings } from './settingsResolver';
 
 /**
  * Output file extensions for each target platform
@@ -35,26 +41,6 @@ function getTerminal(): vscode.Terminal {
 }
 
 /**
- * Get compiler configuration from settings, with project-level overrides
- */
-interface CompilerConfig {
-    compilerPath: string;
-    javaPath: string;
-    tassPath: string;
-    emulatorPath: string;
-}
-
-function getCompilerConfig(project?: Prog8Project): CompilerConfig {
-    const config = vscode.workspace.getConfiguration('prog8');
-    return {
-        compilerPath: project?.compilerPath || config.get<string>('compiler.path', ''),
-        javaPath: project?.javaPath || config.get<string>('compiler.javaPath', 'java'),
-        tassPath: project?.tassPath || config.get<string>('tools.tassPath', ''),
-        emulatorPath: project?.emulatorPath || config.get<string>('emulator.path', '')
-    };
-}
-
-/**
  * Quote a path for shell use if it contains spaces
  */
 function quotePath(p: string): string {
@@ -65,54 +51,48 @@ function quotePath(p: string): string {
 }
 
 /**
- * Build the PATH additions for the command
+ * Build the command string from command parts, handling PowerShell vs bash
+ * On Windows/PowerShell, adds & call operator before the first part if needed
  */
-function buildPathPrefix(config: CompilerConfig): string {
-    const isWindows = process.platform === 'win32';
-    const pathSeparator = isWindows ? ';' : ':';
-    
-    const additionalPaths: string[] = [];
-    
-    if (config.tassPath && fs.existsSync(config.tassPath)) {
-        additionalPaths.push(config.tassPath);
-    }
-    
-    if (config.emulatorPath && fs.existsSync(config.emulatorPath)) {
-        additionalPaths.push(config.emulatorPath);
-    }
-    
-    if (additionalPaths.length === 0) {
+function buildCommandString(commandParts: string[]): string {
+    if (commandParts.length === 0) {
         return '';
     }
     
+    const isWindows = process.platform === 'win32';
+    
     if (isWindows) {
-        // PowerShell syntax
-        return `$env:PATH = "${additionalPaths.join(pathSeparator)};$env:PATH"; `;
+        // On PowerShell, we need the & call operator before the executable/script
+        // to ensure it's invoked correctly, especially with paths or quoted strings
+        const firstPart = commandParts[0];
+        const restParts = commandParts.slice(1);
+        
+        // Add & before the first part for proper PowerShell execution
+        return `& ${firstPart} ${restParts.join(' ')}`.trim();
     } else {
-        // Bash/sh syntax - export so it persists for the session
-        return `export PATH="${additionalPaths.join(pathSeparator)}:$PATH"; `;
+        // On bash/sh, just join normally (& means background in bash)
+        return commandParts.join(' ');
     }
 }
 
 /**
- * Validate compiler configuration
+ * Build the PATH additions for the command
  */
-function validateCompilerConfig(config: CompilerConfig): string[] {
-    const errors: string[] = [];
-    
-    if (!config.compilerPath) {
-        errors.push('Compiler path not configured. Set prog8.compiler.path in settings.');
-    } else if (!fs.existsSync(config.compilerPath)) {
-        errors.push(`Compiler not found: ${config.compilerPath}`);
+function buildPathPrefix(pathAdditions: string[]): string {
+    if (pathAdditions.length === 0) {
+        return '';
     }
     
-    if (!config.tassPath) {
-        errors.push('64tass path not configured. Set prog8.tools.tassPath in settings.');
-    } else if (!fs.existsSync(config.tassPath)) {
-        errors.push(`64tass folder not found: ${config.tassPath}`);
-    }
+    const isWindows = process.platform === 'win32';
+    const pathSeparator = isWindows ? ';' : ':';
     
-    return errors;
+    if (isWindows) {
+        // PowerShell syntax
+        return `$env:PATH = "${pathAdditions.join(pathSeparator)};$env:PATH"; `;
+    } else {
+        // Bash/sh syntax - export so it persists for the session
+        return `export PATH="${pathAdditions.join(pathSeparator)}:$PATH"; `;
+    }
 }
 
 /**
@@ -122,18 +102,29 @@ function validateCompilerConfig(config: CompilerConfig): string[] {
  * @returns True if validation passed and build was started
  */
 export async function buildProject(project: Prog8Project, runAfterBuild: boolean = false): Promise<boolean> {
-    // Validate configuration (with project overrides)
-    const config = getCompilerConfig(project);
-    const configErrors = validateCompilerConfig(config);
+    // Resolve all compiler settings with project overrides
+    const resolvedConfig = resolveAllCompilerSettings(project);
     
-    if (configErrors.length > 0) {
-        const errorMessage = configErrors.join('\n');
+    // Determine which compilation strategy to use
+    const strategy = determineCompilationStrategy(project, resolvedConfig);
+    
+    // Validate using the strategy
+    const validationResult = strategy.validate(project, resolvedConfig);
+    
+    if (!validationResult.isValid) {
+        const errorMessage = validationResult.errors.join('\n\n');
         vscode.window.showErrorMessage(`Build failed:\n${errorMessage}`, 'Open Settings').then(selection => {
             if (selection === 'Open Settings') {
                 vscode.commands.executeCommand('workbench.action.openSettings', 'prog8.compiler');
             }
         });
         return false;
+    }
+    
+    // Show warnings if any
+    if (validationResult.warnings.length > 0) {
+        const warningMessage = validationResult.warnings.join('\n');
+        vscode.window.showWarningMessage(`Build warnings:\n${warningMessage}`);
     }
     
     // Validate project
@@ -144,49 +135,18 @@ export async function buildProject(project: Prog8Project, runAfterBuild: boolean
         return false;
     }
     
-    // Build compiler command
-    const isJar = config.compilerPath.toLowerCase().endsWith('.jar');
-    const mainFilePath = path.join(project.projectDir, project.main);
-    
-    let commandParts: string[] = [];
-    
-    if (isJar) {
-        commandParts.push(quotePath(config.javaPath));
-        commandParts.push('-jar');
-        commandParts.push(quotePath(config.compilerPath));
-    } else {
-        commandParts.push(quotePath(config.compilerPath));
-    }
-    
-    // Add compiler arguments
-    commandParts.push('-target', project.target);
-    
-    // Add -emu flag if launching emulator via compiler
-    const useCompilerEmulator = runAfterBuild && project.launchEmu === true;
-    if (useCompilerEmulator) {
-        commandParts.push('-emu');
-    }
-    
-    // Add output directory if specified
-    if (project.outputDir) {
-        const outputPath = path.join(project.projectDir, project.outputDir);
-        // Create output directory if it doesn't exist
-        if (!fs.existsSync(outputPath)) {
-            fs.mkdirSync(outputPath, { recursive: true });
-        }
-        commandParts.push('-out', quotePath(outputPath));
-    }
-    
-    commandParts.push(quotePath(mainFilePath));
+    // Build compilation command using the strategy
+    const options: CompilationOptions = { runAfterBuild };
+    const commandInfo = strategy.buildCommand(project, resolvedConfig, options);
     
     // Build the full command with PATH setup
-    const pathPrefix = buildPathPrefix(config);
-    const compileCommand = commandParts.join(' ');
+    const pathPrefix = buildPathPrefix(commandInfo.pathAdditions);
+    const compileCommand = buildCommandString(commandInfo.commandParts);
     
     // Build post-compile command if needed
     let postCommand = '';
-    if (runAfterBuild && !useCompilerEmulator && project.run) {
-        const customCmd = buildCustomCommand(project, config);
+    if (runAfterBuild && project.launchEmu !== true && project.run) {
+        const customCmd = buildCustomCommand(project, resolvedConfig);
         if (customCmd) {
             // Chain commands - run post command only if compile succeeds
             const isWindows = process.platform === 'win32';
@@ -208,9 +168,9 @@ export async function buildProject(project: Prog8Project, runAfterBuild: boolean
     
     let headerCommand: string;
     if (isWindows) {
-        headerCommand = `Write-Host ""; Write-Host "Building: ${projectName}" -ForegroundColor Cyan; Write-Host "  Target: ${project.target}" -ForegroundColor Gray; Write-Host "  Main: ${project.main}" -ForegroundColor Gray; Write-Host "";`;
+        headerCommand = `Write-Host ""; Write-Host "Building: ${projectName}" -ForegroundColor Cyan; Write-Host "  Strategy: ${strategy.getName()}" -ForegroundColor Gray; Write-Host "  Target: ${project.target}" -ForegroundColor Gray; Write-Host "  Main: ${project.main}" -ForegroundColor Gray; Write-Host "";`;
     } else {
-        headerCommand = `echo ""; echo -e "\\033[36mBuilding: ${projectName}\\033[0m"; echo "  Target: ${project.target}"; echo "  Main: ${project.main}"; echo "";`;
+        headerCommand = `echo ""; echo -e "\\033[36mBuilding: ${projectName}\\033[0m"; echo "  Strategy: ${strategy.getName()}"; echo "  Target: ${project.target}"; echo "  Main: ${project.main}"; echo "";`;
     }
     
     // Change to project directory and run the command
@@ -228,7 +188,7 @@ export async function buildProject(project: Prog8Project, runAfterBuild: boolean
 /**
  * Build the custom post-compile command string
  */
-function buildCustomCommand(project: Prog8Project, config: CompilerConfig): string | undefined {
+function buildCustomCommand(project: Prog8Project, config: any): string | undefined {
     if (!project.run) {
         return undefined;
     }

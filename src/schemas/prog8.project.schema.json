@@ -39,6 +39,22 @@
       "type": "string",
       "description": "Custom script or executable to run after compilation (alternative to launchEmu). Environment variables PRG_PATH and PROJECT_DIR will be set."
     },
+    "passMainToScript": {
+      "type": "boolean",
+      "description": "Whether to pass the main file path as an argument to the custom script. If true (default), script receives main file as first argument. If false, script runs without file argument and must determine what to compile on its own.",
+      "default": true
+    },
+    "compilationMode": {
+      "type": "string",
+      "description": "How to compile the project: auto (detect from settings), standard (use prog8c + 64tass), or custom-script (use 'run' script for everything)",
+      "enum": ["auto", "standard", "custom-script"],
+      "enumDescriptions": [
+        "Auto-detect based on available settings (default)",
+        "Use standard prog8c compiler with 64tass",
+        "Use custom script specified in 'run' for complete build process"
+      ],
+      "default": "auto"
+    },
     "compilerPath": {
       "type": "string",
       "description": "Path to prog8c compiler (executable or .jar file). Overrides extension setting."
@@ -47,13 +63,20 @@
       "type": "string",
       "description": "Path to Java executable (only needed if compiler is a .jar file). Overrides extension setting."
     },
-    "tassPath": {
+    "assemblerFolder": {
       "type": "string",
-      "description": "Folder containing the 64tass assembler binary. Overrides extension setting."
+      "description": "Folder containing the 64tass assembler binary (required by compiler). Overrides extension setting."
     },
-    "emulatorPath": {
+    "emulatorFolder": {
       "type": "string",
       "description": "Folder containing emulators (x16emu, x64sc, x128, xpet). Overrides extension setting."
+    },
+    "compilerArgs": {
+      "type": "array",
+      "description": "Additional arguments to pass to the compiler or custom script. For standard mode, these are inserted before the main file argument. For custom-script mode, these are passed as additional arguments to the script.",
+      "items": {
+        "type": "string"
+      }
     },
     "progb": {
       "type": "object",
