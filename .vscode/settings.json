@@ -4,5 +4,8 @@
         "npm list": true,
         "npm run compile": true,
         "npx ts-node": true
-    }
+    },
+    "cSpell.words": [
+        "progb"
+    ]
 }
