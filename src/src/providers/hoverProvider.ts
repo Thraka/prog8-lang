@@ -3,7 +3,7 @@ import * as path from 'path';
 import { unifiedParser, UnifiedSymbol, SymbolKind } from '../parser';
 import { findSubroutine, findVariable, findConstant, findSubroutineParameter, getAllBlocks, findModule, formatSubroutineSignature, SubroutineInfo, BlockInfo, ModuleInfo, VariableInfo, ConstantInfo, Parameter } from '../data/librarySymbolsHelpers';
 import { getTargetPlatform, getTargetPlatformForDocument } from '../utils/targetPlatform';
-import { findSymbolInImports, ImportedFileSymbols, resolveLocalImport } from '../parser/importResolver';
+import { parseImports, findSymbolInImports, ImportedFileSymbols, resolveLocalImport } from '../parser/importResolver';
 import { getAllAccessibleSymbols } from '../parser/symbolAggregator';
 import { isInImportStatement, getQualifiedNameAtPosition } from './providerUtils';
 import { getBuiltinFunction } from '../data/builtinFunctions';
@@ -41,15 +41,26 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
         }
 
         // Parse imported file symbols once via the unified aggregator and reuse throughout
-        const { localSymbols: symbols, importedFileSymbols } = await getAllAccessibleSymbols(document);
+        const { localSymbols: symbols, importedFileSymbols, librarySymbols } = await getAllAccessibleSymbols(document);
+
+        // Build filter sets so we only show library hovers for actually-imported items
+        const importedLibBlockNames = new Set(
+            librarySymbols.filter(s => s.kind === SymbolKind.Block).map(s => s.name)
+        );
+        const importedLibModuleNames = new Set(
+            parseImports(document).filter(i => i.isLibrary).map(i => i.moduleName)
+        );
 
         // Check if it's a qualified name (e.g., txt.print)
         const qualifiedName = getQualifiedNameAtPosition(document, position);
         if (qualifiedName && qualifiedName.includes('.')) {
-            // First check library modules (from skeleton files)
-            const libraryHover = this.getLibraryHover(qualifiedName);
-            if (libraryHover) {
-                return libraryHover;
+            // First check library modules (from skeleton files) — only if the block is from an imported library
+            const qualifiedBlockName = qualifiedName.split('.')[0];
+            if (importedLibBlockNames.has(qualifiedBlockName)) {
+                const libraryHover = this.getLibraryHover(qualifiedName);
+                if (libraryHover) {
+                    return libraryHover;
+                }
             }
             
             // If not a library, check local imports for qualified names
@@ -78,16 +89,20 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
             return keywordHover;
         }
 
-        // Check if it's a library module name (e.g., buffers, textio)
-        const moduleHover = this.getLibraryModuleHover(word);
-        if (moduleHover) {
-            return moduleHover;
+        // Check if it's a library module name (e.g., buffers, textio) — only if actually imported
+        if (importedLibModuleNames.has(word)) {
+            const moduleHover = this.getLibraryModuleHover(word);
+            if (moduleHover) {
+                return moduleHover;
+            }
         }
 
-        // Check if it's a library block name (e.g., txt, sys, cx16)
-        const blockHover = this.getLibraryBlockHover(word);
-        if (blockHover) {
-            return blockHover;
+        // Check if it's a library block name (e.g., txt, sys, cx16) — only if from an imported library
+        if (importedLibBlockNames.has(word)) {
+            const blockHover = this.getLibraryBlockHover(word);
+            if (blockHover) {
+                return blockHover;
+            }
         }
 
         // Check if it's a block from an imported local file (e.g., helpers from %import myhelper)
