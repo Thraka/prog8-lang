@@ -85,6 +85,7 @@ export {
     resolveLocalImport,
     findSymbolInImports,
     getBlocksFromImports,
+    getSrcDirsForDocument,
     type ImportInfo,
     type ImportedFileSymbols
 } from './importResolver';

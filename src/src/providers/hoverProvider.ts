@@ -3,7 +3,7 @@ import * as path from 'path';
 import { unifiedParser, UnifiedSymbol, SymbolKind } from '../parser';
 import { findSubroutine, findVariable, findConstant, findSubroutineParameter, getAllBlocks, findModule, formatSubroutineSignature, SubroutineInfo, BlockInfo, ModuleInfo, VariableInfo, ConstantInfo, Parameter } from '../data/librarySymbolsHelpers';
 import { getTargetPlatform, getTargetPlatformForDocument } from '../utils/targetPlatform';
-import { parseImports, findSymbolInImports, ImportedFileSymbols, resolveLocalImport } from '../parser/importResolver';
+import { parseImports, findSymbolInImports, ImportedFileSymbols, resolveLocalImport, getSrcDirsForDocument } from '../parser/importResolver';
 import { getAllAccessibleSymbols } from '../parser/symbolAggregator';
 import { isInImportStatement, getQualifiedNameAtPosition } from './providerUtils';
 import { getBuiltinFunction } from '../data/builtinFunctions';
@@ -480,7 +480,8 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
      */
     private async getLocalModuleHover(document: vscode.TextDocument, moduleName: string): Promise<vscode.Hover | undefined> {
         const documentDir = path.dirname(document.uri.fsPath);
-        const localFilePath = resolveLocalImport(documentDir, moduleName);
+        const additionalDirs = getSrcDirsForDocument(document);
+        const localFilePath = resolveLocalImport(documentDir, moduleName, additionalDirs);
         
         if (localFilePath) {
             try {

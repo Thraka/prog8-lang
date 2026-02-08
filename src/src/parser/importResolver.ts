@@ -4,6 +4,8 @@ import * as fs from 'fs';
 import { unifiedParser, UnifiedSymbol } from './index';
 import { findModule } from '../data/librarySymbolsHelpers';
 import { getTargetPlatform, getTargetPlatformForDocument } from '../utils/targetPlatform';
+import { findProjectFile, loadProjectFile } from '../project/projectFile';
+import { resolveSrcDirs } from '../project/compilationStrategy';
 
 /**
  * Represents an import declaration in a Prog8/ProgB file
@@ -28,7 +30,7 @@ export interface ImportedFileSymbols {
  * Parse import statements from a document
  * Handles both Prog8 (%import) and ProgB (IMPORT) syntax
  */
-export function parseImports(document: vscode.TextDocument): ImportInfo[] {
+export function parseImports(document: vscode.TextDocument, additionalDirs?: string[]): ImportInfo[] {
     const imports: ImportInfo[] = [];
     const text = document.getText();
     const lines = text.split(/\r?\n/);
@@ -51,7 +53,7 @@ export function parseImports(document: vscode.TextDocument): ImportInfo[] {
 
             if (!isLibrary) {
                 // Check for local file - try .p8 first, then .pb
-                localFilePath = resolveLocalImport(documentDir, moduleName);
+                localFilePath = resolveLocalImport(documentDir, moduleName, additionalDirs);
             }
 
             imports.push({
@@ -74,20 +76,33 @@ export function isLibraryModule(moduleName: string): boolean {
 }
 
 /**
- * Resolve a local import to a file path
- * Returns undefined if the file doesn't exist
+ * Resolve a local import to a file path.
+ * Searches the document directory first, then any additional source directories.
+ * Returns undefined if the file doesn't exist in any of the directories.
  */
-export function resolveLocalImport(documentDir: string, moduleName: string): string | undefined {
-    // Try .p8 first
-    const p8Path = path.join(documentDir, `${moduleName}.p8`);
-    if (fs.existsSync(p8Path)) {
-        return p8Path;
+export function resolveLocalImport(documentDir: string, moduleName: string, additionalDirs?: string[]): string | undefined {
+    // Build list of directories to search: document dir first, then additional dirs
+    const searchDirs = [documentDir];
+    if (additionalDirs) {
+        for (const dir of additionalDirs) {
+            if (!searchDirs.includes(dir)) {
+                searchDirs.push(dir);
+            }
+        }
     }
 
-    // Then try .pb
-    const pbPath = path.join(documentDir, `${moduleName}.pb`);
-    if (fs.existsSync(pbPath)) {
-        return pbPath;
+    for (const dir of searchDirs) {
+        // Try .p8 first
+        const p8Path = path.join(dir, `${moduleName}.p8`);
+        if (fs.existsSync(p8Path)) {
+            return p8Path;
+        }
+
+        // Then try .pb
+        const pbPath = path.join(dir, `${moduleName}.pb`);
+        if (fs.existsSync(pbPath)) {
+            return pbPath;
+        }
     }
 
     return undefined;
@@ -97,8 +112,8 @@ export function resolveLocalImport(documentDir: string, moduleName: string): str
  * Parse symbols from all locally imported files in a document
  * Does not recursively follow imports in the imported files
  */
-export async function parseImportedFileSymbols(document: vscode.TextDocument): Promise<ImportedFileSymbols[]> {
-    const imports = parseImports(document);
+export async function parseImportedFileSymbols(document: vscode.TextDocument, additionalDirs?: string[]): Promise<ImportedFileSymbols[]> {
+    const imports = parseImports(document, additionalDirs);
     const results: ImportedFileSymbols[] = [];
 
     for (const imp of imports) {
@@ -131,12 +146,12 @@ export async function parseImportedFileSymbols(document: vscode.TextDocument): P
 /**
  * Get all symbols accessible from a document, including imported local files
  */
-export async function getAllAccessibleSymbols(document: vscode.TextDocument): Promise<{
+export async function getAllAccessibleSymbols(document: vscode.TextDocument, additionalDirs?: string[]): Promise<{
     localSymbols: UnifiedSymbol[];
     importedSymbols: ImportedFileSymbols[];
 }> {
     const localSymbols = unifiedParser.parseDocument(document);
-    const importedSymbols = await parseImportedFileSymbols(document);
+    const importedSymbols = await parseImportedFileSymbols(document, additionalDirs);
     
     return { localSymbols, importedSymbols };
 }
@@ -186,4 +201,22 @@ export function getBlocksFromImports(importedSymbols: ImportedFileSymbols[]): Un
     }
     
     return blocks;
+}
+
+/**
+ * Get the resolved source directories for a document by looking up its project file.
+ * Returns an empty array if no project file is found or no srcdirs are configured.
+ */
+export function getSrcDirsForDocument(document: vscode.TextDocument): string[] {
+    const documentDir = path.dirname(document.uri.fsPath);
+    const projectFilePath = findProjectFile(documentDir);
+    if (!projectFilePath) {
+        return [];
+    }
+    try {
+        const project = loadProjectFile(projectFilePath);
+        return resolveSrcDirs(project);
+    } catch {
+        return [];
+    }
 }

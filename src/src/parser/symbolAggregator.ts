@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { unifiedParser, UnifiedSymbol } from './index';
 import { SymbolKind } from './prog8Parser';
-import { parseImports, parseImportedFileSymbols, ImportInfo, ImportedFileSymbols } from './importResolver';
+import { parseImports, parseImportedFileSymbols, ImportInfo, ImportedFileSymbols, getSrcDirsForDocument } from './importResolver';
 import { findModule } from '../data/librarySymbolsHelpers';
 import { getTargetPlatformForDocument } from '../utils/targetPlatform';
 
@@ -41,9 +41,10 @@ export interface AccessibleSymbols {
  */
 export async function getAllAccessibleSymbols(document: vscode.TextDocument): Promise<AccessibleSymbols> {
     const localSymbols = unifiedParser.parseDocument(document);
-    const importedFileSymbols = await parseImportedFileSymbols(document);
+    const additionalDirs = getSrcDirsForDocument(document);
+    const importedFileSymbols = await parseImportedFileSymbols(document, additionalDirs);
     const target = getTargetPlatformForDocument(document);
-    const imports = parseImports(document);
+    const imports = parseImports(document, additionalDirs);
 
     const librarySymbols = convertLibrarySymbols(imports, target);
 
