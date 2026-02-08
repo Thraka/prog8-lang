@@ -3,7 +3,8 @@
         "npm install": true,
         "npm list": true,
         "npm run compile": true,
-        "npx ts-node": true
+        "npx ts-node": true,
+        "npx tsc": true
     },
     "cSpell.words": [
         "progb"
