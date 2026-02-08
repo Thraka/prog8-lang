@@ -112,12 +112,6 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
             return this.createHoverForSymbol(importedSymbol, true);
         }
 
-        // If not found locally, search other Prog8 files in the same directory
-        const crossFileSymbol = await this.findSymbolInOtherFiles(document, word, qualifiedName);
-        if (crossFileSymbol) {
-            return this.createHoverForSymbol(crossFileSymbol);
-        }
-
         return undefined;
     }
 
@@ -604,71 +598,4 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
         return new vscode.Hover(markdown);
     }
 
-    /**
-     * Search for a symbol in other Prog8/ProgB files in the same directory
-     */
-    private async findSymbolInOtherFiles(
-        currentDocument: vscode.TextDocument,
-        word: string,
-        qualifiedName: string | undefined
-    ): Promise<UnifiedSymbol | undefined> {
-        
-        const currentDir = path.dirname(currentDocument.uri.fsPath);
-        const searchPattern = new vscode.RelativePattern(currentDir, '*.{p8,pb}');
-        const files = await vscode.workspace.findFiles(searchPattern);
-
-        // Extract parts of a qualified name (e.g., "drawing.line_horizontal")
-        const searchName = qualifiedName || word;
-        const parts = searchName.split('.');
-        const blockName = parts.length > 1 ? parts[0] : undefined;
-        const symbolName = parts.length > 1 ? parts[parts.length - 1] : word;
-
-        for (const fileUri of files) {
-            // Skip the current file (already searched)
-            if (fileUri.fsPath === currentDocument.uri.fsPath) {
-                continue;
-            }
-
-            try {
-                const doc = await vscode.workspace.openTextDocument(fileUri);
-                const symbols = unifiedParser.parseDocument(doc);
-
-                // If it's a qualified name like "drawing.line_horizontal", look for that full path
-                if (blockName) {
-                    const symbol = symbols.find(s => s.fullPath === searchName);
-                    if (symbol) {
-                        return symbol;
-                    }
-
-                    // Also try finding by just the symbol name within the expected block
-                    const symbolInBlock = symbols.find(s => 
-                        s.name === symbolName && s.parent === blockName
-                    );
-                    if (symbolInBlock) {
-                        return symbolInBlock;
-                    }
-                }
-
-                // For unqualified names, search for blocks or top-level symbols
-                if (!blockName) {
-                    // Check if it's a block name
-                    const block = symbols.find(s => s.name === symbolName && s.kind === SymbolKind.Block);
-                    if (block) {
-                        return block;
-                    }
-
-                    // Check for top-level symbols
-                    const topLevel = symbols.find(s => s.name === symbolName && !s.parent);
-                    if (topLevel) {
-                        return topLevel;
-                    }
-                }
-
-            } catch (error) {
-                console.warn(`Could not read file ${fileUri.fsPath}: ${error}`);
-            }
-        }
-
-        return undefined;
-    }
 }
