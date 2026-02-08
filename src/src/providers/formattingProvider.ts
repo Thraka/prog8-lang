@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { applyKeywordCasingToLine, getKeywordCasingStyle, applyCommaSpacingToLine, getFormatCommaSpacing } from '../utils/keywordCasing';
+import { applyKeywordCasingToLine, getKeywordCasingStyle, applyCommaSpacingToLine, getFormatCommaSpacing } from '../utils/progbAutoFormat';
 
 /**
  * Provides document formatting for ProgB files.

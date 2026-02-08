@@ -7,7 +7,7 @@ import { Prog8ReferenceProvider } from './providers/referenceProvider';
 import { Prog8CompletionProvider } from './providers/completionProvider';
 import { ProgBFormattingProvider } from './providers/formattingProvider';
 import { Prog8SemanticTokensProvider, semanticTokensLegend } from './providers/semanticTokenProvider';
-import { applyKeywordCasingToLine, applyKeywordCasingToLineRange, getKeywordCasingStyle, findBlockStart, applyCommaSpacingToLine, applyCommaSpacingToLineRange, getFormatCommaSpacing } from './utils/keywordCasing';
+import { applyKeywordCasingToLine, applyKeywordCasingToLineRange, getKeywordCasingStyle, findBlockStart, applyCommaSpacingToLine, applyCommaSpacingToLineRange, getFormatCommaSpacing } from './utils/progbAutoFormat';
 import { createStatusBarItem, selectTargetPlatform } from './utils/targetPlatform';
 import { Prog8DebugConfigurationProvider, Prog8DebugAdapterDescriptorFactory } from './project/debugConfigProvider';
 import { runCurrentProject, buildCurrentProject } from './project/projectRunner';
@@ -260,20 +260,23 @@ export function activate(context: vscode.ExtensionContext) {
             
             const currentLine = editor.selection.active.line;
             
-            // Apply casing to the previous line when we move to a different line
+            // Apply casing to the previous line when we move to a different line,
+            // but ONLY if that line was actually edited (not just scrolled past)
             if (previousLine !== undefined && 
                 previousDocument !== undefined &&
                 previousDocument === document &&
                 currentLine !== previousLine) {
                 
-                // Check if we have pending lines from a paste operation
                 if (pendingLines.size > 1) {
-                    // Multi-line change detected, format all pending lines
+                    // Multi-line change detected (paste), format all pending lines
                     await applyFormattingToPendingLines(document);
-                } else {
-                    // Single line edit, apply with block check
+                } else if (pendingLines.has(previousLine)) {
+                    // Single line was edited, apply with block check
                     pendingLines.clear();
                     await applyFormattingToLine(document, previousLine);
+                } else {
+                    // Line was not edited (just scrolled/clicked), skip formatting
+                    pendingLines.clear();
                 }
             }
             
@@ -286,13 +289,16 @@ export function activate(context: vscode.ExtensionContext) {
     // Also apply casing when switching away from a ProgB document
     context.subscriptions.push(
         vscode.window.onDidChangeActiveTextEditor(async event => {
-            // Apply casing to pending lines or previous line before switching editors
+            // Apply casing to pending lines or previous line before switching editors,
+            // but only if those lines were actually edited
             if (previousDocument !== undefined && previousDocument.languageId === 'progb') {
                 if (pendingLines.size > 1) {
                     await applyFormattingToPendingLines(previousDocument);
-                } else if (previousLine !== undefined) {
+                } else if (previousLine !== undefined && pendingLines.has(previousLine)) {
                     pendingLines.clear();
                     await applyFormattingToLine(previousDocument, previousLine);
+                } else {
+                    pendingLines.clear();
                 }
             }
             
