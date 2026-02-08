@@ -2,6 +2,11 @@
 
 All notable changes to the Prog8 Language Support extension will be documented in this file.
 
+## [1.6.7] - 2026-02-07
+
+- Aggregate the symbol providers to a single API. This helps a lot of the little coloring issues.
+- ProgB: Auto formatting only happens when you edit lines now, instead of when the caret leaves the line.
+
 ## [1.6.6] - 2026-02-07
 
 - Spoke too soon! Fixed a bug with the compiler being a loose binary in path.
