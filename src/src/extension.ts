@@ -6,6 +6,7 @@ import { Prog8WorkspaceSymbolProvider } from './providers/workspaceSymbolProvide
 import { Prog8ReferenceProvider } from './providers/referenceProvider';
 import { Prog8CompletionProvider } from './providers/completionProvider';
 import { ProgBFormattingProvider } from './providers/formattingProvider';
+import { Prog8SemanticTokensProvider, semanticTokensLegend } from './providers/semanticTokenProvider';
 import { applyKeywordCasingToLine, applyKeywordCasingToLineRange, getKeywordCasingStyle, findBlockStart, applyCommaSpacingToLine, applyCommaSpacingToLineRange, getFormatCommaSpacing } from './utils/keywordCasing';
 import { createStatusBarItem, selectTargetPlatform } from './utils/targetPlatform';
 import { Prog8DebugConfigurationProvider, Prog8DebugAdapterDescriptorFactory } from './project/debugConfigProvider';
@@ -85,6 +86,15 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.languages.registerReferenceProvider(
             prog8Selector,
             new Prog8ReferenceProvider()
+        )
+    );
+
+    // Register Semantic Tokens Provider for rich highlighting beyond TextMate
+    context.subscriptions.push(
+        vscode.languages.registerDocumentSemanticTokensProvider(
+            prog8Selector,
+            new Prog8SemanticTokensProvider(),
+            semanticTokensLegend
         )
     );
 

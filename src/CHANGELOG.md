@@ -2,6 +2,10 @@
 
 All notable changes to the Prog8 Language Support extension will be documented in this file.
 
+## [1.6.5] - 2026-02-07
+
+- Added semantic token coloring! This fixes a lot of color problems.
+
 ## [1.6.4] - 2026-02-07
 
 - Fixed a bug with setting the `compilerPath` to a binary that might be in path.

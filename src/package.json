@@ -2,7 +2,7 @@
   "name": "prog8-lang",
   "displayName": "Prog8 Language Support",
   "description": "Syntax highlighting and language support for Prog8, a structured programming language for 8-bit 6502/65c02 microprocessors",
-  "version": "1.6.4",
+  "version": "1.6.5",
   "publisher": "SadLogic",
   "author": "Thraka",
   "license": "MIT",
@@ -65,6 +65,36 @@
         "language": "progb",
         "scopeName": "source.progb",
         "path": "./syntaxes/progb.tmLanguage.json"
+      }
+    ],
+    "semanticTokenScopes": [
+      {
+        "language": "prog8",
+        "scopes": {
+          "namespace": ["entity.name.namespace.prog8"],
+          "function": ["entity.name.function.prog8"],
+          "variable": ["variable.other.prog8"],
+          "variable.readonly": ["variable.other.constant.prog8"],
+          "parameter": ["variable.parameter.prog8"],
+          "property": ["variable.other.property.prog8"],
+          "label": ["entity.name.label.prog8"],
+          "struct": ["entity.name.type.struct.prog8"],
+          "type": ["entity.name.type.prog8"]
+        }
+      },
+      {
+        "language": "progb",
+        "scopes": {
+          "namespace": ["entity.name.namespace.progb"],
+          "function": ["entity.name.function.progb"],
+          "variable": ["variable.other.progb"],
+          "variable.readonly": ["variable.other.constant.progb"],
+          "parameter": ["variable.parameter.progb"],
+          "property": ["variable.other.property.progb"],
+          "label": ["entity.name.label.progb"],
+          "struct": ["entity.name.type.struct.progb"],
+          "type": ["entity.name.type.progb"]
+        }
       }
     ],
     "jsonValidation": [
