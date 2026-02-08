@@ -49,8 +49,11 @@ export class SettingsResolver {
         // 1. Check project file first - if found, return immediately without checking workspace
         if (project && project[settingKey]) {
             let projectValue = project[settingKey] as string;
-            // Resolve relative paths against the project file directory
-            if (!path.isAbsolute(projectValue)) {
+            // Resolve relative paths against the project file directory,
+            // but only if the value contains a directory separator (e.g., "../prog8c.jar").
+            // Bare filenames like "blah.exe" are left as-is since they may be on the system PATH.
+            const hasDirectorySeparator = projectValue.includes('/') || projectValue.includes('\\');
+            if (hasDirectorySeparator && !path.isAbsolute(projectValue)) {
                 projectValue = path.resolve(project.projectDir, projectValue);
             }
             // IMPORTANT: We return here, workspace config is NOT consulted at all
