@@ -3,7 +3,8 @@ import * as path from 'path';
 import { unifiedParser, UnifiedSymbol, SymbolKind } from '../parser';
 import { findSubroutine, findVariable, findConstant, findSubroutineParameter, getAllBlocks, findModule, formatSubroutineSignature, SubroutineInfo, BlockInfo, ModuleInfo, VariableInfo, ConstantInfo, Parameter } from '../data/librarySymbolsHelpers';
 import { getTargetPlatform, getTargetPlatformForDocument } from '../utils/targetPlatform';
-import { parseImportedFileSymbols, findSymbolInImports, ImportedFileSymbols, resolveLocalImport } from '../parser/importResolver';
+import { findSymbolInImports, ImportedFileSymbols, resolveLocalImport } from '../parser/importResolver';
+import { getAllAccessibleSymbols } from '../parser/symbolAggregator';
 import { isInImportStatement, getQualifiedNameAtPosition } from './providerUtils';
 import { getBuiltinFunction } from '../data/builtinFunctions';
 
@@ -39,8 +40,8 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
             return undefined;
         }
 
-        // Parse imported file symbols once and reuse throughout
-        const importedFileSymbols = await parseImportedFileSymbols(document);
+        // Parse imported file symbols once via the unified aggregator and reuse throughout
+        const { localSymbols: symbols, importedFileSymbols } = await getAllAccessibleSymbols(document);
 
         // Check if it's a qualified name (e.g., txt.print)
         const qualifiedName = getQualifiedNameAtPosition(document, position);
@@ -59,7 +60,6 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
             }
             
             // Also check current file for qualified names (e.g., myblock.mysub within same file)
-            const symbols = unifiedParser.parseDocument(document);
             const localQualifiedSymbol = symbols.find(s => s.fullPath === qualifiedName);
             if (localQualifiedSymbol) {
                 return this.createHoverForSymbol(localQualifiedSymbol);
@@ -96,9 +96,6 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
             return importedBlockHover;
         }
 
-        // Parse the document to get symbols
-        const symbols = unifiedParser.parseDocument(document);
-        
         // Get current scope for context
         const currentScope = unifiedParser.getScopeAtPosition(symbols, position);
 

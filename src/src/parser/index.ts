@@ -88,3 +88,12 @@ export {
     type ImportInfo,
     type ImportedFileSymbols
 } from './importResolver';
+
+// Re-export unified symbol aggregator
+export {
+    getAllAccessibleSymbols,
+    isLibrarySymbol,
+    findSymbolInAccessible,
+    LIBRARY_SYMBOL_URI,
+    type AccessibleSymbols
+} from './symbolAggregator';

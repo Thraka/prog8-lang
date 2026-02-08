@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { unifiedParser, UnifiedSymbol, SymbolKind } from '../parser';
-import { parseImportedFileSymbols, ImportedFileSymbols } from '../parser/importResolver';
+import { ImportedFileSymbols } from '../parser/importResolver';
+import { getAllAccessibleSymbols, isLibrarySymbol } from '../parser/symbolAggregator';
 
 /**
  * Semantic token types used by this provider.
@@ -56,14 +57,11 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
     ): Promise<vscode.SemanticTokens> {
         const builder = new vscode.SemanticTokensBuilder(semanticTokensLegend);
 
-        // Parse the document for symbols
-        const symbols = unifiedParser.parseDocument(document);
+        // Get all accessible symbols via the unified aggregator
+        const { localSymbols: symbols, importedFileSymbols, librarySymbols } = await getAllAccessibleSymbols(document);
         if (symbols.length === 0) {
             return builder.build();
         }
-
-        // Parse imported file symbols
-        const importedFileSymbols = await parseImportedFileSymbols(document);
 
         // Build a lookup map: name -> symbol(s) for fast resolution
         const symbolsByName = new Map<string, UnifiedSymbol[]>();
@@ -76,11 +74,11 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
             }
         }
 
-        // Phase 1: Emit tokens for declaration sites
+        // Phase 1: Emit tokens for declaration sites (local symbols only)
         this.emitDeclarationTokens(builder, symbols);
 
         // Phase 2: Scan every line for usage sites
-        this.emitUsageTokens(builder, document, symbols, symbolsByName, importedFileSymbols);
+        this.emitUsageTokens(builder, document, symbols, symbolsByName, importedFileSymbols, librarySymbols);
 
         return builder.build();
     }
@@ -110,7 +108,8 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
         document: vscode.TextDocument,
         symbols: UnifiedSymbol[],
         symbolsByName: Map<string, UnifiedSymbol[]>,
-        importedFileSymbols: ImportedFileSymbols[]
+        importedFileSymbols: ImportedFileSymbols[],
+        librarySymbols: UnifiedSymbol[]
     ): void {
         const text = document.getText();
         const lines = text.split(/\r?\n/);
@@ -167,7 +166,7 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
                 // For qualified names like "monitor.open", split into segments
                 // and classify each part independently
                 if (word.includes('.')) {
-                    this.emitQualifiedName(builder, word, col, lineIndex, symbols, scope, declPositions, importedFileSymbols);
+                    this.emitQualifiedName(builder, word, col, lineIndex, symbols, scope, declPositions, importedFileSymbols, librarySymbols);
                 } else {
                     // Try to resolve unqualified name in local symbols first
                     let resolved = unifiedParser.findSymbol(symbols, word, scope);
@@ -178,6 +177,11 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
                             resolved = unifiedParser.findSymbol(imported.symbols, word, scope);
                             if (resolved) break;
                         }
+                    }
+
+                    // If not found in imports, search in library symbols
+                    if (!resolved) {
+                        resolved = unifiedParser.findSymbol(librarySymbols, word, scope);
                     }
                     
                     if (resolved) {
@@ -208,7 +212,8 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
         symbols: UnifiedSymbol[],
         scope: string | undefined,
         declPositions: Set<string>,
-        importedFileSymbols: ImportedFileSymbols[]
+        importedFileSymbols: ImportedFileSymbols[],
+        librarySymbols: UnifiedSymbol[]
     ): void {
         const parts = qualifiedName.split('.');
         let currentCol = startCol;
@@ -240,6 +245,14 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
                         }
                     }
                 }
+
+                // If not found in imports, search in library symbols
+                if (!resolved) {
+                    resolved = librarySymbols.find(s => s.fullPath === pathSoFar);
+                    if (!resolved && !pathSoFar.includes('.')) {
+                        resolved = librarySymbols.find(s => s.name === pathSoFar && !s.parent);
+                    }
+                }
                 
                 if (resolved) {
                     const { tokenType, modifiers } = this.classifySymbol(resolved);
@@ -263,6 +276,11 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
      */
     private classifySymbol(sym: UnifiedSymbol): { tokenType: string; modifiers: string[] } {
         const modifiers: string[] = [];
+
+        // Add defaultLibrary modifier for symbols from built-in library modules
+        if (isLibrarySymbol(sym)) {
+            modifiers.push('defaultLibrary');
+        }
 
         switch (sym.kind) {
             case SymbolKind.Block:

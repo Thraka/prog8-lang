@@ -1,10 +1,12 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { unifiedParser, UnifiedSymbol, SymbolKind } from '../parser';
+import { getAllAccessibleSymbols, isLibrarySymbol } from '../parser/symbolAggregator';
 
 /**
  * Provides "Go to Definition" for Prog8 files.
- * Searches the current file first, then other Prog8 files in the same directory.
+ * Searches the current file first, then imported files, then library symbols,
+ * then other Prog8 files in the same directory.
  */
 export class Prog8DefinitionProvider implements vscode.DefinitionProvider {
 
@@ -19,21 +21,43 @@ export class Prog8DefinitionProvider implements vscode.DefinitionProvider {
             return undefined;
         }
 
-        // Parse the document to get symbols
-        const symbols = unifiedParser.parseDocument(document);
+        // Get all accessible symbols via the unified aggregator
+        const { localSymbols, importedFileSymbols, librarySymbols } = await getAllAccessibleSymbols(document);
         
         // Get current scope for context
-        const currentScope = unifiedParser.getScopeAtPosition(symbols, position);
+        const currentScope = unifiedParser.getScopeAtPosition(localSymbols, position);
 
-        // Find the symbol definition in current file
-        const symbol = unifiedParser.findSymbol(symbols, word, currentScope);
-        
-        if (symbol) {
-            return new vscode.Location(symbol.uri, symbol.selectionRange);
+        // 1. Find the symbol definition in current file
+        const localSymbol = unifiedParser.findSymbol(localSymbols, word, currentScope);
+        if (localSymbol) {
+            return new vscode.Location(localSymbol.uri, localSymbol.selectionRange);
         }
 
-        // If not found locally, search other Prog8 files in the same directory
-        // This handles cross-file references like "drawing.line_horizontal()"
+        // 2. Search in imported file symbols
+        for (const imported of importedFileSymbols) {
+            // Try qualified name match first
+            if (word.includes('.')) {
+                const byPath = imported.symbols.find(s => s.fullPath === word);
+                if (byPath) {
+                    return new vscode.Location(byPath.uri, byPath.selectionRange);
+                }
+            }
+            // Try scope-aware resolution
+            const found = unifiedParser.findSymbol(imported.symbols, word, currentScope);
+            if (found) {
+                return new vscode.Location(found.uri, found.selectionRange);
+            }
+        }
+
+        // 3. Library symbols have no real file location — skip (hover handles them)
+        // But we check them to avoid a potentially expensive directory scan
+        const libSymbol = unifiedParser.findSymbol(librarySymbols, word, currentScope);
+        if (libSymbol) {
+            // Library symbol — no definition location to jump to
+            return undefined;
+        }
+
+        // 4. If not found anywhere, search other Prog8 files in the same directory
         return await this.findInOtherFiles(document, word, token);
     }
 

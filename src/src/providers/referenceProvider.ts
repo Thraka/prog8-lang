@@ -2,12 +2,13 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { unifiedParser, UnifiedSymbol } from '../parser';
 import { isPositionInLineComment } from './providerUtils';
+import { getAllAccessibleSymbols } from '../parser/symbolAggregator';
 
 /**
  * Provides "Find All References" for Prog8 files.
  * 
  * Searches for all usages of a symbol within the current directory
- * (matching Prog8's import behavior where only same-directory files are accessible).
+ * and in imported files (matching Prog8's import behavior).
  */
 export class Prog8ReferenceProvider implements vscode.ReferenceProvider {
 
@@ -23,13 +24,27 @@ export class Prog8ReferenceProvider implements vscode.ReferenceProvider {
             return [];
         }
 
-        // Parse the current document to find the symbol definition
-        const symbols = unifiedParser.parseDocument(document);
-        const currentScope = unifiedParser.getScopeAtPosition(symbols, position);
-        const symbol = unifiedParser.findSymbol(symbols, word, currentScope);
+        // Get all accessible symbols via the unified aggregator
+        const { localSymbols, importedFileSymbols, librarySymbols } = await getAllAccessibleSymbols(document);
+        const currentScope = unifiedParser.getScopeAtPosition(localSymbols, position);
+        
+        // Try to find the symbol definition in local symbols first
+        let symbol = unifiedParser.findSymbol(localSymbols, word, currentScope);
+        
+        // If not found locally, check imported file symbols
+        if (!symbol) {
+            for (const imported of importedFileSymbols) {
+                symbol = unifiedParser.findSymbol(imported.symbols, word, currentScope);
+                if (symbol) break;
+            }
+        }
+
+        // If not found in imports, check library symbols
+        if (!symbol) {
+            symbol = unifiedParser.findSymbol(librarySymbols, word, currentScope);
+        }
 
         // Get the target name to search for
-        // Use the simple name for searching, but we'll verify matches against full path
         const searchName = word.includes('.') ? word.split('.').pop()! : word;
         const fullPath = symbol?.fullPath;
 

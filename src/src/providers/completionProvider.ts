@@ -13,10 +13,9 @@ import {
 } from '../data/librarySymbolsHelpers';
 import { getTargetPlatform, getTargetPlatformForDocument } from '../utils/targetPlatform';
 import { 
-    parseImportedFileSymbols, 
     ImportedFileSymbols,
-    getBlocksFromImports 
 } from '../parser/importResolver';
+import { getAllAccessibleSymbols } from '../parser/symbolAggregator';
 import { isInComment, isTypingImport, getQualifiedPrefix } from './providerUtils';
 import { builtinFunctions, BuiltinFunctionInfo } from '../data/builtinFunctions';
 import { getKeywordsForLanguage } from '../data/keywords';
@@ -70,8 +69,8 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
             return completions;
         }
 
-        // Parse imported local files for their symbols
-        const importedFileSymbols = await parseImportedFileSymbols(document);
+        // Parse imported local files for their symbols via the unified aggregator
+        const { importedFileSymbols } = await getAllAccessibleSymbols(document);
 
         // Check if we're completing a qualified name (e.g., "txt." or "main.start.")
         const qualifiedPrefixValue = getQualifiedPrefix(linePrefix);
