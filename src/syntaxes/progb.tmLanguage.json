@@ -16,8 +16,6 @@
     { "include": "#operators" },
     { "include": "#inline-assembly" },
     { "include": "#blocks" },
-    { "include": "#labels" },
-    { "include": "#function-calls" },
     { "include": "#identifiers" }
   ],
   "repository": {
@@ -392,89 +390,8 @@
         }
       ]
     },
-    "labels": {
-      "patterns": [
-        {
-          "name": "entity.name.function.label.progb",
-          "match": "^\\s*[a-zA-Z_][a-zA-Z0-9_]*:"
-        }
-      ]
-    },
-    "function-calls": {
-      "patterns": [
-        {
-          "comment": "Double-namespaced function call: ns1.ns2.name(",
-          "begin": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)(\\s*)\\(",
-          "beginCaptures": {
-            "1": { "name": "entity.name.namespace.progb" },
-            "2": { "name": "entity.name.namespace.progb" },
-            "3": { "name": "entity.name.function.progb" }
-          },
-          "end": "\\)",
-          "patterns": [
-            { "include": "#function-call-arguments" }
-          ]
-        },
-        {
-          "comment": "Namespaced function call: ns.name(",
-          "begin": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)(\\s*)\\(",
-          "beginCaptures": {
-            "1": { "name": "entity.name.namespace.progb" },
-            "2": { "name": "entity.name.function.progb" }
-          },
-          "end": "\\)",
-          "patterns": [
-            { "include": "#function-call-arguments" }
-          ]
-        },
-        {
-          "comment": "Simple function call: name(",
-          "begin": "\\b([a-zA-Z_][a-zA-Z0-9_]*)(\\s*)\\(",
-          "beginCaptures": {
-            "1": { "name": "entity.name.function.progb" }
-          },
-          "end": "\\)",
-          "patterns": [
-            { "include": "#function-call-arguments" }
-          ]
-        }
-      ]
-    },
-    "function-call-arguments": {
-      "patterns": [
-        { "include": "#comments" },
-        { "include": "#strings" },
-        { "include": "#characters" },
-        { "include": "#numbers" },
-        { "include": "#keywords" },
-        { "include": "#storage-type-declarations" },
-        { "include": "#storage-modifiers" },
-        { "include": "#constants" },
-        { "include": "#builtins" },
-        { "include": "#operators" },
-        { "include": "#function-calls" },
-        { "include": "#identifiers" },
-        {
-          "comment": "Nested parentheses in expressions",
-          "begin": "\\(",
-          "end": "\\)",
-          "patterns": [
-            { "include": "#function-call-arguments" }
-          ]
-        },
-        {
-          "comment": "General variable references used as arguments",
-          "name": "variable.other.progb",
-          "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
-        }
-      ]
-    },
     "identifiers": {
       "patterns": [
-        {
-          "name": "variable.other.member.progb",
-          "match": "\\b(cx16|cbm|c64|c128|sys|txt|math|floats|strings|diskio|graphics|compression|conv|buffers|sorting|sprites|palette|verafx|monogfx|gfx_lores|gfx_hires|emudbg|psg|psg2|bmx|bcd|coroutines)\\b"
-        },
         {
           "name": "variable.other.register.progb",
           "match": "\\b(r0|r1|r2|r3|r4|r5|r6|r7|r8|r9|r10|r11|r12|r13|r14|r15|r0L|r0H|r1L|r1H|r2L|r2H|r3L|r3H|r4L|r4H|r5L|r5H|r6L|r6H|r7L|r7H|r8L|r8H|r9L|r9H|r10L|r10H|r11L|r11H|r12L|r12H|r13L|r13H|r14L|r14H|r15L|r15H|r0s|r1s|r2s|r3s|r4s|r5s|r6s|r7s|r8s|r9s|r10s|r11s|r12s|r13s|r14s|r15s|r0bL|r0bH|r1bL|r1bH|r2bL|r2bH|r3bL|r3bH|r4bL|r4bH|r5bL|r5bH|r6bL|r6bH|r7bL|r7bH|r8bL|r8bH|r9bL|r9bH|r10bL|r10bH|r11bL|r11bH|r12bL|r12bH|r13bL|r13bH|r14bL|r14bH|r15bL|r15bH)\\b"
