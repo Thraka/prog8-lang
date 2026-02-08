@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { unifiedParser, UnifiedSymbol, SymbolKind } from '../parser';
+import { parseImportedFileSymbols, ImportedFileSymbols } from '../parser/importResolver';
 
 /**
  * Semantic token types used by this provider.
@@ -49,10 +50,10 @@ export const semanticTokensLegend = new vscode.SemanticTokensLegend(tokenTypes, 
  */
 export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticTokensProvider {
 
-    provideDocumentSemanticTokens(
+    async provideDocumentSemanticTokens(
         document: vscode.TextDocument,
         token: vscode.CancellationToken
-    ): vscode.ProviderResult<vscode.SemanticTokens> {
+    ): Promise<vscode.SemanticTokens> {
         const builder = new vscode.SemanticTokensBuilder(semanticTokensLegend);
 
         // Parse the document for symbols
@@ -60,6 +61,9 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
         if (symbols.length === 0) {
             return builder.build();
         }
+
+        // Parse imported file symbols
+        const importedFileSymbols = await parseImportedFileSymbols(document);
 
         // Build a lookup map: name -> symbol(s) for fast resolution
         const symbolsByName = new Map<string, UnifiedSymbol[]>();
@@ -76,7 +80,7 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
         this.emitDeclarationTokens(builder, symbols);
 
         // Phase 2: Scan every line for usage sites
-        this.emitUsageTokens(builder, document, symbols, symbolsByName);
+        this.emitUsageTokens(builder, document, symbols, symbolsByName, importedFileSymbols);
 
         return builder.build();
     }
@@ -105,7 +109,8 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
         builder: vscode.SemanticTokensBuilder,
         document: vscode.TextDocument,
         symbols: UnifiedSymbol[],
-        symbolsByName: Map<string, UnifiedSymbol[]>
+        symbolsByName: Map<string, UnifiedSymbol[]>,
+        importedFileSymbols: ImportedFileSymbols[]
     ): void {
         const text = document.getText();
         const lines = text.split(/\r?\n/);
@@ -162,9 +167,19 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
                 // For qualified names like "monitor.open", split into segments
                 // and classify each part independently
                 if (word.includes('.')) {
-                    this.emitQualifiedName(builder, word, col, lineIndex, symbols, scope, declPositions);
+                    this.emitQualifiedName(builder, word, col, lineIndex, symbols, scope, declPositions, importedFileSymbols);
                 } else {
-                    const resolved = unifiedParser.findSymbol(symbols, word, scope);
+                    // Try to resolve unqualified name in local symbols first
+                    let resolved = unifiedParser.findSymbol(symbols, word, scope);
+                    
+                    // If not found locally, search in imported file symbols
+                    if (!resolved) {
+                        for (const imported of importedFileSymbols) {
+                            resolved = unifiedParser.findSymbol(imported.symbols, word, scope);
+                            if (resolved) break;
+                        }
+                    }
+                    
                     if (resolved) {
                         const { tokenType, modifiers } = this.classifySymbol(resolved);
                         builder.push(
@@ -192,7 +207,8 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
         lineIndex: number,
         symbols: UnifiedSymbol[],
         scope: string | undefined,
-        declPositions: Set<string>
+        declPositions: Set<string>,
+        importedFileSymbols: ImportedFileSymbols[]
     ): void {
         const parts = qualifiedName.split('.');
         let currentCol = startCol;
@@ -207,8 +223,24 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
                 // Build the path incrementally: "monitor", then "monitor.open"
                 pathSoFar = pathSoFar ? `${pathSoFar}.${part}` : part;
 
-                // Try to resolve this segment as a symbol
-                const resolved = unifiedParser.findSymbol(symbols, pathSoFar, scope);
+                // Try to resolve this segment as a symbol in local symbols first
+                let resolved = unifiedParser.findSymbol(symbols, pathSoFar, scope);
+                
+                // If not found locally, search in imported file symbols
+                if (!resolved) {
+                    for (const imported of importedFileSymbols) {
+                        // Check for exact fullPath match
+                        resolved = imported.symbols.find(s => s.fullPath === pathSoFar);
+                        if (resolved) break;
+                        
+                        // For single-segment paths (e.g., just "helpers"), also check top-level names
+                        if (!pathSoFar.includes('.')) {
+                            resolved = imported.symbols.find(s => s.name === pathSoFar && !s.parent);
+                            if (resolved) break;
+                        }
+                    }
+                }
+                
                 if (resolved) {
                     const { tokenType, modifiers } = this.classifySymbol(resolved);
                     builder.push(
