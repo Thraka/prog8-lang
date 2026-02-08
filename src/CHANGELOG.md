@@ -2,6 +2,11 @@
 
 All notable changes to the Prog8 Language Support extension will be documented in this file.
 
+## [1.6.3] - 2026-02-07
+
+- Project folder\file paths can all be relative now.
+- Fixed **some** color issue with first parameter of a sub.
+
 ## [1.6.2] - 2026-02-07
 
 - Project file now handles all folder resolutions.
