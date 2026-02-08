@@ -172,6 +172,12 @@ export class JavaCompilerStrategy extends CompilationStrategy {
             }
             commandParts.push('-out', quotePath(outputPath));
         }
+        
+        // Add source directories if specified
+        if (project.srcdirs && project.srcdirs.length > 0) {
+            const resolvedDirs = resolveSrcDirs(project);
+            commandParts.push('-srcdirs', quotePath(resolvedDirs.join(';')));
+        }
     }
     
     private buildPathAdditions(config: ResolvedCompilerConfig): string[] {
@@ -253,6 +259,12 @@ export class BinaryCompilerStrategy extends CompilationStrategy {
                 fs.mkdirSync(outputPath, { recursive: true });
             }
             commandParts.push('-out', quotePath(outputPath));
+        }
+        
+        // Add source directories if specified
+        if (project.srcdirs && project.srcdirs.length > 0) {
+            const resolvedDirs = resolveSrcDirs(project);
+            commandParts.push('-srcdirs', quotePath(resolvedDirs.join(';')));
         }
         
         // Add any custom compiler arguments
@@ -384,6 +396,21 @@ export function determineCompilationStrategy(project: Prog8Project, config: Reso
     
     // Default to binary compiler strategy (will fail validation if nothing configured)
     return new BinaryCompilerStrategy();
+}
+
+/**
+ * Resolve srcdirs paths: relative paths are resolved against the project directory
+ */
+export function resolveSrcDirs(project: Prog8Project): string[] {
+    if (!project.srcdirs || project.srcdirs.length === 0) {
+        return [];
+    }
+    return project.srcdirs.map(dir => {
+        if (path.isAbsolute(dir)) {
+            return dir;
+        }
+        return path.join(project.projectDir, dir);
+    });
 }
 
 /**

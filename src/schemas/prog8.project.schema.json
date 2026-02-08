@@ -71,6 +71,13 @@
       "type": "string",
       "description": "Folder containing emulators (x16emu, x64sc, x128, xpet). Overrides extension setting."
     },
+    "srcdirs": {
+      "type": "array",
+      "description": "Additional directories where the compiler can look for imported modules. Can be absolute or relative paths. For standard mode (binary/jar), passed as -srcdirs flag. For custom-script mode, set as PROG8_SRCDIRS environment variable.",
+      "items": {
+        "type": "string"
+      }
+    },
     "compilerArgs": {
       "type": "array",
       "description": "Additional arguments to pass to the compiler or custom script. For standard mode, these are inserted before the main file argument. For custom-script mode, these are passed as additional arguments to the script.",

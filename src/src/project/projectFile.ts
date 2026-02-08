@@ -45,6 +45,8 @@ export interface Prog8Project {
     assemblerFolder?: string;
     /** Folder containing emulators (overrides extension setting) */
     emulatorFolder?: string;
+    /** Additional source directories for imported modules (absolute or relative paths) */
+    srcdirs?: string[];
     /** Additional arguments to pass to the compiler or custom script */
     compilerArgs?: string[];
     /** ProgB-specific settings (overrides extension settings) */
@@ -71,6 +73,7 @@ interface ProjectFileJson {
     javaPath?: string;
     assemblerFolder?: string;
     emulatorFolder?: string;
+    srcdirs?: string[];
     compilerArgs?: string[];
     progb?: ProgBSettings;
 }
@@ -121,6 +124,7 @@ export function loadProjectFile(projectFilePath: string): Prog8Project {
         javaPath: json.javaPath,
         assemblerFolder: json.assemblerFolder,
         emulatorFolder: json.emulatorFolder,
+        srcdirs: json.srcdirs,
         compilerArgs: json.compilerArgs,
         progb: json.progb,
         projectFilePath,

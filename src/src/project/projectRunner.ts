@@ -6,7 +6,8 @@ import { TargetPlatform } from '../utils/targetPlatform';
 import { 
     determineCompilationStrategy, 
     CompilationOptions,
-    CommandInfo
+    CommandInfo,
+    resolveSrcDirs
 } from './compilationStrategy';
 import { resolveAllCompilerSettings } from './settingsResolver';
 
@@ -214,9 +215,21 @@ function buildCustomCommand(project: Prog8Project, config: any): string | undefi
     
     // Set environment variables and run the command
     if (isWindows) {
-        return `$env:PRG_PATH = ${quotePath(prgPath)}; $env:PROJECT_DIR = ${quotePath(project.projectDir)}; & ${quotePath(commandPath)}`;
+        let envVars = `$env:PRG_PATH = ${quotePath(prgPath)}; $env:PROJECT_DIR = ${quotePath(project.projectDir)};`;
+        // Add PROG8_SRCDIRS if source directories are configured
+        if (project.srcdirs && project.srcdirs.length > 0) {
+            const resolvedDirs = resolveSrcDirs(project);
+            envVars += ` $env:PROG8_SRCDIRS = ${quotePath(resolvedDirs.join(';'))};`;
+        }
+        return `${envVars} & ${quotePath(commandPath)}`;
     } else {
-        return `PRG_PATH=${quotePath(prgPath)} PROJECT_DIR=${quotePath(project.projectDir)} ${quotePath(commandPath)}`;
+        let envVars = `PRG_PATH=${quotePath(prgPath)} PROJECT_DIR=${quotePath(project.projectDir)}`;
+        // Add PROG8_SRCDIRS if source directories are configured
+        if (project.srcdirs && project.srcdirs.length > 0) {
+            const resolvedDirs = resolveSrcDirs(project);
+            envVars += ` PROG8_SRCDIRS=${quotePath(resolvedDirs.join(';'))}`;
+        }
+        return `${envVars} ${quotePath(commandPath)}`;
     }
 }
 
