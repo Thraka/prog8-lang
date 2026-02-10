@@ -2,6 +2,27 @@
 
 All notable changes to the Prog8 Language Support extension will be documented in this file.
 
+## [1.6.9] - 2026-02-09
+
+- Fixed a bug with custom scripts running twice.
+- Fixed a bug with syntax coloring detecting a parameter name before it was declared.
+- Added more environment variables when compile happens.
+
+  | Variable Name | Description | With Project File | Without Project File |
+  |---------------|-------------|-------------------|---------------------|
+  | PATH (assemblerFolder) | Path to 64tass assembler directory | ✓ | ✓ |
+  | PATH (emulatorFolder) | Path to emulator directory | ✓ | ✓ |
+  | PROG8_VSCODE_MAIN_FILE | Full path to the main code file | ✓ | ✓ |
+  | PROG8_VSCODE_MAIN_FILE_NAME | Main code file name with extension | ✓ | ✓ |
+  | PROG8_VSCODE_MAIN_FILE_BASENAME | Main code file name without extension | ✓ | ✓ |
+  | PROG8_VSCODE_MAIN_FILE_DIR | Directory containing the main code file | ✓ | ✓ |
+  | PROG8_VSCODE_TARGET | Target platform (cx16, c64, c128, pet32, virtual) | ✓ | ✓ |
+  | PROG8_VSCODE_OUTPUT_FILE | Full path to the compiled .prg output file | ✓ | ✓ |
+  | PROG8_VSCODE_PROJECT_DIR | Root directory of the project | ✓ | |
+  | PROG8_VSCODE_SRC_DIRS | Semicolon-separated list of source directories | ✓ | |
+
+- Rewrote readme.
+
 ## [1.6.8] - 2026-02-08
 
 - `srcdirs` is supported by the project system now!

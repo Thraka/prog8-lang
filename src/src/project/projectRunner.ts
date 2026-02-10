@@ -98,6 +98,55 @@ function buildPathPrefix(pathAdditions: string[]): string {
 }
 
 /**
+ * Build the environment variable setup string for the terminal.
+ * These variables are available to both the compiler and any post-build scripts.
+ */
+function buildEnvironmentVariables(project: Prog8Project): string {
+    const mainBaseName = path.basename(project.main, path.extname(project.main));
+    const mainFileName = path.basename(project.main);
+    const mainFilePath = path.join(project.projectDir, project.main);
+    const mainFileDir = path.dirname(mainFilePath);
+    const outputExt = OUTPUT_EXTENSIONS[project.target];
+
+    let prgPath: string;
+    if (project.outputDir) {
+        prgPath = path.join(project.projectDir, project.outputDir, mainBaseName + outputExt);
+    } else {
+        prgPath = path.join(project.projectDir, mainBaseName + outputExt);
+    }
+
+    const isWindows = process.platform === 'win32';
+
+    if (isWindows) {
+        let envVars = `$env:PROG8_VSCODE_MAIN_FILE = "${mainFilePath}";`;
+        envVars += ` $env:PROG8_VSCODE_MAIN_FILE_NAME = "${mainFileName}";`;
+        envVars += ` $env:PROG8_VSCODE_MAIN_FILE_BASENAME = "${mainBaseName}";`;
+        envVars += ` $env:PROG8_VSCODE_MAIN_FILE_DIR = "${mainFileDir}";`;
+        envVars += ` $env:PROG8_VSCODE_TARGET = "${project.target}";`;
+        envVars += ` $env:PROG8_VSCODE_OUTPUT_FILE = "${prgPath}";`;
+        envVars += ` $env:PROG8_VSCODE_PROJECT_DIR = "${project.projectDir}";`;
+        if (project.srcdirs && project.srcdirs.length > 0) {
+            const resolvedDirs = resolveSrcDirs(project);
+            envVars += ` $env:PROG8_VSCODE_SRC_DIRS = "${resolvedDirs.join(';')}";`;
+        }
+        return envVars + ' ';
+    } else {
+        let envVars = `export PROG8_VSCODE_MAIN_FILE="${mainFilePath}";`;
+        envVars += ` export PROG8_VSCODE_MAIN_FILE_NAME="${mainFileName}";`;
+        envVars += ` export PROG8_VSCODE_MAIN_FILE_BASENAME="${mainBaseName}";`;
+        envVars += ` export PROG8_VSCODE_MAIN_FILE_DIR="${mainFileDir}";`;
+        envVars += ` export PROG8_VSCODE_TARGET="${project.target}";`;
+        envVars += ` export PROG8_VSCODE_OUTPUT_FILE="${prgPath}";`;
+        envVars += ` export PROG8_VSCODE_PROJECT_DIR="${project.projectDir}";`;
+        if (project.srcdirs && project.srcdirs.length > 0) {
+            const resolvedDirs = resolveSrcDirs(project);
+            envVars += ` export PROG8_VSCODE_SRC_DIRS="${resolvedDirs.join(';')}";`;
+        }
+        return envVars + ' ';
+    }
+}
+
+/**
  * Build a Prog8 project
  * @param project Project configuration
  * @param runAfterBuild Whether to run the emulator after successful build
@@ -141,15 +190,16 @@ export async function buildProject(project: Prog8Project, runAfterBuild: boolean
     const options: CompilationOptions = { runAfterBuild };
     const commandInfo = strategy.buildCommand(project, resolvedConfig, options);
     
-    // Build the full command with PATH setup
+    // Build the full command with PATH and environment setup
     const pathPrefix = buildPathPrefix(commandInfo.pathAdditions);
+    const envPrefix = buildEnvironmentVariables(project);
     const compileCommand = buildCommandString(commandInfo.commandParts);
     
     // Build post-compile command if needed
     // Skip this when using CustomScriptStrategy - the script already handles everything
     let postCommand = '';
     if (runAfterBuild && project.launchEmu !== true && project.run && !(strategy instanceof CustomScriptStrategy)) {
-        const customCmd = buildCustomCommand(project, resolvedConfig);
+        const customCmd = buildCustomCommand(project);
         if (customCmd) {
             // Chain commands - run post command only if compile succeeds
             const isWindows = process.platform === 'win32';
@@ -181,7 +231,7 @@ export async function buildProject(project: Prog8Project, runAfterBuild: boolean
     const cdCommand = isWindows 
         ? `cd ${quotePath(project.projectDir)};`
         : `cd ${quotePath(project.projectDir)} &&`;
-    const fullCommand = `${headerCommand} ${cdCommand} ${pathPrefix}${compileCommand}${postCommand}`;
+    const fullCommand = `${headerCommand} ${cdCommand} ${envPrefix}${pathPrefix}${compileCommand}${postCommand}`;
     
     terminal.sendText(fullCommand);
     
@@ -189,25 +239,12 @@ export async function buildProject(project: Prog8Project, runAfterBuild: boolean
 }
 
 /**
- * Build the custom post-compile command string
+ * Build the custom post-compile command string.
+ * Environment variables are already set by buildEnvironmentVariables() before the compile command.
  */
-function buildCustomCommand(project: Prog8Project, config: any): string | undefined {
+function buildCustomCommand(project: Prog8Project): string | undefined {
     if (!project.run) {
         return undefined;
-    }
-    
-    // Determine the output PRG file path
-    const mainBaseName = path.basename(project.main, path.extname(project.main));
-    const mainFileName = path.basename(project.main);
-    const mainFilePath = path.join(project.projectDir, project.main);
-    const mainFileDir = path.dirname(mainFilePath);
-    const outputExt = OUTPUT_EXTENSIONS[project.target];
-    
-    let prgPath: string;
-    if (project.outputDir) {
-        prgPath = path.join(project.projectDir, project.outputDir, mainBaseName + outputExt);
-    } else {
-        prgPath = path.join(project.projectDir, mainBaseName + outputExt);
     }
     
     // Resolve the command path (could be relative to project dir)
@@ -218,35 +255,10 @@ function buildCustomCommand(project: Prog8Project, config: any): string | undefi
     
     const isWindows = process.platform === 'win32';
     
-    // Set environment variables and run the command
     if (isWindows) {
-        let envVars = `$env:PROGB_VSCODE_MAIN_FILE = ${quotePath(mainFilePath)};`;
-        envVars += ` $env:PROGB_VSCODE_MAIN_FILE_NAME = ${quotePath(mainFileName)};`;
-        envVars += ` $env:PROGB_VSCODE_MAIN_FILE_BASENAME = ${quotePath(mainBaseName)};`;
-        envVars += ` $env:PROGB_VSCODE_MAIN_FILE_DIR = ${quotePath(mainFileDir)};`;
-        envVars += ` $env:PROGB_VSCODE_TARGET = ${quotePath(project.target)};`;
-        envVars += ` $env:PROGB_VSCODE_OUTPUT_FILE = ${quotePath(prgPath)};`;
-        envVars += ` $env:PROGB_VSCODE_PROJECT_DIR = ${quotePath(project.projectDir)};`;
-        // Add PROGB_VSCODE_SRC_DIRS if source directories are configured
-        if (project.srcdirs && project.srcdirs.length > 0) {
-            const resolvedDirs = resolveSrcDirs(project);
-            envVars += ` $env:PROGB_VSCODE_SRC_DIRS = ${quotePath(resolvedDirs.join(';'))};`;
-        }
-        return `${envVars} & ${quotePath(commandPath)}`;
+        return `& ${quotePath(commandPath)}`;
     } else {
-        let envVars = `PROGB_VSCODE_MAIN_FILE=${quotePath(mainFilePath)}`;
-        envVars += ` PROGB_VSCODE_MAIN_FILE_NAME=${quotePath(mainFileName)}`;
-        envVars += ` PROGB_VSCODE_MAIN_FILE_BASENAME=${quotePath(mainBaseName)}`;
-        envVars += ` PROGB_VSCODE_MAIN_FILE_DIR=${quotePath(mainFileDir)}`;
-        envVars += ` PROGB_VSCODE_TARGET=${quotePath(project.target)}`;
-        envVars += ` PROGB_VSCODE_OUTPUT_FILE=${quotePath(prgPath)}`;
-        envVars += ` PROGB_VSCODE_PROJECT_DIR=${quotePath(project.projectDir)}`;
-        // Add PROGB_VSCODE_SRC_DIRS if source directories are configured
-        if (project.srcdirs && project.srcdirs.length > 0) {
-            const resolvedDirs = resolveSrcDirs(project);
-            envVars += ` PROGB_VSCODE_SRC_DIRS=${quotePath(resolvedDirs.join(';'))}`;
-        }
-        return `${envVars} ${quotePath(commandPath)}`;
+        return quotePath(commandPath);
     }
 }
 

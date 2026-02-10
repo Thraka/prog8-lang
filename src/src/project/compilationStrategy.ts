@@ -323,11 +323,6 @@ export class CustomScriptStrategy extends CompilationStrategy {
             }
         }
         
-        // Warn if compiler settings are present but won't be used
-        if (config.compilerPath.value) {
-            warnings.push('Compiler path is set but will be ignored in custom-script mode');
-        }
-        
         return {
             errors,
             warnings,
