@@ -7,6 +7,7 @@ import {
     determineCompilationStrategy, 
     CompilationOptions,
     CommandInfo,
+    CustomScriptStrategy,
     resolveSrcDirs
 } from './compilationStrategy';
 import { resolveAllCompilerSettings } from './settingsResolver';
@@ -145,8 +146,9 @@ export async function buildProject(project: Prog8Project, runAfterBuild: boolean
     const compileCommand = buildCommandString(commandInfo.commandParts);
     
     // Build post-compile command if needed
+    // Skip this when using CustomScriptStrategy - the script already handles everything
     let postCommand = '';
-    if (runAfterBuild && project.launchEmu !== true && project.run) {
+    if (runAfterBuild && project.launchEmu !== true && project.run && !(strategy instanceof CustomScriptStrategy)) {
         const customCmd = buildCustomCommand(project, resolvedConfig);
         if (customCmd) {
             // Chain commands - run post command only if compile succeeds
