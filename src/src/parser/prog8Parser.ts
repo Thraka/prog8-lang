@@ -367,10 +367,15 @@ export class Prog8Parser {
         // Simple parameter parsing: type name
         const paramRegex = /(ubyte|byte|uword|word|long|ulong|float|bool|str)(\[\d*\])?\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)/g;
         let match;
+        const parenPos = fullLine.indexOf('(');
         while ((match = paramRegex.exec(params)) !== null) {
             const type = match[1] + (match[2] || '');
             const name = match[3];
-            const nameStart = fullLine.indexOf(name, fullLine.indexOf('('));
+            // Compute position from the regex match offset within params,
+            // rather than using indexOf which can find single-letter names
+            // (like 'y' or 'e') inside type keywords (like 'ubyte').
+            const nameOffsetInMatch = match[0].length - name.length;
+            const nameStart = parenPos + 1 + match.index + nameOffsetInMatch;
             const fullPath = `${subPath}.${name}`;
 
             symbols.push({
