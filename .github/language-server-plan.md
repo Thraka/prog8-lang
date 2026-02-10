@@ -97,12 +97,13 @@ Add full language support features to the VS Code extension for Prog8.
 
 ### Phase 2.5: ProgB Keyword Casing
 
-- [x] keywords.ts updated with block pairs from language-configuration-progb.json
+- [x] keywords.ts updated with block pairs from language-configuration-progb.json (progbBlockPairs)
 - [ ] Migrate language-configuration-progb.json to use keywords.ts as its source of truth (future)
 - [x] Add Enum option for setting how ProgB keywords are cased: Upper, Lower, Camel, Disabled
-- [x] Auto case lines edited (with 150ms debounce for smooth typing)
-- [x] Command to format entire document: `ProgB: Format Keyword Casing`
-- [x] Auto case blocks when closed: END IF, END SUB, END MODULE (optional enhancement)
+- [x] Auto case lines edited (detects changes via onDidChangeTextDocument)
+- [x] Format entire document via Document Formatting Provider (Shift+Alt+F, format selection)
+- [x] Auto case blocks when closed: END IF, END SUB, END MODULE, etc. (findBlockStart + applyKeywordCasingToLineRange)
+- [x] Comma spacing auto-format (optional: progb.formatCommaSpacing setting)
 
 ### Phase 2.8: Target filtering
 
@@ -111,41 +112,36 @@ Add full language support features to the VS Code extension for Prog8.
 - [x] Expose target platform as dropdown in the bottom bar
 - [x] Intellisense and hover providers filter by selected target
 
-### Phase 3: Diagnostics
+### Phase 3: Project System
+- [x] `prog8.project.json` configuration file with JSON schema validation
+- [x] Initialize project command (`prog8.initProject`)
+- [x] Build project command (`prog8.buildProject`)
+- [x] Run project command (`prog8.runProject`)
+- [x] Debug configuration provider (F5 support)
+- [x] Project-specific settings override extension settings
+- [x] Compiler configuration (compilerPath, javaPath, assemblerFolder)
+- [x] Emulator configuration (emulatorFolder, launchEmu)
+- [x] Custom run scripts (run property with environment variables)
+- [x] Target platform per project
+- [x] Output directory configuration
+- [x] Additional source directories (srcdirs for imported modules)
+- [x] Compiler arguments (compilerArgs)
+- [x] ProgB project-specific settings (keywordCasing, formatCommaSpacing)
+- [x] Compilation modes (auto, standard, custom-script)
+- [ ] Custom targets (user-defined target configurations)
+
+### Phase 4: Advanced
+- [ ] Rename symbol
+- [x] Code folding (declarative folding via language-configuration files: brace-based for Prog8, keyword-based for ProgB)
+- [x] Semantic tokens (enhanced highlighting) - fully implemented with declaration/usage tracking
+- [x] Format document (ProgB only - keyword casing and comma spacing via DocumentFormattingEditProvider)
+
+### Phase 5: Diagnostics
 - [ ] Syntax error reporting
 - [ ] Undefined symbol warnings
 - [ ] Type mismatch warnings (if feasible)
 
-### Phase 4: Advanced
-- [ ] Rename symbol
-- [ ] Code folding
-- [ ] Semantic tokens (enhanced highlighting)
-- [ ] Format document
-
 ---
-
-## Implementation Considerations
-
-### Symbol Resolution Strategy
-Since everything is public with fully qualified names:
-1. Build a symbol table per module
-2. Track the full path for each symbol: `module.block.subroutine.variable`
-3. For unqualified names: search local scope first, then parent scopes
-4. For qualified names: search from top-level namespace
-
-### Multi-file Support
-- Need to parse `%import` directives to find related modules
-- Build a workspace-wide symbol index
-- Handle standard library imports (prog8 ships with library modules)
-- [x] **Library symbol data parsed from official skeleton files** (see `src/data/librarySymbols.ts`)
-  - Parsed from https://prog8.readthedocs.io/en/latest/_static/symboldumps/
-  - Contains 873 subroutines for cx16, 492 for c64
-  - Run `npx ts-node scripts/parseSkeletons.ts` to regenerate
-  - Helper functions: `findModule()`, `getAllModules()`, `getAllBlocks()`, `findSubroutine()`
-- [x] **Local file import resolution** (see `src/parser/importResolver.ts`)
-  - Parses `%import` and `IMPORT` statements from documents
-  - Resolves non-library imports to local `.p8`/`.pb` files
-  - Provides symbols for intellisense without recursive import following
 
 ### Reference Documentation
 - Main docs: https://prog8.readthedocs.io/en/latest/
@@ -153,27 +149,3 @@ Since everything is public with fully qualified names:
 - **`.github/reference/` folder** - Contains information about prog8 and progb:
   - Kotlin translator code
   - ANTLR grammar files (useful for understanding the formal grammar)
-
----
-
-## Technical Approach Options
-
-### Option A: Language Server Protocol (LSP) in TypeScript
-- Build a standalone language server
-- Parse files using tree-sitter-prog8 bindings
-- Communicate via LSP with VS Code
-
-### Option B: VS Code Extension API Only
-- Use VS Code's extension APIs directly
-- Simpler but less portable to other editors
-
-### Option C: Leverage Prog8 Compiler
-- The prog8 compiler (Java/Kotlin) could potentially provide symbol info
-- Would require compiler modifications or using its output
-
----
-
-## Notes
-- For loops don't define the iteration variable; it must be defined before the loop
-- Trailing comma allowed in array literals: `[1, 2, 3,]`
-- Ternary operator uses if-expression: `if x [then] value1 else value2`

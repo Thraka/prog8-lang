@@ -1,42 +1,91 @@
 # Prog8 Language Support for VS Code
 
-Syntax highlighting and language support for [Prog8](https://prog8.readthedocs.io/), a structured programming language for 8-bit 6502/65c02 microprocessors.
+Language support extension for [Prog8](https://prog8.readthedocs.io/), a structured programming language designed for 8-bit 6502/65c02 microprocessors, including the Commodore 64, Commander X16, and other retro computers.
 
 ![demo](./images/demo.png)
 
 ## Features
 
-- **Syntax Highlighting** for `.p8` files including:
-  - Keywords and control flow (`if`, `else`, `for`, `while`, `repeat`, `when`, `sub`, etc.)
-  - Data types (`byte`, `ubyte`, `word`, `uword`, `long`, `float`, `bool`, `str`)
-  - Pointer types (`^^`) and typed address-of operators (`&&`, `&<`, `&>`)
-  - Variable declarations with proper identifier highlighting
-  - Block/namespace definitions with optional address (`main $c000 { }`)
-  - Compiler directives (`%import`, `%address`, `%zeropage`, `%asm`, `%ir`, etc.)
-  - String literals with encoding prefixes (`default:`, `petscii:`, `sc:`, `iso:`, etc.)
-  - Numeric literals (decimal, hexadecimal `$`, binary `%`)
-  - Built-in functions (`len`, `sizeof`, `lsb`, `msb`, `rol`, `ror`, `peek`, `poke`, etc.)
-  - Memory-mapped variable declarations (`&ubyte BORDER_COLOR = $d020`)
-  - Inline assembly blocks with 6502 instruction highlighting
-  - Comments (`;` line comments and `/* */` block comments)
-  - Operators (arithmetic, bitwise, logical, comparison)
-  - Virtual registers (`r0`-`r15` and variants)
-  - Library modules (`txt`, `sys`, `math`, `floats`, `cx16`, `cbm`, etc.)
+### Syntax Highlighting
+Comprehensive syntax highlighting for `.p8` files with support for:
+- Control flow statements and keywords
+- Data types and type annotations
+- Compiler directives and pragmas
+- String literals with encoding prefixes
+- Numeric literals (decimal, hexadecimal, binary)
+- Built-in functions and library modules
+- Memory-mapped variables
+- Inline assembly blocks
+- Comments and operators
 
-- **Language Configuration**:
-  - Auto-closing brackets and quotes
-  - Comment toggling
-  - Code folding
-  - Proper indentation
+### Code Intelligence
+- **Code Completion**: Context-aware suggestions for keywords, functions, and symbols
+- **Go to Definition**: Navigate to symbol declarations
+- **Find References**: Locate all uses of a symbol
+- **Hover Information**: View documentation and type information
+- **Document Symbols**: Outline view and breadcrumb navigation
+- **Workspace Symbols**: Search for symbols across your project
 
-## Supported Targets
+### Project Support
+- **Prog8 Project Files**: Support for `prog8.project.json` configuration files
+- **Build Integration**: Compile and run Prog8 programs directly from VS Code
+- **Import Resolution**: Automatic resolution of `%import` statements
 
-Prog8 supports these retro computer platforms:
-- **Commander X16** (65c02 CPU)
-- **Commodore 64** (6502 CPU)
-- **Commodore 128** (6502 CPU)
-- **Commodore PET** (limited support)
-- Various external configurable targets (Atari 800 XL, Neo6502, NES, etc.)
+#### Project File Format
+
+Create a `prog8.project.json` file in your project root to configure compilation settings:
+
+```json
+{
+  "name": "My Prog8 Project",
+  "main": "main.p8",
+  "target": "cx16",
+  "outputDir": "build",
+  "launchEmu": true,
+  "srcdirs": ["src", "lib"],
+  "compilerArgs": ["-optimize"]
+}
+```
+
+**Required fields:**
+- `main` - Main source file to compile.
+- `target` - Target platform: `cx16`, `c64`, `c128`, `pet32`, or `virtual`.
+
+**Optional fields:**
+- `name` - Project name for display.
+- `outputDir` - Output directory for compiled files.
+- `launchEmu` - Launch emulator after compilation (default: `true`).
+- `srcdirs` - Additional source directories for imports.
+- `compilerArgs` - Extra compiler arguments.
+- `compilerPath`, `javaPath`, `assemblerFolder`, `emulatorFolder` - Override tool paths.
+- `run` - Custom script to run after compilation.
+- `compilationMode` - Compilation strategy: `auto`, `standard`, or `custom-script`.
+- `progb` - ProgB-specific formatting settings.
+
+#### Environment Variables During Compilation
+
+| Variable Name | Description | With Project File | Without Project File |
+|---------------|-------------|-------------------|---------------------|
+| PATH (assemblerFolder) | Path to 64tass assembler directory | ✓ | ✓ |
+| PATH (emulatorFolder) | Path to emulator directory | ✓ | ✓ |
+| PROGB_VSCODE_OUTPUT_FILE | Full path to the compiled .prg output file | ✓ | |
+| PROGB_VSCODE_PROJECT_DIR | Root directory of the project | ✓ | |
+| PROGB_VSCODE_SRC_DIRS | Semicolon-separated list of source directories | ✓ | |
+
+### Editor Features
+- Auto-closing brackets and quotes
+- Comment toggling
+- Code folding
+- Smart indentation
+- Symbol formatting
+
+## Supported Platforms
+
+This extension supports Prog8 development for:
+- **Commander X16**
+- **Commodore 64**
+- **Commodore 128**
+- **Commodore PET**
 
 ## Example Code
 
@@ -61,46 +110,19 @@ main {
 
 ## Installation
 
-### From VSIX
+Install directly from the VS Code Extensions Marketplace by searching for "Prog8" or install from a `.vsix` file using the Command Palette (`Ctrl+Shift+P`) and selecting "Extensions: Install from VSIX...".
 
-1. Download the `.vsix` file from the releases
-2. In VS Code, open Command Palette (`Ctrl+Shift+P`)
-3. Run "Extensions: Install from VSIX..."
-4. Select the downloaded file
+## Requirements
 
-### From Source
+To compile and run Prog8 programs, you need the [Prog8 compiler](https://github.com/irmen/prog8) installed on your system.
 
-1. Clone this repository
-2. Run `npm install` (if using npm scripts)
-3. Press F5 to launch Extension Development Host
-4. Open a `.p8` file to see syntax highlighting
-
-### Package as VSIX
-
-```bash
-npm install -g @vscode/vsce
-vsce package
-```
-
-## File Associations
-
-This extension automatically associates with `.p8` file extensions.
-
-## Related Links
+## Resources
 
 - [Prog8 Documentation](https://prog8.readthedocs.io/)
 - [Prog8 GitHub Repository](https://github.com/irmen/prog8)
-- [Commander X16](https://www.commanderx16.com/)
-- [Prog8 Discord Channel](https://discord.gg/nS2PqEC) (on Commander X16 Discord)
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit issues or pull requests.
+- [Commander X16 Website](https://www.commanderx16.com/)
+- [Prog8 Discord Community](https://discord.gg/nS2PqEC)
 
 ## License
 
-This extension is released under the MIT License.
-
----
-
-**Enjoy coding in Prog8!** 🎮
+MIT License - see [LICENSE](LICENSE) file for details.

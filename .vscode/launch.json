@@ -8,7 +8,7 @@
       "args": [
         "--disable-extensions",
         "--extensionDevelopmentPath=${workspaceFolder}/src",
-        "D:/Emulated Systems/Commander x16/code/XFMGR/src/",
+        "D:/Emulated Systems/Commander x16/code/XFMGR/",
         //"${workspaceFolder}/src/samples"
       ]
     },
