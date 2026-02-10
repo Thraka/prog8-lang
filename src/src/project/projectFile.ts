@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { TargetPlatform, getTargetPlatform } from '../utils/targetPlatform';
+import { TargetPlatform, BuiltinTargetPlatform, getTargetPlatform, isBuiltinTarget, isCustomTarget } from '../utils/targetPlatform';
 import { CompilationMode } from './compilationStrategy';
 
 /**
@@ -25,7 +25,7 @@ export interface Prog8Project {
     name?: string;
     /** Main source file to compile (.p8 or .pb) */
     main: string;
-    /** Target platform for compilation */
+    /** Target platform for compilation (built-in target name or path to custom .properties file) */
     target: TargetPlatform;
     /** Output directory for compiled files (relative to project folder) */
     outputDir?: string;
@@ -102,10 +102,10 @@ export function loadProjectFile(projectFilePath: string): Prog8Project {
     const projectDir = path.dirname(projectFilePath);
 
     // Validate and normalize target
-    const validTargets: TargetPlatform[] = ['cx16', 'c64', 'c128', 'pet32', 'virtual'];
+    // Accept both built-in targets and custom targets (.properties paths)
     let target: TargetPlatform = getTargetPlatform();
-    if (json.target && validTargets.includes(json.target as TargetPlatform)) {
-        target = json.target as TargetPlatform;
+    if (json.target) {
+        target = json.target;
     }
 
     // Main file is required if specified, otherwise will be set by caller

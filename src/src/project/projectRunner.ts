@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { Prog8Project, getProjectForFile, validateProject } from './projectFile';
-import { TargetPlatform } from '../utils/targetPlatform';
+import { TargetPlatform, isCustomTarget, BuiltinTargetPlatform } from '../utils/targetPlatform';
 import { 
     determineCompilationStrategy, 
     CompilationOptions,
@@ -13,9 +13,10 @@ import {
 import { resolveAllCompilerSettings } from './settingsResolver';
 
 /**
- * Output file extensions for each target platform
+ * Output file extensions for each built-in target platform.
+ * Custom targets default to .prg as well.
  */
-const OUTPUT_EXTENSIONS: Record<TargetPlatform, string> = {
+const OUTPUT_EXTENSIONS: Record<BuiltinTargetPlatform, string> = {
     'cx16': '.prg',
     'c64': '.prg',
     'c128': '.prg',
@@ -106,7 +107,10 @@ function buildEnvironmentVariables(project: Prog8Project): string {
     const mainFileName = path.basename(project.main);
     const mainFilePath = path.join(project.projectDir, project.main);
     const mainFileDir = path.dirname(mainFilePath);
-    const outputExt = OUTPUT_EXTENSIONS[project.target];
+    // For custom targets, default to .prg extension
+    const outputExt = isCustomTarget(project.target) 
+        ? '.prg' 
+        : OUTPUT_EXTENSIONS[project.target as BuiltinTargetPlatform];
 
     let prgPath: string;
     if (project.outputDir) {
@@ -117,6 +121,11 @@ function buildEnvironmentVariables(project: Prog8Project): string {
 
     const isWindows = process.platform === 'win32';
 
+    // For custom targets, resolve the full path to the .properties file
+    const customTargetPath = isCustomTarget(project.target)
+        ? path.resolve(project.projectDir, project.target)
+        : undefined;
+
     if (isWindows) {
         let envVars = `$env:PROG8_VSCODE_MAIN_FILE = "${mainFilePath}";`;
         envVars += ` $env:PROG8_VSCODE_MAIN_FILE_NAME = "${mainFileName}";`;
@@ -125,6 +134,9 @@ function buildEnvironmentVariables(project: Prog8Project): string {
         envVars += ` $env:PROG8_VSCODE_TARGET = "${project.target}";`;
         envVars += ` $env:PROG8_VSCODE_OUTPUT_FILE = "${prgPath}";`;
         envVars += ` $env:PROG8_VSCODE_PROJECT_DIR = "${project.projectDir}";`;
+        if (customTargetPath) {
+            envVars += ` $env:PROG8_VSCODE_TARGET_FILE = "${customTargetPath}";`;
+        }
         if (project.srcdirs && project.srcdirs.length > 0) {
             const resolvedDirs = resolveSrcDirs(project);
             envVars += ` $env:PROG8_VSCODE_SRC_DIRS = "${resolvedDirs.join(';')}";`;
@@ -138,6 +150,9 @@ function buildEnvironmentVariables(project: Prog8Project): string {
         envVars += ` export PROG8_VSCODE_TARGET="${project.target}";`;
         envVars += ` export PROG8_VSCODE_OUTPUT_FILE="${prgPath}";`;
         envVars += ` export PROG8_VSCODE_PROJECT_DIR="${project.projectDir}";`;
+        if (customTargetPath) {
+            envVars += ` export PROG8_VSCODE_TARGET_FILE="${customTargetPath}";`;
+        }
         if (project.srcdirs && project.srcdirs.length > 0) {
             const resolvedDirs = resolveSrcDirs(project);
             envVars += ` export PROG8_VSCODE_SRC_DIRS="${resolvedDirs.join(';')}";`;

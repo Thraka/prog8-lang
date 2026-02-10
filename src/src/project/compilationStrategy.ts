@@ -6,6 +6,7 @@ import {
     resolveAllCompilerSettings, 
     SettingsResolver 
 } from './settingsResolver';
+import { isCustomTarget } from '../utils/targetPlatform';
 
 /**
  * Check if a value looks like a specific file/folder path (contains directory separators)
@@ -156,7 +157,11 @@ export class JavaCompilerStrategy extends CompilationStrategy {
     }
     
     private addCompilerArguments(commandParts: string[], project: Prog8Project, options: CompilationOptions): void {
-        commandParts.push('-target', project.target);
+        // Resolve target - for custom targets, resolve the path
+        const targetArg = isCustomTarget(project.target)
+            ? quotePath(path.resolve(project.projectDir, project.target))
+            : project.target;
+        commandParts.push('-target', targetArg);
         
         // Add -emu flag if launching emulator via compiler
         const useCompilerEmulator = options.runAfterBuild && project.launchEmu === true;
@@ -245,8 +250,11 @@ export class BinaryCompilerStrategy extends CompilationStrategy {
         
         commandParts.push(quotePath(config.compilerPath.value!));
         
-        // Add compiler arguments (same as Java strategy)
-        commandParts.push('-target', project.target);
+        // Resolve target - for custom targets, resolve the path
+        const targetArg = isCustomTarget(project.target)
+            ? quotePath(path.resolve(project.projectDir, project.target))
+            : project.target;
+        commandParts.push('-target', targetArg);
         
         const useCompilerEmulator = options.runAfterBuild && project.launchEmu === true;
         if (useCompilerEmulator) {
