@@ -215,19 +215,19 @@ function buildCustomCommand(project: Prog8Project, config: any): string | undefi
     
     // Set environment variables and run the command
     if (isWindows) {
-        let envVars = `$env:PRG_PATH = ${quotePath(prgPath)}; $env:PROJECT_DIR = ${quotePath(project.projectDir)};`;
-        // Add PROG8_SRCDIRS if source directories are configured
+        let envVars = `$env:PROGB_VSCODE_OUTPUT_FILE = ${quotePath(prgPath)}; $env:PROGB_VSCODE_PROJECT_DIR = ${quotePath(project.projectDir)};`;
+        // Add PROGB_VSCODE_SRC_DIRS if source directories are configured
         if (project.srcdirs && project.srcdirs.length > 0) {
             const resolvedDirs = resolveSrcDirs(project);
-            envVars += ` $env:PROG8_SRCDIRS = ${quotePath(resolvedDirs.join(';'))};`;
+            envVars += ` $env:PROGB_VSCODE_SRC_DIRS = ${quotePath(resolvedDirs.join(';'))};`;
         }
         return `${envVars} & ${quotePath(commandPath)}`;
     } else {
-        let envVars = `PRG_PATH=${quotePath(prgPath)} PROJECT_DIR=${quotePath(project.projectDir)}`;
-        // Add PROG8_SRCDIRS if source directories are configured
+        let envVars = `PROGB_VSCODE_OUTPUT_FILE=${quotePath(prgPath)} PROGB_VSCODE_PROJECT_DIR=${quotePath(project.projectDir)}`;
+        // Add PROGB_VSCODE_SRC_DIRS if source directories are configured
         if (project.srcdirs && project.srcdirs.length > 0) {
             const resolvedDirs = resolveSrcDirs(project);
-            envVars += ` PROG8_SRCDIRS=${quotePath(resolvedDirs.join(';'))}`;
+            envVars += ` PROGB_VSCODE_SRC_DIRS=${quotePath(resolvedDirs.join(';'))}`;
         }
         return `${envVars} ${quotePath(commandPath)}`;
     }
