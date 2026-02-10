@@ -15,14 +15,23 @@
     },
     "target": {
       "type": "string",
-      "description": "Target platform for compilation",
-      "enum": ["cx16", "c64", "c128", "pet32", "virtual"],
-      "enumDescriptions": [
-        "Commander X16",
-        "Commodore 64",
-        "Commodore 128",
-        "Commodore PET 32K",
-        "Virtual (testing)"
+      "description": "Target platform for compilation. Use a built-in target name (cx16, c64, c128, pet32, virtual) or a path to a custom target .properties file (e.g., './nes.properties' or 'targets/custom.properties'). When using a custom target, the built-in library symbols (syslib, etc.) are not available.",
+      "oneOf": [
+        {
+          "enum": ["cx16", "c64", "c128", "pet32", "virtual"],
+          "enumDescriptions": [
+            "Commander X16",
+            "Commodore 64",
+            "Commodore 128",
+            "Commodore PET 32K",
+            "Virtual (testing)"
+          ]
+        },
+        {
+          "type": "string",
+          "pattern": ".*\\.properties$",
+          "description": "Path to a custom target .properties file (relative to project directory or absolute)"
+        }
       ],
       "default": "cx16"
     },
