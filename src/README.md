@@ -68,7 +68,12 @@ Create a `prog8.project.json` file in your project root to configure compilation
 |---------------|-------------|-------------------|---------------------|
 | PATH (assemblerFolder) | Path to 64tass assembler directory | ✓ | ✓ |
 | PATH (emulatorFolder) | Path to emulator directory | ✓ | ✓ |
-| PROGB_VSCODE_OUTPUT_FILE | Full path to the compiled .prg output file | ✓ | |
+| PROGB_VSCODE_MAIN_FILE | Full path to the main code file | ✓ | ✓ |
+| PROGB_VSCODE_MAIN_FILE_NAME | Main code file name with extension | ✓ | ✓ |
+| PROGB_VSCODE_MAIN_FILE_BASENAME | Main code file name without extension | ✓ | ✓ |
+| PROGB_VSCODE_MAIN_FILE_DIR | Directory containing the main code file | ✓ | ✓ |
+| PROGB_VSCODE_TARGET | Target platform (cx16, c64, c128, pet32, virtual) | ✓ | ✓ |
+| PROGB_VSCODE_OUTPUT_FILE | Full path to the compiled .prg output file | ✓ | ✓ |
 | PROGB_VSCODE_PROJECT_DIR | Root directory of the project | ✓ | |
 | PROGB_VSCODE_SRC_DIRS | Semicolon-separated list of source directories | ✓ | |
 

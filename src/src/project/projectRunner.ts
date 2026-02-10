@@ -196,6 +196,9 @@ function buildCustomCommand(project: Prog8Project, config: any): string | undefi
     
     // Determine the output PRG file path
     const mainBaseName = path.basename(project.main, path.extname(project.main));
+    const mainFileName = path.basename(project.main);
+    const mainFilePath = path.join(project.projectDir, project.main);
+    const mainFileDir = path.dirname(mainFilePath);
     const outputExt = OUTPUT_EXTENSIONS[project.target];
     
     let prgPath: string;
@@ -215,7 +218,13 @@ function buildCustomCommand(project: Prog8Project, config: any): string | undefi
     
     // Set environment variables and run the command
     if (isWindows) {
-        let envVars = `$env:PROGB_VSCODE_OUTPUT_FILE = ${quotePath(prgPath)}; $env:PROGB_VSCODE_PROJECT_DIR = ${quotePath(project.projectDir)};`;
+        let envVars = `$env:PROGB_VSCODE_MAIN_FILE = ${quotePath(mainFilePath)};`;
+        envVars += ` $env:PROGB_VSCODE_MAIN_FILE_NAME = ${quotePath(mainFileName)};`;
+        envVars += ` $env:PROGB_VSCODE_MAIN_FILE_BASENAME = ${quotePath(mainBaseName)};`;
+        envVars += ` $env:PROGB_VSCODE_MAIN_FILE_DIR = ${quotePath(mainFileDir)};`;
+        envVars += ` $env:PROGB_VSCODE_TARGET = ${quotePath(project.target)};`;
+        envVars += ` $env:PROGB_VSCODE_OUTPUT_FILE = ${quotePath(prgPath)};`;
+        envVars += ` $env:PROGB_VSCODE_PROJECT_DIR = ${quotePath(project.projectDir)};`;
         // Add PROGB_VSCODE_SRC_DIRS if source directories are configured
         if (project.srcdirs && project.srcdirs.length > 0) {
             const resolvedDirs = resolveSrcDirs(project);
@@ -223,7 +232,13 @@ function buildCustomCommand(project: Prog8Project, config: any): string | undefi
         }
         return `${envVars} & ${quotePath(commandPath)}`;
     } else {
-        let envVars = `PROGB_VSCODE_OUTPUT_FILE=${quotePath(prgPath)} PROGB_VSCODE_PROJECT_DIR=${quotePath(project.projectDir)}`;
+        let envVars = `PROGB_VSCODE_MAIN_FILE=${quotePath(mainFilePath)}`;
+        envVars += ` PROGB_VSCODE_MAIN_FILE_NAME=${quotePath(mainFileName)}`;
+        envVars += ` PROGB_VSCODE_MAIN_FILE_BASENAME=${quotePath(mainBaseName)}`;
+        envVars += ` PROGB_VSCODE_MAIN_FILE_DIR=${quotePath(mainFileDir)}`;
+        envVars += ` PROGB_VSCODE_TARGET=${quotePath(project.target)}`;
+        envVars += ` PROGB_VSCODE_OUTPUT_FILE=${quotePath(prgPath)}`;
+        envVars += ` PROGB_VSCODE_PROJECT_DIR=${quotePath(project.projectDir)}`;
         // Add PROGB_VSCODE_SRC_DIRS if source directories are configured
         if (project.srcdirs && project.srcdirs.length > 0) {
             const resolvedDirs = resolveSrcDirs(project);
