@@ -10,7 +10,7 @@ import { Prog8SemanticTokensProvider, semanticTokensLegend } from './providers/s
 import { applyKeywordCasingToLine, applyKeywordCasingToLineRange, getKeywordCasingStyle, findBlockStart, applyCommaSpacingToLine, applyCommaSpacingToLineRange, getFormatCommaSpacing } from './utils/progbAutoFormat';
 import { createStatusBarItem, selectTargetPlatform } from './utils/targetPlatform';
 import { Prog8DebugConfigurationProvider, Prog8DebugAdapterDescriptorFactory } from './project/debugConfigProvider';
-import { runCurrentProject, buildCurrentProject } from './project/projectRunner';
+import { runCurrentProject, buildCurrentProject, disposeProjectRunner } from './project/projectRunner';
 import { initializeProject } from './project/projectFile';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -331,5 +331,6 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {
+    disposeProjectRunner();
     console.log('Prog8 Language Support deactivated');
 }

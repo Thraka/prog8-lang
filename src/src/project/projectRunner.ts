@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import * as fs from 'fs';
 import { Prog8Project, getProjectForFile, validateProject } from './projectFile';
 import { TargetPlatform, isCustomTarget, BuiltinTargetPlatform } from '../utils/targetPlatform';
 import { 
@@ -25,144 +24,189 @@ const OUTPUT_EXTENSIONS: Record<BuiltinTargetPlatform, string> = {
 };
 
 /**
- * Terminal name for Prog8 builds
+ * Task source identifier for Prog8 builds
  */
-const TERMINAL_NAME = 'Prog8';
+const TASK_SOURCE = 'prog8';
 
 /**
- * Get or create the Prog8 build terminal
+ * Pending post-build actions keyed by task execution.
+ * Used to run post-compile commands after successful builds.
  */
-function getTerminal(): vscode.Terminal {
-    // Look for existing Prog8 terminal
-    const existing = vscode.window.terminals.find(t => t.name === TERMINAL_NAME);
-    if (existing) {
-        return existing;
+interface PostBuildAction {
+    project: Prog8Project;
+    useCustomScript: boolean;
+}
+const pendingPostBuildActions = new Map<vscode.TaskExecution, PostBuildAction>();
+
+/**
+ * Disposable for the task end listener. Created on first use.
+ */
+let taskEndListenerDisposable: vscode.Disposable | undefined;
+
+/**
+ * Strip outer quotes from a string if present.
+ * Used because compilationStrategy pre-quotes paths, but ShellExecution args array
+ * handles quoting automatically.
+ */
+function stripOuterQuotes(s: string): string {
+    if (s.length >= 2 && s.startsWith('"') && s.endsWith('"')) {
+        return s.slice(1, -1);
     }
-    
-    // Create new terminal
-    return vscode.window.createTerminal(TERMINAL_NAME);
+    return s;
 }
 
 /**
- * Quote a path for shell use if it contains spaces
+ * Create a ShellQuotedString for a value that may contain spaces or special characters.
+ * Uses strong quoting to ensure the value is passed as-is to the command.
  */
-function quotePath(p: string): string {
-    if (p.includes(' ')) {
-        return `"${p}"`;
-    }
-    return p;
+function quoteForShell(value: string): vscode.ShellQuotedString {
+    return { value, quoting: vscode.ShellQuoting.Strong };
 }
 
 /**
- * Build the command string from command parts, handling PowerShell vs bash
- * On Windows/PowerShell, adds & call operator before the first part if needed
+ * Create a ShellExecution that properly handles the command and arguments.
+ * On Windows with PowerShell, scripts need the & call operator to execute quoted paths.
  */
-function buildCommandString(commandParts: string[]): string {
-    if (commandParts.length === 0) {
-        return '';
-    }
-    
+function createShellExecution(
+    command: string, 
+    args: string[], 
+    options: vscode.ShellExecutionOptions
+): vscode.ShellExecution {
     const isWindows = process.platform === 'win32';
+    const isPowerShellScript = command.toLowerCase().endsWith('.ps1');
     
-    if (isWindows) {
-        // On PowerShell, we need the & call operator before the executable/script
-        // to ensure it's invoked correctly, especially with paths or quoted strings
-        const firstPart = commandParts[0];
-        const restParts = commandParts.slice(1);
-        
-        // Add & before the first part for proper PowerShell execution
-        return `& ${firstPart} ${restParts.join(' ')}`.trim();
+    if (isWindows && isPowerShellScript) {
+        // PowerShell needs & call operator to execute a quoted script path
+        // Command becomes: & 'path\to\script.ps1' arg1 arg2
+        const allArgs = [quoteForShell(command), ...args.map(quoteForShell)];
+        return new vscode.ShellExecution('&', allArgs, options);
     } else {
-        // On bash/sh, just join normally (& means background in bash)
-        return commandParts.join(' ');
+        // For other executables, the path can be the command directly
+        return new vscode.ShellExecution(quoteForShell(command), args.map(quoteForShell), options);
     }
 }
 
 /**
- * Build the PATH additions for the command
+ * Build environment variables as an object for the Task API.
+ * These variables are passed silently to the shell without echoing setup commands.
  */
-function buildPathPrefix(pathAdditions: string[]): string {
-    if (pathAdditions.length === 0) {
-        return '';
-    }
-    
-    const isWindows = process.platform === 'win32';
-    const pathSeparator = isWindows ? ';' : ':';
-    
-    if (isWindows) {
-        // PowerShell syntax
-        return `$env:PATH = "${pathAdditions.join(pathSeparator)};$env:PATH"; `;
-    } else {
-        // Bash/sh syntax - export so it persists for the session
-        return `export PATH="${pathAdditions.join(pathSeparator)}:$PATH"; `;
-    }
-}
-
-/**
- * Build the environment variable setup string for the terminal.
- * These variables are available to both the compiler and any post-build scripts.
- */
-function buildEnvironmentVariables(project: Prog8Project): string {
+function buildEnvironmentVariablesObject(project: Prog8Project, pathAdditions: string[]): Record<string, string> {
     const mainBaseName = path.basename(project.main, path.extname(project.main));
     const mainFileName = path.basename(project.main);
     const mainFilePath = path.join(project.projectDir, project.main);
     const mainFileDir = path.dirname(mainFilePath);
+    
     // For custom targets, default to .prg extension
     const outputExt = isCustomTarget(project.target) 
         ? '.prg' 
         : OUTPUT_EXTENSIONS[project.target as BuiltinTargetPlatform];
 
-    let prgPath: string;
-    if (project.outputDir) {
-        prgPath = path.join(project.projectDir, project.outputDir, mainBaseName + outputExt);
-    } else {
-        prgPath = path.join(project.projectDir, mainBaseName + outputExt);
-    }
+    const prgPath = project.outputDir
+        ? path.join(project.projectDir, project.outputDir, mainBaseName + outputExt)
+        : path.join(project.projectDir, mainBaseName + outputExt);
 
-    const isWindows = process.platform === 'win32';
+    const env: Record<string, string> = {
+        'PROG8_VSCODE_MAIN_FILE': mainFilePath,
+        'PROG8_VSCODE_MAIN_FILE_NAME': mainFileName,
+        'PROG8_VSCODE_MAIN_FILE_BASENAME': mainBaseName,
+        'PROG8_VSCODE_MAIN_FILE_DIR': mainFileDir,
+        'PROG8_VSCODE_TARGET': project.target,
+        'PROG8_VSCODE_OUTPUT_FILE': prgPath,
+        'PROG8_VSCODE_PROJECT_DIR': project.projectDir,
+    };
 
     // For custom targets, resolve the full path to the .properties file
-    const customTargetPath = isCustomTarget(project.target)
-        ? path.resolve(project.projectDir, project.target)
-        : undefined;
-
-    if (isWindows) {
-        let envVars = `$env:PROG8_VSCODE_MAIN_FILE = "${mainFilePath}";`;
-        envVars += ` $env:PROG8_VSCODE_MAIN_FILE_NAME = "${mainFileName}";`;
-        envVars += ` $env:PROG8_VSCODE_MAIN_FILE_BASENAME = "${mainBaseName}";`;
-        envVars += ` $env:PROG8_VSCODE_MAIN_FILE_DIR = "${mainFileDir}";`;
-        envVars += ` $env:PROG8_VSCODE_TARGET = "${project.target}";`;
-        envVars += ` $env:PROG8_VSCODE_OUTPUT_FILE = "${prgPath}";`;
-        envVars += ` $env:PROG8_VSCODE_PROJECT_DIR = "${project.projectDir}";`;
-        if (customTargetPath) {
-            envVars += ` $env:PROG8_VSCODE_TARGET_FILE = "${customTargetPath}";`;
-        }
-        if (project.srcdirs && project.srcdirs.length > 0) {
-            const resolvedDirs = resolveSrcDirs(project);
-            envVars += ` $env:PROG8_VSCODE_SRC_DIRS = "${resolvedDirs.join(';')}";`;
-        }
-        return envVars + ' ';
-    } else {
-        let envVars = `export PROG8_VSCODE_MAIN_FILE="${mainFilePath}";`;
-        envVars += ` export PROG8_VSCODE_MAIN_FILE_NAME="${mainFileName}";`;
-        envVars += ` export PROG8_VSCODE_MAIN_FILE_BASENAME="${mainBaseName}";`;
-        envVars += ` export PROG8_VSCODE_MAIN_FILE_DIR="${mainFileDir}";`;
-        envVars += ` export PROG8_VSCODE_TARGET="${project.target}";`;
-        envVars += ` export PROG8_VSCODE_OUTPUT_FILE="${prgPath}";`;
-        envVars += ` export PROG8_VSCODE_PROJECT_DIR="${project.projectDir}";`;
-        if (customTargetPath) {
-            envVars += ` export PROG8_VSCODE_TARGET_FILE="${customTargetPath}";`;
-        }
-        if (project.srcdirs && project.srcdirs.length > 0) {
-            const resolvedDirs = resolveSrcDirs(project);
-            envVars += ` export PROG8_VSCODE_SRC_DIRS="${resolvedDirs.join(';')}";`;
-        }
-        return envVars + ' ';
+    if (isCustomTarget(project.target)) {
+        env['PROG8_VSCODE_TARGET_FILE'] = path.resolve(project.projectDir, project.target);
     }
+    
+    if (project.srcdirs && project.srcdirs.length > 0) {
+        const resolvedDirs = resolveSrcDirs(project);
+        env['PROG8_VSCODE_SRC_DIRS'] = resolvedDirs.join(';');
+    }
+
+    // Add PATH additions if any
+    if (pathAdditions.length > 0) {
+        const pathSeparator = process.platform === 'win32' ? ';' : ':';
+        env['PATH'] = pathAdditions.join(pathSeparator) + pathSeparator + (process.env.PATH || '');
+    }
+
+    return env;
 }
 
 /**
- * Build a Prog8 project
+ * Ensure the task end listener is registered.
+ * This listener handles post-build actions like running the emulator.
+ */
+function ensureTaskEndListener(): void {
+    if (taskEndListenerDisposable) {
+        return;
+    }
+    
+    taskEndListenerDisposable = vscode.tasks.onDidEndTaskProcess(async (e) => {
+        const action = pendingPostBuildActions.get(e.execution);
+        if (!action) {
+            return;
+        }
+        
+        // Clean up
+        pendingPostBuildActions.delete(e.execution);
+        
+        // Only run post-build if compilation succeeded
+        if (e.exitCode !== 0) {
+            return;
+        }
+        
+        // Run post-build command
+        await runPostBuildCommand(action.project);
+    });
+}
+
+/**
+ * Run the post-build command for a project.
+ * Uses a separate task with the same environment variables.
+ */
+async function runPostBuildCommand(project: Prog8Project): Promise<void> {
+    if (!project.run) {
+        return;
+    }
+    
+    // Resolve the command path (could be relative to project dir)
+    let commandPath = project.run;
+    if (!path.isAbsolute(commandPath)) {
+        commandPath = path.join(project.projectDir, commandPath);
+    }
+    
+    const env = buildEnvironmentVariablesObject(project, []);
+    
+    const shellOptions: vscode.ShellExecutionOptions = {
+        cwd: project.projectDir,
+        env
+    };
+    
+    // Use createShellExecution to handle PowerShell scripts properly
+    const execution = createShellExecution(commandPath, [], shellOptions);
+    
+    const task = new vscode.Task(
+        { type: 'prog8', task: 'run' },
+        vscode.TaskScope.Workspace,
+        'Run: ' + (project.name || path.basename(project.projectDir)),
+        TASK_SOURCE,
+        execution
+    );
+    
+    task.presentationOptions = {
+        reveal: vscode.TaskRevealKind.Always,
+        panel: vscode.TaskPanelKind.Shared,
+        clear: false
+    };
+    
+    await vscode.tasks.executeTask(task);
+}
+
+/**
+ * Build a Prog8 project using the VS Code Task API.
+ * Environment variables are passed silently without cluttering the terminal output.
  * @param project Project configuration
  * @param runAfterBuild Whether to run the emulator after successful build
  * @returns True if validation passed and build was started
@@ -205,76 +249,54 @@ export async function buildProject(project: Prog8Project, runAfterBuild: boolean
     const options: CompilationOptions = { runAfterBuild };
     const commandInfo = strategy.buildCommand(project, resolvedConfig, options);
     
-    // Build the full command with PATH and environment setup
-    const pathPrefix = buildPathPrefix(commandInfo.pathAdditions);
-    const envPrefix = buildEnvironmentVariables(project);
-    const compileCommand = buildCommandString(commandInfo.commandParts);
+    // Build environment variables object (includes PATH additions)
+    const env = buildEnvironmentVariablesObject(project, commandInfo.pathAdditions);
     
-    // Build post-compile command if needed
-    // Skip this when using CustomScriptStrategy - the script already handles everything
-    let postCommand = '';
-    if (runAfterBuild && project.launchEmu !== true && project.run && !(strategy instanceof CustomScriptStrategy)) {
-        const customCmd = buildCustomCommand(project);
-        if (customCmd) {
-            // Chain commands - run post command only if compile succeeds
-            const isWindows = process.platform === 'win32';
-            if (isWindows) {
-                postCommand = `; if ($LASTEXITCODE -eq 0) { ${customCmd} }`;
-            } else {
-                postCommand = ` && ${customCmd}`;
-            }
-        }
-    }
+    // Strip quotes from command parts - createShellExecution handles quoting
+    const unquotedParts = commandInfo.commandParts.map(stripOuterQuotes);
+    const command = unquotedParts[0];
+    const args = unquotedParts.slice(1);
     
-    // Get or create terminal
-    const terminal = getTerminal();
-    terminal.show();
+    // Create shell execution with environment variables
+    const shellOptions: vscode.ShellExecutionOptions = {
+        cwd: project.projectDir,
+        env
+    };
     
-    // Build the header to display project info
+    // Use createShellExecution to handle PowerShell scripts and quoting properly
+    const execution = createShellExecution(command, args, shellOptions);
+    
     const projectName = project.name || path.basename(project.projectDir);
-    const isWindows = process.platform === 'win32';
+    const task = new vscode.Task(
+        { type: 'prog8', task: 'compile' },
+        vscode.TaskScope.Workspace,
+        `Build: ${projectName} [${strategy.getName()}]`,
+        TASK_SOURCE,
+        execution
+    );
     
-    let headerCommand: string;
-    if (isWindows) {
-        headerCommand = `Write-Host ""; Write-Host "Building: ${projectName}" -ForegroundColor Cyan; Write-Host "  Strategy: ${strategy.getName()}" -ForegroundColor Gray; Write-Host "  Target: ${project.target}" -ForegroundColor Gray; Write-Host "  Main: ${project.main}" -ForegroundColor Gray; Write-Host "";`;
-    } else {
-        headerCommand = `echo ""; echo -e "\\033[36mBuilding: ${projectName}\\033[0m"; echo "  Strategy: ${strategy.getName()}"; echo "  Target: ${project.target}"; echo "  Main: ${project.main}"; echo "";`;
+    // Configure task presentation
+    task.presentationOptions = {
+        reveal: vscode.TaskRevealKind.Always,
+        panel: vscode.TaskPanelKind.Shared,
+        clear: true,
+        echo: true
+    };
+    
+    // Execute the task
+    const taskExecution = await vscode.tasks.executeTask(task);
+    
+    // Register post-build action if needed
+    // Skip this when using CustomScriptStrategy - the script already handles everything
+    if (runAfterBuild && project.launchEmu !== true && project.run && !(strategy instanceof CustomScriptStrategy)) {
+        ensureTaskEndListener();
+        pendingPostBuildActions.set(taskExecution, {
+            project,
+            useCustomScript: false
+        });
     }
-    
-    // Change to project directory and run the command
-    // Use && for directory change so we don't run in wrong dir if cd fails
-    const cdCommand = isWindows 
-        ? `cd ${quotePath(project.projectDir)};`
-        : `cd ${quotePath(project.projectDir)} &&`;
-    const fullCommand = `${headerCommand} ${cdCommand} ${envPrefix}${pathPrefix}${compileCommand}${postCommand}`;
-    
-    terminal.sendText(fullCommand);
     
     return true;
-}
-
-/**
- * Build the custom post-compile command string.
- * Environment variables are already set by buildEnvironmentVariables() before the compile command.
- */
-function buildCustomCommand(project: Prog8Project): string | undefined {
-    if (!project.run) {
-        return undefined;
-    }
-    
-    // Resolve the command path (could be relative to project dir)
-    let commandPath = project.run;
-    if (!path.isAbsolute(commandPath)) {
-        commandPath = path.join(project.projectDir, commandPath);
-    }
-    
-    const isWindows = process.platform === 'win32';
-    
-    if (isWindows) {
-        return `& ${quotePath(commandPath)}`;
-    } else {
-        return quotePath(commandPath);
-    }
 }
 
 /**
@@ -331,4 +353,16 @@ export async function buildCurrentProject(): Promise<void> {
         const message = error instanceof Error ? error.message : String(error);
         vscode.window.showErrorMessage(`Failed to build project: ${message}`);
     }
+}
+
+/**
+ * Dispose of the task end listener.
+ * Should be called when the extension is deactivated.
+ */
+export function disposeProjectRunner(): void {
+    if (taskEndListenerDisposable) {
+        taskEndListenerDisposable.dispose();
+        taskEndListenerDisposable = undefined;
+    }
+    pendingPostBuildActions.clear();
 }
