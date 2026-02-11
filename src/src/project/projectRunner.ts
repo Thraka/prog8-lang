@@ -252,7 +252,7 @@ export async function buildProject(project: Prog8Project, runAfterBuild: boolean
     // Build environment variables object (includes PATH additions)
     const env = buildEnvironmentVariablesObject(project, commandInfo.pathAdditions);
     
-    // Strip quotes from command parts - createShellExecution handles quoting
+    // Strip quotes from command parts
     const unquotedParts = commandInfo.commandParts.map(stripOuterQuotes);
     const command = unquotedParts[0];
     const args = unquotedParts.slice(1);
@@ -272,7 +272,8 @@ export async function buildProject(project: Prog8Project, runAfterBuild: boolean
         vscode.TaskScope.Workspace,
         `Build: ${projectName} [${strategy.getName()}]`,
         TASK_SOURCE,
-        execution
+        execution,
+        '$prog8'  // Problem matcher for compiler errors
     );
     
     // Configure task presentation

@@ -168,6 +168,21 @@
         }
       }
     },
+    "problemMatchers": [
+      {
+        "name": "prog8",
+        "owner": "prog8",
+        "fileLocation": "absolute",
+        "pattern": {
+          "regexp": "^(ERROR|WARN|INFO)\\s+file:///(\\S+?):(\\d+):(\\d+):\\s+(.*)$",
+          "severity": 1,
+          "file": 2,
+          "line": 3,
+          "column": 4,
+          "message": 5
+        }
+      }
+    ],
     "commands": [
       {
         "command": "prog8.selectTargetPlatform",
