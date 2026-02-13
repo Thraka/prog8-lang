@@ -8,10 +8,10 @@ import {
     SubroutineInfo, 
     VariableInfo, 
     ConstantInfo,
-    Parameter,
     formatSubroutineSignature 
 } from '../data/librarySymbolsHelpers';
-import { getTargetPlatform, getTargetPlatformForDocument } from '../utils/targetPlatform';
+import { TargetPlatform } from '../utils/targetPlatform';
+import { getTargetPlatformForDocument } from '../utils/targetPlatform';
 import { 
     ImportedFileSymbols,
 } from '../parser/importResolver';
@@ -26,18 +26,18 @@ import { getKeywordsForLanguage } from '../data/keywords';
  */
 export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
     
-    /** Current document being processed (set during provideCompletionItems) */
-    private currentDocument: vscode.TextDocument | undefined;
+    /** Target platform cached for current completion request */
+    private targetPlatform: TargetPlatform = 'cx16';
 
     async provideCompletionItems(
         document: vscode.TextDocument,
         position: vscode.Position,
         token: vscode.CancellationToken,
         context: vscode.CompletionContext
-    ): Promise<vscode.CompletionItem[] | vscode.CompletionList> {
+    ): Promise<vscode.CompletionItem[]> {
         
-        // Store document for use by helper methods
-        this.currentDocument = document;
+        // Cache target platform for use by helper methods
+        this.targetPlatform = getTargetPlatformForDocument(document);
         
         const completions: vscode.CompletionItem[] = [];
 
@@ -118,7 +118,7 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
         const completions: vscode.CompletionItem[] = [];
         const addedModules = new Set<string>();
         
-        const modules = getAllModules(getTargetPlatformForDocument(this.currentDocument));
+        const modules = getAllModules(this.targetPlatform);
         for (const mod of modules) {
             if (addedModules.has(mod.name)) {
                 continue;
@@ -184,7 +184,7 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
 
         // Check if prefix is a library block.sub path (e.g., "diskio.lf_start_list")
         // to offer subroutine parameter completions
-        if (prefix.includes('.') && libraryCompletions.length === 0) {
+        if (prefix.includes('.')) {
             const subMemberCompletions = this.getLibrarySubMemberCompletions(prefix);
             completions.push(...subMemberCompletions);
             subMemberCompletions.forEach(item => addedNames.add(item.label as string));
@@ -319,7 +319,7 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
         const completions: vscode.CompletionItem[] = [];
         
         // Get library blocks for the selected target platform
-        const blocks = getAllBlocks(getTargetPlatform());
+        const blocks = getAllBlocks(this.targetPlatform);
         const block = blocks.find(b => b.name === blockName);
         
         if (!block) {
@@ -354,7 +354,7 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
     private getLibrarySubMemberCompletions(prefix: string): vscode.CompletionItem[] {
         const completions: vscode.CompletionItem[] = [];
 
-        const params = getSubroutineMembers(prefix, getTargetPlatformForDocument(this.currentDocument));
+        const params = getSubroutineMembers(prefix, this.targetPlatform);
         for (const param of params) {
             const item = new vscode.CompletionItem(param.name);
             item.kind = vscode.CompletionItemKind.Field;
@@ -381,7 +381,7 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
         const completions: vscode.CompletionItem[] = [];
         const addedBlocks = new Set<string>();
         
-        const blocks = getAllBlocks(getTargetPlatform());
+        const blocks = getAllBlocks(this.targetPlatform);
         for (const block of blocks) {
             if (addedBlocks.has(block.name)) {
                 continue;
@@ -455,9 +455,8 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
      * Check if we're typing a directive (line starts with %) - Prog8 only
      */
     private isTypingDirective(linePrefix: string, document: vscode.TextDocument): boolean {
-        const isProgB = document.languageId === 'progb' || document.fileName.endsWith('.pb');
         // ProgB doesn't use % directives
-        if (isProgB) {
+        if (unifiedParser.isProgB(document)) {
             return false;
         }
         const trimmed = linePrefix.trim();
@@ -507,7 +506,7 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
      */
     private getKeywordCompletions(document: vscode.TextDocument): vscode.CompletionItem[] {
         const completions: vscode.CompletionItem[] = [];
-        const isProgB = document.languageId === 'progb' || document.fileName.endsWith('.pb');
+        const isProgB = unifiedParser.isProgB(document);
         const languageId = isProgB ? 'progb' : 'prog8';
 
         const keywords = getKeywordsForLanguage(isProgB);
@@ -622,6 +621,22 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
     }
 
     /**
+     * Symbol kinds that should be included in local variable completions
+     */
+    private static readonly LOCAL_COMPLETION_KINDS = new Set([
+        SymbolKind.Variable,
+        SymbolKind.Constant,
+        SymbolKind.Parameter,
+        SymbolKind.Subroutine,
+        SymbolKind.AsmSubroutine,
+        SymbolKind.ExtSubroutine,
+        SymbolKind.Block,
+        SymbolKind.Struct,
+        SymbolKind.Alias,
+        SymbolKind.Label
+    ]);
+
+    /**
      * Get completions for local variables accessible from the current scope.
      * In Prog8, variables are scoped to their subroutine and are visible
      * to nested subroutines.
@@ -635,15 +650,8 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
         const addedNames = new Set<string>(); // Avoid duplicates
 
         for (const symbol of symbols) {
-            // Only include variables, constants, and parameters
-            if (symbol.kind !== SymbolKind.Variable && 
-                symbol.kind !== SymbolKind.Constant && 
-                symbol.kind !== SymbolKind.Parameter) {
-                continue;
-            }
-
-            // Check if this symbol is accessible from the current scope
-            if (!this.isSymbolAccessible(symbol, currentScope)) {
+            // Skip symbol kinds we don't want in completions
+            if (!Prog8CompletionProvider.LOCAL_COMPLETION_KINDS.has(symbol.kind)) {
                 continue;
             }
 
@@ -651,84 +659,36 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
             if (addedNames.has(symbol.name)) {
                 continue;
             }
+
+            // Check accessibility based on symbol kind
+            switch (symbol.kind) {
+                case SymbolKind.Variable:
+                case SymbolKind.Constant:
+                case SymbolKind.Parameter:
+                case SymbolKind.Subroutine:
+                case SymbolKind.AsmSubroutine:
+                case SymbolKind.ExtSubroutine:
+                case SymbolKind.Struct:
+                case SymbolKind.Alias:
+                    // These require scope accessibility check
+                    if (!this.isSymbolAccessible(symbol, currentScope)) {
+                        continue;
+                    }
+                    break;
+
+                case SymbolKind.Block:
+                    // Blocks are always accessible for qualified access
+                    break;
+
+                case SymbolKind.Label:
+                    // Labels must be in the same scope
+                    if (symbol.parent !== currentScope) {
+                        continue;
+                    }
+                    break;
+            }
+
             addedNames.add(symbol.name);
-
-            // Create completion item
-            const item = this.createCompletionItem(symbol);
-            completions.push(item);
-        }
-
-        // Also add subroutines that are accessible from current scope
-        for (const symbol of symbols) {
-            if (symbol.kind !== SymbolKind.Subroutine && 
-                symbol.kind !== SymbolKind.AsmSubroutine &&
-                symbol.kind !== SymbolKind.ExtSubroutine) {
-                continue;
-            }
-
-            if (!this.isSymbolAccessible(symbol, currentScope)) {
-                continue;
-            }
-
-            if (addedNames.has(symbol.name)) {
-                continue;
-            }
-            addedNames.add(symbol.name);
-
-            const item = this.createCompletionItem(symbol);
-            completions.push(item);
-        }
-
-        // Add blocks as they can be used for qualified access
-        for (const symbol of symbols) {
-            if (symbol.kind !== SymbolKind.Block) {
-                continue;
-            }
-
-            if (addedNames.has(symbol.name)) {
-                continue;
-            }
-            addedNames.add(symbol.name);
-
-            const item = this.createCompletionItem(symbol);
-            completions.push(item);
-        }
-
-        // Add structs and aliases as they can be used as types in declarations
-        for (const symbol of symbols) {
-            if (symbol.kind !== SymbolKind.Struct && symbol.kind !== SymbolKind.Alias) {
-                continue;
-            }
-
-            if (!this.isSymbolAccessible(symbol, currentScope)) {
-                continue;
-            }
-
-            if (addedNames.has(symbol.name)) {
-                continue;
-            }
-            addedNames.add(symbol.name);
-
-            const item = this.createCompletionItem(symbol);
-            completions.push(item);
-        }
-
-        // Add labels in current scope
-        for (const symbol of symbols) {
-            if (symbol.kind !== SymbolKind.Label) {
-                continue;
-            }
-
-            // Labels should be in the same scope
-            if (symbol.parent !== currentScope) {
-                continue;
-            }
-
-            if (addedNames.has(symbol.name)) {
-                continue;
-            }
-            addedNames.add(symbol.name);
-
             const item = this.createCompletionItem(symbol);
             completions.push(item);
         }
@@ -897,16 +857,5 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
             default:
                 return symbol.name;
         }
-    }
-
-    /**
-     * Provide additional information when an item is selected
-     */
-    resolveCompletionItem(
-        item: vscode.CompletionItem,
-        token: vscode.CancellationToken
-    ): vscode.CompletionItem {
-        // Item already has all info from provideCompletionItems
-        return item;
     }
 }
