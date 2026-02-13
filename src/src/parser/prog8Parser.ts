@@ -396,7 +396,8 @@ export class Prog8Parser {
         }
 
         // Regular variable: type [@tags] name [= value]
-        const varMatch = trimmedLine.match(/^(ubyte|byte|uword|word|long|ulong|float|bool|str)(\[\d*\])?\s+(@\w+\s+)*([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)/);
+        // Supports primitive types, pointer types (^, ^^), and custom type names
+        const varMatch = trimmedLine.match(/^(\^{0,2}(?:ubyte|byte|uword|word|long|ulong|float|bool|str|[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*))(\[\d*\])?\s+(@\w+\s+)*([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)/);
         if (varMatch) {
             const baseType = varMatch[1];
             const arrayPart = varMatch[2] || '';

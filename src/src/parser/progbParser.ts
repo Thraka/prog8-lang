@@ -436,8 +436,9 @@ export class ProgBParser {
             }
 
             // Check for struct fields when inside a TYPE: name AS type
+            // Supports primitive types, pointer types (^, ^^), and custom type names
             if (scopeStack.length > 0 && scopeStack[scopeStack.length - 1].kind === SymbolKind.Struct) {
-                const fieldMatch = trimmedLine.match(/^([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s+AS\s+(UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|PTR)/i);
+                const fieldMatch = trimmedLine.match(/^([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s+AS\s+(\^{0,2}(?:UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|PTR|[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*))/i);
                 if (fieldMatch) {
                     const name = fieldMatch[1];
                     const type = this.convertProgBType(fieldMatch[2]);
