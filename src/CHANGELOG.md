@@ -2,6 +2,18 @@
 
 All notable changes to the Prog8 Language Support extension will be documented in this file.
 
+## [1.6.11] - 2026-02-12
+
+- Fix multiline subs.
+- Fix symbol support on structs.
+- De-symboling of comment blocks.
+
+## [1.6.10] - 2026-02-10
+
+- Rewrite the project runner to use the VSCode task system.
+- A little bit of custom target support added. Still in progress.
+
+
 ## [1.6.9] - 2026-02-09
 
 - Fixed a bug with custom scripts running twice.
