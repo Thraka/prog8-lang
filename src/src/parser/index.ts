@@ -56,6 +56,61 @@ export class UnifiedParser {
     }
 
     /**
+     * Resolve a struct member access like `variable.member` where `variable` is a typed variable.
+     * Returns the struct field symbol if found, or undefined if not a struct member access.
+     * 
+     * @param qualifiedName The qualified name (e.g., "head.name")
+     * @param symbols All symbols in scope
+     * @param currentScope The current scope for resolving the variable
+     * @returns The struct field symbol, or undefined
+     */
+    resolveStructMemberAccess(
+        qualifiedName: string,
+        symbols: UnifiedSymbol[],
+        currentScope?: string
+    ): UnifiedSymbol | undefined {
+        if (!qualifiedName.includes('.')) {
+            return undefined;
+        }
+
+        const parts = qualifiedName.split('.');
+        if (parts.length !== 2) {
+            // For now, only handle single-level member access
+            return undefined;
+        }
+
+        const [varName, memberName] = parts;
+
+        // Find the variable
+        const variable = this.findSymbol(symbols, varName, currentScope);
+        if (!variable || !variable.type) {
+            return undefined;
+        }
+
+        // Extract the base type name by stripping pointer prefixes (^, ^^)
+        const baseTypeName = variable.type.replace(/^\^+/, '');
+
+        // Find the struct/type definition
+        const structSymbol = symbols.find(s => 
+            (s.kind === Prog8SymbolKind.Struct || s.kind === Prog8SymbolKind.Alias) && 
+            s.name === baseTypeName
+        );
+
+        if (!structSymbol) {
+            return undefined;
+        }
+
+        // Find the field within the struct
+        const fieldFullPath = `${structSymbol.fullPath}.${memberName}`;
+        const field = symbols.find(s => 
+            s.kind === Prog8SymbolKind.StructField && 
+            s.fullPath === fieldFullPath
+        );
+
+        return field;
+    }
+
+    /**
      * Check if a document is a ProgB file
      */
     isProgB(document: vscode.TextDocument): boolean {

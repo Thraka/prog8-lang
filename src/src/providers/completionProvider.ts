@@ -77,7 +77,7 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
         
         if (qualifiedPrefixValue) {
             // Scoped completion - show only members of the specified scope
-            const scopedCompletions = this.getScopedCompletions(qualifiedPrefixValue, symbols, importedFileSymbols);
+            const scopedCompletions = this.getScopedCompletions(qualifiedPrefixValue, symbols, importedFileSymbols, currentScope);
             completions.push(...scopedCompletions);
         } else {
             // Regular completion - show local variables and accessible symbols
@@ -171,7 +171,8 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
     private getScopedCompletions(
         prefix: string, 
         symbols: UnifiedSymbol[], 
-        importedFileSymbols: ImportedFileSymbols[] = []
+        importedFileSymbols: ImportedFileSymbols[] = [],
+        currentScope?: string
     ): vscode.CompletionItem[] {
         const completions: vscode.CompletionItem[] = [];
         const addedNames = new Set<string>();
@@ -188,6 +189,11 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
             completions.push(...subMemberCompletions);
             subMemberCompletions.forEach(item => addedNames.add(item.label as string));
         }
+
+        // Check if prefix is a variable with a struct type - offer struct fields
+        const structMemberCompletions = this.getStructMemberCompletions(prefix, symbols, currentScope);
+        completions.push(...structMemberCompletions);
+        structMemberCompletions.forEach(item => addedNames.add(item.label as string));
 
         // Then, check local symbols that belong to this scope
         for (const symbol of symbols) {
@@ -219,6 +225,46 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
                         }
                     }
                 }
+            }
+        }
+
+        return completions;
+    }
+
+    /**
+     * Get completions for struct fields when the prefix is a variable with a struct type
+     */
+    private getStructMemberCompletions(
+        prefix: string,
+        symbols: UnifiedSymbol[],
+        currentScope?: string
+    ): vscode.CompletionItem[] {
+        const completions: vscode.CompletionItem[] = [];
+
+        // Find the variable with this name
+        const variable = unifiedParser.findSymbol(symbols, prefix, currentScope);
+        if (!variable || !variable.type) {
+            return completions;
+        }
+
+        // Extract the base type name by stripping pointer prefixes (^, ^^)
+        const baseTypeName = variable.type.replace(/^\^+/, '');
+
+        // Find the struct/type definition
+        const structSymbol = symbols.find(s => 
+            (s.kind === SymbolKind.Struct || s.kind === SymbolKind.Alias) && 
+            s.name === baseTypeName
+        );
+
+        if (!structSymbol) {
+            return completions;
+        }
+
+        // Find all fields of this struct
+        for (const symbol of symbols) {
+            if (symbol.kind === SymbolKind.StructField && symbol.parent === structSymbol.fullPath) {
+                const item = this.createCompletionItem(symbol);
+                completions.push(item);
             }
         }
 
@@ -636,6 +682,25 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
         // Add blocks as they can be used for qualified access
         for (const symbol of symbols) {
             if (symbol.kind !== SymbolKind.Block) {
+                continue;
+            }
+
+            if (addedNames.has(symbol.name)) {
+                continue;
+            }
+            addedNames.add(symbol.name);
+
+            const item = this.createCompletionItem(symbol);
+            completions.push(item);
+        }
+
+        // Add structs and aliases as they can be used as types in declarations
+        for (const symbol of symbols) {
+            if (symbol.kind !== SymbolKind.Struct && symbol.kind !== SymbolKind.Alias) {
+                continue;
+            }
+
+            if (!this.isSymbolAccessible(symbol, currentScope)) {
                 continue;
             }
 

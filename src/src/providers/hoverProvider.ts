@@ -80,6 +80,13 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
             if (localQualifiedSymbol) {
                 return this.createHoverForSymbol(localQualifiedSymbol);
             }
+
+            // Check for struct member access (e.g., variable.member where variable has a struct type)
+            const currentScope = unifiedParser.getScopeAtPosition(symbols, position);
+            const structMember = unifiedParser.resolveStructMemberAccess(qualifiedName, symbols, currentScope);
+            if (structMember) {
+                return this.createHoverForSymbol(structMember);
+            }
         }
 
         // Check if it's a built-in function

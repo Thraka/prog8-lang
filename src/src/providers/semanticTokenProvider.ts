@@ -214,6 +214,7 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
     /**
      * Emit separate semantic tokens for each segment of a qualified name.
      * e.g. "monitor.open" → "monitor" as namespace, "open" as function.
+     * e.g. "head.name" → "head" as variable, "name" as property (struct field).
      * 
      * Walks the segments left to right, building up the qualified path
      * and resolving each segment to its own symbol.
@@ -232,6 +233,9 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
         const parts = qualifiedName.split('.');
         let currentCol = startCol;
         let pathSoFar = '';
+
+        // Track the first part's type for struct member resolution
+        let firstPartVariable: UnifiedSymbol | undefined;
 
         for (let i = 0; i < parts.length; i++) {
             const part = parts[i];
@@ -267,6 +271,11 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
                         resolved = librarySymbols.find(s => s.name === pathSoFar && !s.parent);
                     }
                 }
+
+                // If still not found and this is the second part, try struct member resolution
+                if (!resolved && i === 1 && firstPartVariable && firstPartVariable.type) {
+                    resolved = unifiedParser.resolveStructMemberAccess(qualifiedName, symbols, scope);
+                }
                 
                 if (resolved) {
                     const { tokenType, modifiers } = this.classifySymbol(resolved);
@@ -275,6 +284,11 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
                         tokenType,
                         modifiers
                     );
+                }
+
+                // Track first part for struct member resolution
+                if (i === 0 && resolved) {
+                    firstPartVariable = resolved;
                 }
             } else {
                 pathSoFar = pathSoFar ? `${pathSoFar}.${part}` : part;

@@ -655,7 +655,8 @@ export class Prog8Parser {
         for (const symbol of symbols) {
             if ((symbol.kind === SymbolKind.Block || 
                  symbol.kind === SymbolKind.Subroutine || 
-                 symbol.kind === SymbolKind.AsmSubroutine) &&
+                 symbol.kind === SymbolKind.AsmSubroutine ||
+                 symbol.kind === SymbolKind.Struct) &&
                 symbol.range.contains(position)) {
                 if (!minRange || symbol.range.start.isAfter(minRange.start)) {
                     currentScope = symbol.fullPath;

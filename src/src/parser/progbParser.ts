@@ -370,7 +370,8 @@ export class ProgBParser {
             }
 
             // Check for CONST declarations: CONST name AS type = value
-            const constMatch = trimmedLine.match(/^CONST\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s+AS\s+(UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING)\s*=\s*(.+)/i);
+            // Supports primitive types, pointer types (^, ^^), and custom type names
+            const constMatch = trimmedLine.match(/^CONST\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s+AS\s+(\^{0,2}(?:UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*))\s*=\s*(.+)/i);
             if (constMatch) {
                 const name = constMatch[1];
                 const type = this.convertProgBType(constMatch[2]);
@@ -530,7 +531,8 @@ export class ProgBParser {
         }
 
         // DIM with AT (memory-mapped): DIM name AS type AT $address
-        const memoryMatch = trimmedLine.match(/^DIM\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)(?:\s*\[([^\]]*)\])?\s+AS\s+(UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING)\s+AT\s+(\$[0-9a-fA-F]+)/i);
+        // Supports primitive types, pointer types (^, ^^), and custom type names
+        const memoryMatch = trimmedLine.match(/^DIM\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)(?:\s*\[([^\]]*)\])?\s+AS\s+(\^{0,2}(?:UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*))\s+AT\s+(\$[0-9a-fA-F]+)/i);
         if (memoryMatch) {
             const name = memoryMatch[1];
             const arraySize = memoryMatch[2];
@@ -555,7 +557,8 @@ export class ProgBParser {
 
         // Regular DIM: DIM name[size], name2 AS type [= value] [@tags]
         // Pattern: DIM var1[10], var2, var3 AS UBYTE
-        const dimMatch = trimmedLine.match(/^DIM\s+(.+?)\s+AS\s+(UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|PTR)(?:\s+(@\w+))?/i);
+        // Supports primitive types, pointer types (^, ^^), and custom type names
+        const dimMatch = trimmedLine.match(/^DIM\s+(.+?)\s+AS\s+(\^{0,2}(?:UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|PTR|[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*))(?:\s+(@\w+))?/i);
         if (dimMatch) {
             const varList = dimMatch[1];
             const baseType = this.convertProgBType(dimMatch[2]);
@@ -598,7 +601,8 @@ export class ProgBParser {
         if (!params.trim()) return;
 
         // ProgB parameter format: name AS TYPE [@reg]
-        const paramRegex = /([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s+AS\s+(UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|PTR)(?:\s*(@\w+))?/gi;
+        // Supports primitive types, pointer types (^, ^^), and custom type names
+        const paramRegex = /([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s+AS\s+(\^{0,2}(?:UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|PTR|[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*))(?:\s*(@\w+))?/gi;
         let match;
         while ((match = paramRegex.exec(params)) !== null) {
             const name = match[1];
@@ -635,7 +639,8 @@ export class ProgBParser {
         if (!params.trim()) return;
 
         // ProgB parameter format: name AS TYPE [@reg]
-        const paramRegex = /([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s+AS\s+(UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|PTR)(?:\s*(@\w+))?/gi;
+        // Supports primitive types, pointer types (^, ^^), and custom type names
+        const paramRegex = /([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s+AS\s+(\^{0,2}(?:UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|PTR|[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*))(?:\s*(@\w+))?/gi;
         let match;
         while ((match = paramRegex.exec(params)) !== null) {
             const name = match[1];
@@ -694,6 +699,12 @@ export class ProgBParser {
      */
     private convertProgBType(type: string | undefined): string | undefined {
         if (!type) return undefined;
+        
+        // Extract pointer prefixes (^ or ^^)
+        const pointerMatch = type.match(/^(\^{1,2})(.+)$/);
+        const pointerPrefix = pointerMatch ? pointerMatch[1] : '';
+        const baseType = pointerMatch ? pointerMatch[2] : type;
+        
         const typeMap: { [key: string]: string } = {
             'UBYTE': 'ubyte',
             'BYTE': 'byte',
@@ -705,7 +716,9 @@ export class ProgBParser {
             'STRING': 'str',
             'PTR': '^^'
         };
-        return typeMap[type.toUpperCase()] || type.toLowerCase();
+        
+        const convertedBase = typeMap[baseType.toUpperCase()] || baseType;
+        return pointerPrefix + convertedBase;
     }
 
     /**
@@ -815,7 +828,8 @@ export class ProgBParser {
         for (const symbol of symbols) {
             if ((symbol.kind === SymbolKind.Block || 
                  symbol.kind === SymbolKind.Subroutine || 
-                 symbol.kind === SymbolKind.AsmSubroutine) &&
+                 symbol.kind === SymbolKind.AsmSubroutine ||
+                 symbol.kind === SymbolKind.Struct) &&
                 symbol.range.contains(position)) {
                 if (!minRange || symbol.range.start.isAfter(minRange.start)) {
                     currentScope = symbol.fullPath;

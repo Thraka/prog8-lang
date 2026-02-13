@@ -31,7 +31,15 @@ export class Prog8DefinitionProvider implements vscode.DefinitionProvider {
             return new vscode.Location(localSymbol.uri, localSymbol.selectionRange);
         }
 
-        // 2. Search in imported file symbols
+        // 2. Check for struct member access (e.g., variable.member where variable has a struct type)
+        if (word.includes('.')) {
+            const structMember = unifiedParser.resolveStructMemberAccess(word, localSymbols, currentScope);
+            if (structMember) {
+                return new vscode.Location(structMember.uri, structMember.selectionRange);
+            }
+        }
+
+        // 3. Search in imported file symbols
         for (const imported of importedFileSymbols) {
             // Try qualified name match first
             if (word.includes('.')) {

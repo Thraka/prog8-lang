@@ -31,6 +31,11 @@ export class Prog8ReferenceProvider implements vscode.ReferenceProvider {
         // Try to find the symbol definition in local symbols first
         let symbol = unifiedParser.findSymbol(localSymbols, word, currentScope);
         
+        // If not found locally, try struct member access resolution
+        if (!symbol && word.includes('.')) {
+            symbol = unifiedParser.resolveStructMemberAccess(word, localSymbols, currentScope);
+        }
+
         // If not found locally, check imported file symbols
         if (!symbol) {
             for (const imported of importedFileSymbols) {
