@@ -5,7 +5,7 @@ import { findSubroutine, findVariable, findConstant, findSubroutineParameter, ge
 import { getTargetPlatform, getTargetPlatformForDocument } from '../utils/targetPlatform';
 import { parseImports, findSymbolInImports, ImportedFileSymbols, resolveLocalImport, getSrcDirsForDocument } from '../parser/importResolver';
 import { getAllAccessibleSymbols } from '../parser/symbolAggregator';
-import { isInImportStatement, getQualifiedNameAtPosition } from './providerUtils';
+import { isInImportStatement, getQualifiedNameAtPosition, isInComment } from './providerUtils';
 import { getBuiltinFunction } from '../data/builtinFunctions';
 
 /**
@@ -19,6 +19,11 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
         token: vscode.CancellationToken
     ): Promise<vscode.Hover | undefined> {
         
+        // Skip positions inside comments
+        if (isInComment(document, position)) {
+            return undefined;
+        }
+
         const word = unifiedParser.getWordAtPosition(document, position);
         if (!word) {
             return undefined;

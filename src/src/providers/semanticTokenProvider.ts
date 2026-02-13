@@ -74,11 +74,14 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
             }
         }
 
+        // Build comment ranges for the entire document (used by both phases)
+        const documentCommentRanges = this.buildDocumentCommentRanges(document);
+
         // Phase 1: Emit tokens for declaration sites (local symbols only)
-        this.emitDeclarationTokens(builder, symbols);
+        this.emitDeclarationTokens(builder, symbols, documentCommentRanges);
 
         // Phase 2: Scan every line for usage sites
-        this.emitUsageTokens(builder, document, symbols, symbolsByName, importedFileSymbols, librarySymbols);
+        this.emitUsageTokens(builder, document, symbols, symbolsByName, importedFileSymbols, librarySymbols, documentCommentRanges);
 
         return builder.build();
     }
@@ -88,9 +91,16 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
      */
     private emitDeclarationTokens(
         builder: vscode.SemanticTokensBuilder,
-        symbols: UnifiedSymbol[]
+        symbols: UnifiedSymbol[],
+        documentCommentRanges: Map<number, Array<{ start: number; end: number }>>
     ): void {
         for (const sym of symbols) {
+            // Skip symbols that are inside comments
+            const lineRanges = documentCommentRanges.get(sym.selectionRange.start.line);
+            if (lineRanges && this.isInCommentRanges(sym.selectionRange.start.character, lineRanges)) {
+                continue;
+            }
+
             const { tokenType, modifiers } = this.classifySymbol(sym);
             const declModifiers = [...modifiers, 'declaration'];
 
@@ -109,7 +119,8 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
         symbols: UnifiedSymbol[],
         symbolsByName: Map<string, UnifiedSymbol[]>,
         importedFileSymbols: ImportedFileSymbols[],
-        librarySymbols: UnifiedSymbol[]
+        librarySymbols: UnifiedSymbol[],
+        documentCommentRanges: Map<number, Array<{ start: number; end: number }>>
     ): void {
         const text = document.getText();
         const lines = text.split(/\r?\n/);
@@ -128,8 +139,11 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
             const line = lines[lineIndex];
             const trimmed = line.trim();
 
-            // Skip pure comment lines
-            if (trimmed.startsWith(';') || trimmed.startsWith('/*') || trimmed.startsWith("'")) {
+            // Get pre-built comment ranges for this line
+            const commentRanges = documentCommentRanges.get(lineIndex) || [];
+
+            // Skip pure comment lines (entire line is in a comment)
+            if (commentRanges.length === 1 && commentRanges[0].start === 0 && commentRanges[0].end >= line.length) {
                 continue;
             }
 
@@ -146,8 +160,8 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
                 const col = match.index;
                 const endCol = col + word.length;
 
-                // Skip if inside a comment on this line
-                if (this.isInLineComment(line, col)) {
+                // Skip if inside a comment on this line (line comment or block comment)
+                if (this.isInLineComment(line, col) || this.isInCommentRanges(col, commentRanges)) {
                     continue;
                 }
 
@@ -354,5 +368,123 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
             }
         }
         return inString;
+    }
+
+    /**
+     * Parse a line to find block comment ranges, tracking state from previous lines.
+     * Returns the ranges of characters that are inside block comments on this line,
+     * and whether the line ends inside a block comment.
+     */
+    private parseLineCommentRanges(
+        line: string,
+        startInBlockComment: boolean
+    ): { inComment: boolean; commentRanges: Array<{ start: number; end: number }> } {
+        const commentRanges: Array<{ start: number; end: number }> = [];
+        let inBlockComment = startInBlockComment;
+        let blockCommentStart = inBlockComment ? 0 : -1;
+        let inString = false;
+        let i = 0;
+
+        while (i < line.length) {
+            const ch = line[i];
+            const nextCh = line[i + 1];
+
+            // Track string state (but not when we're in a block comment)
+            if (!inBlockComment && ch === '"' && (i === 0 || line[i - 1] !== '\\')) {
+                inString = !inString;
+                i++;
+                continue;
+            }
+
+            // Skip if we're inside a string
+            if (inString) {
+                i++;
+                continue;
+            }
+
+            // Prog8 block comment start: /*
+            if (!inBlockComment && ch === '/' && nextCh === '*') {
+                inBlockComment = true;
+                blockCommentStart = i;
+                i += 2;
+                continue;
+            }
+
+            // Prog8 block comment end: */
+            if (inBlockComment && ch === '*' && nextCh === '/') {
+                commentRanges.push({ start: blockCommentStart, end: i + 2 });
+                inBlockComment = false;
+                blockCommentStart = -1;
+                i += 2;
+                continue;
+            }
+
+            // ProgB block comment start: /'
+            if (!inBlockComment && ch === '/' && nextCh === "'") {
+                inBlockComment = true;
+                blockCommentStart = i;
+                i += 2;
+                continue;
+            }
+
+            // ProgB block comment end: '/
+            if (inBlockComment && ch === "'" && nextCh === '/') {
+                commentRanges.push({ start: blockCommentStart, end: i + 2 });
+                inBlockComment = false;
+                blockCommentStart = -1;
+                i += 2;
+                continue;
+            }
+
+            i++;
+        }
+
+        // If we're still in a block comment at end of line, add range to end
+        if (inBlockComment && blockCommentStart !== -1) {
+            commentRanges.push({ start: blockCommentStart, end: line.length });
+        } else if (inBlockComment && blockCommentStart === -1) {
+            // Entire line is in a block comment that started on a previous line
+            commentRanges.push({ start: 0, end: line.length });
+        }
+
+        return { inComment: inBlockComment, commentRanges };
+    }
+
+    /**
+     * Check if a column position falls within any of the comment ranges.
+     */
+    private isInCommentRanges(col: number, ranges: Array<{ start: number; end: number }>): boolean {
+        for (const range of ranges) {
+            if (col >= range.start && col < range.end) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Build comment ranges for the entire document.
+     * Returns a map from line number to array of comment ranges on that line.
+     */
+    private buildDocumentCommentRanges(
+        document: vscode.TextDocument
+    ): Map<number, Array<{ start: number; end: number }>> {
+        const result = new Map<number, Array<{ start: number; end: number }>>();
+        const text = document.getText();
+        const lines = text.split(/\r?\n/);
+        
+        let inBlockComment = false;
+        
+        for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+            const line = lines[lineIndex];
+            const { inComment: lineEndsInComment, commentRanges } = this.parseLineCommentRanges(line, inBlockComment);
+            inBlockComment = lineEndsInComment;
+            
+            if (commentRanges.length > 0) {
+                result.set(lineIndex, commentRanges);
+            }
+        }
+        
+        return result;
     }
 }
