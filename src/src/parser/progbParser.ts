@@ -48,6 +48,18 @@ export class ProgBParser {
         // Track scope with a stack of { name, kind, symbolIndex, startLine }
         const scopeStack: { name: string; kind: SymbolKind; symbolIndex: number; startLine: number }[] = [];
 
+        // Track multiline sub/function declarations
+        let pendingSub: {
+            startLine: number;
+            firstLine: string;
+            accumulatedParams: string;
+            isInline: boolean;
+            subKind: SymbolKind;
+            name: string;
+            scopePath: string;
+            keyword: string;  // 'SUB', 'FUNCTION', 'ASMSUB'
+        } | null = null;
+
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
             const line = lines[lineIndex];
             const trimmedLine = this.stripComments(line).trim();
@@ -58,6 +70,56 @@ export class ProgBParser {
 
             // Get current scope path
             const scopePath = scopeStack.map(s => s.name).join('.');
+
+            // Handle multiline sub/function declaration continuation
+            if (pendingSub) {
+                // Accumulate this line's content (strip comments first)
+                const continuationContent = this.stripComments(line).trim();
+                pendingSub.accumulatedParams += ' ' + continuationContent;
+
+                // Check if we now have the closing parenthesis
+                if (pendingSub.accumulatedParams.includes(')')) {
+                    // Extract the full params and complete the sub declaration
+                    const fullDecl = pendingSub.accumulatedParams;
+                    const closeParenIdx = fullDecl.indexOf(')');
+                    const openParenIdx = fullDecl.indexOf('(');
+                    const params = openParenIdx !== -1 ? fullDecl.substring(openParenIdx + 1, closeParenIdx) : '';
+                    const afterParen = fullDecl.substring(closeParenIdx + 1).trim();
+                    
+                    // For FUNCTION, check for AS return type
+                    let returnType: string | undefined;
+                    if (pendingSub.keyword === 'FUNCTION') {
+                        const returnMatch = afterParen.match(/^AS\s+(\w+)/i);
+                        returnType = returnMatch ? this.convertProgBType(returnMatch[1]) : undefined;
+                    }
+                    
+                    const fullPath = pendingSub.scopePath ? `${pendingSub.scopePath}.${pendingSub.name}` : pendingSub.name;
+                    const nameStart = this.findIdentifierStart(pendingSub.firstLine, pendingSub.name, pendingSub.keyword);
+
+                    const symbolIndex = symbols.length;
+                    symbols.push({
+                        name: pendingSub.name,
+                        kind: pendingSub.subKind,
+                        detail: pendingSub.isInline ? 'inline' : undefined,
+                        range: new vscode.Range(pendingSub.startLine, 0, lineIndex, line.length),
+                        selectionRange: new vscode.Range(pendingSub.startLine, nameStart, pendingSub.startLine, nameStart + pendingSub.name.length),
+                        parent: pendingSub.scopePath || undefined,
+                        fullPath,
+                        parameters: this.convertProgBParams(params.trim()),
+                        returnType,
+                        uri: document.uri
+                    });
+
+                    // Parse parameters - use the multiline version
+                    this.parseMultilineParameters(params.trim(), pendingSub.startLine, lineIndex, lines, fullPath, document.uri, symbols);
+
+                    // Push scope for SUB/FUNCTION/ASMSUB (they have END blocks)
+                    scopeStack.push({ name: pendingSub.name, kind: pendingSub.subKind, symbolIndex, startLine: pendingSub.startLine });
+
+                    pendingSub = null;
+                }
+                continue;
+            }
 
             // Check for MODULE definition: MODULE name [AT $addr]
             const moduleMatch = trimmedLine.match(/^MODULE\s+([a-zA-Z_\u00C0-\u024F\u0400-\u04FF][\w\u00C0-\u024F\u0400-\u04FF]*)(?:\s+AT\s+(\$[0-9a-fA-F]+))?/i);
@@ -144,6 +206,26 @@ export class ProgBParser {
 
                 scopeStack.push({ name, kind: SymbolKind.Subroutine, symbolIndex, startLine: lineIndex });
                 continue;
+            } else {
+                // Check for start of multiline FUNCTION declaration (has opening paren but no closing paren)
+                const multilineFuncStart = trimmedLine.match(/^(INLINE\s+)?FUNCTION\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\s*$/i);
+                if (multilineFuncStart) {
+                    const isInline = !!multilineFuncStart[1];
+                    const name = multilineFuncStart[2];
+                    const partialParams = multilineFuncStart[3] || '';
+
+                    pendingSub = {
+                        startLine: lineIndex,
+                        firstLine: line,
+                        accumulatedParams: '(' + partialParams,
+                        isInline,
+                        subKind: SymbolKind.Subroutine,
+                        name,
+                        scopePath,
+                        keyword: 'FUNCTION'
+                    };
+                    continue;
+                }
             }
 
             // Check for END FUNCTION
@@ -179,6 +261,26 @@ export class ProgBParser {
 
                 scopeStack.push({ name, kind: SymbolKind.Subroutine, symbolIndex, startLine: lineIndex });
                 continue;
+            } else if (!/^END\s+SUB\b/i.test(trimmedLine)) {
+                // Check for start of multiline SUB declaration (has opening paren but no closing paren)
+                const multilineSubStart = trimmedLine.match(/^(INLINE\s+)?SUB\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\s*$/i);
+                if (multilineSubStart) {
+                    const isInline = !!multilineSubStart[1];
+                    const name = multilineSubStart[2];
+                    const partialParams = multilineSubStart[3] || '';
+
+                    pendingSub = {
+                        startLine: lineIndex,
+                        firstLine: line,
+                        accumulatedParams: '(' + partialParams,
+                        isInline,
+                        subKind: SymbolKind.Subroutine,
+                        name,
+                        scopePath,
+                        keyword: 'SUB'
+                    };
+                    continue;
+                }
             }
 
             // Check for END SUB
@@ -216,6 +318,26 @@ export class ProgBParser {
 
                 scopeStack.push({ name, kind: SymbolKind.AsmSubroutine, symbolIndex, startLine: lineIndex });
                 continue;
+            } else {
+                // Check for start of multiline ASMSUB declaration (has opening paren but no closing paren)
+                const multilineAsmsubStart = trimmedLine.match(/^(INLINE\s+)?ASMSUB\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\s*$/i);
+                if (multilineAsmsubStart) {
+                    const isInline = !!multilineAsmsubStart[1];
+                    const name = multilineAsmsubStart[2];
+                    const partialParams = multilineAsmsubStart[3] || '';
+
+                    pendingSub = {
+                        startLine: lineIndex,
+                        firstLine: line,
+                        accumulatedParams: '(' + partialParams,
+                        isInline,
+                        subKind: SymbolKind.AsmSubroutine,
+                        name,
+                        scopePath,
+                        keyword: 'ASMSUB'
+                    };
+                    continue;
+                }
             }
 
             // Check for END ASMSUB
@@ -489,6 +611,63 @@ export class ProgBParser {
                 type,
                 range: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),
                 selectionRange: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),
+                parent: subPath,
+                fullPath,
+                uri
+            });
+        }
+    }
+
+    /**
+     * Parse parameters from a multiline subroutine declaration.
+     * Searches each line in the span to find the actual positions of parameters.
+     */
+    private parseMultilineParameters(
+        params: string,
+        startLine: number,
+        endLine: number,
+        lines: string[],
+        subPath: string,
+        uri: vscode.Uri,
+        symbols: ProgBSymbol[]
+    ): void {
+        if (!params.trim()) return;
+
+        // ProgB parameter format: name AS TYPE [@reg]
+        const paramRegex = /([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s+AS\s+(UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|PTR)(?:\s*(@\w+))?/gi;
+        let match;
+        while ((match = paramRegex.exec(params)) !== null) {
+            const name = match[1];
+            const type = this.convertProgBType(match[2]);
+            const fullPath = `${subPath}.${name}`;
+
+            // Find the actual position of this parameter name in the source lines
+            let foundLine = startLine;
+            let foundCol = 0;
+            let found = false;
+
+            // Search through the lines that comprise this multiline declaration
+            for (let lineIdx = startLine; lineIdx <= endLine && !found; lineIdx++) {
+                const line = lines[lineIdx];
+                // Look for the parameter pattern "name AS TYPE" in this line (case-insensitive)
+                const lineParamRegex = new RegExp(
+                    `(${this.escapeRegex(name)})\\s+AS\\s+(UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|PTR)`,
+                    'gi'
+                );
+                const lineMatch = lineParamRegex.exec(line);
+                if (lineMatch) {
+                    foundLine = lineIdx;
+                    foundCol = lineMatch.index;
+                    found = true;
+                }
+            }
+
+            symbols.push({
+                name,
+                kind: SymbolKind.Parameter,
+                type,
+                range: new vscode.Range(foundLine, foundCol, foundLine, foundCol + name.length),
+                selectionRange: new vscode.Range(foundLine, foundCol, foundLine, foundCol + name.length),
                 parent: subPath,
                 fullPath,
                 uri

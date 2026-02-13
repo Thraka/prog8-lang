@@ -49,6 +49,17 @@ export class Prog8Parser {
         let braceDepth = 0;
         const scopeStartDepths: number[] = [];
 
+        // Track multiline sub declarations
+        let pendingSub: {
+            startLine: number;
+            firstLine: string;
+            accumulatedParams: string;
+            isInline: boolean;
+            subKind: SymbolKind;
+            name: string;
+            scopePath: string;
+        } | null = null;
+
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
             const line = lines[lineIndex];
             const trimmedLine = this.stripComments(line).trim();
@@ -62,6 +73,59 @@ export class Prog8Parser {
 
             // Get current scope path
             const scopePath = scopeStack.map(s => s.name).join('.');
+
+            // Handle multiline sub declaration continuation
+            if (pendingSub) {
+                // Accumulate this line's content (strip comments first)
+                const continuationContent = this.stripComments(line).trim();
+                pendingSub.accumulatedParams += ' ' + continuationContent;
+
+                // Check if we now have the closing parenthesis
+                if (pendingSub.accumulatedParams.includes(')')) {
+                    // Extract the full params and complete the sub declaration
+                    const fullDecl = pendingSub.accumulatedParams;
+                    const closeParenIdx = fullDecl.indexOf(')');
+                    // Find where params start (after the opening paren from first line)
+                    const openParenIdx = fullDecl.indexOf('(');
+                    const params = openParenIdx !== -1 ? fullDecl.substring(openParenIdx + 1, closeParenIdx) : '';
+                    const afterParen = fullDecl.substring(closeParenIdx + 1).trim();
+                    const returnMatch = afterParen.match(/^->\s*(.+?)(?:\s*\{|$)/);
+                    const returnType = returnMatch ? returnMatch[1].trim() : undefined;
+                    
+                    const fullPath = pendingSub.scopePath ? `${pendingSub.scopePath}.${pendingSub.name}` : pendingSub.name;
+                    const nameStart = pendingSub.firstLine.indexOf(pendingSub.name);
+
+                    const symbolIndex = symbols.length;
+                    symbols.push({
+                        name: pendingSub.name,
+                        kind: pendingSub.subKind,
+                        detail: pendingSub.isInline ? 'inline' : undefined,
+                        range: new vscode.Range(pendingSub.startLine, 0, lineIndex, line.length),
+                        selectionRange: new vscode.Range(pendingSub.startLine, nameStart, pendingSub.startLine, nameStart + pendingSub.name.length),
+                        parent: pendingSub.scopePath || undefined,
+                        fullPath,
+                        parameters: params.trim(),
+                        returnType,
+                        uri: document.uri
+                    });
+
+                    // Parse parameters - use the start line and first line for position calculation
+                    this.parseMultilineParameters(params.trim(), pendingSub.startLine, lineIndex, lines, fullPath, document.uri, symbols);
+
+                    // Check if this line has the opening brace
+                    if (fullDecl.includes('{')) {
+                        scopeStack.push({ name: pendingSub.name, kind: pendingSub.subKind, symbolIndex });
+                        scopeStartDepths.push(braceDepth);
+                    }
+
+                    pendingSub = null;
+                }
+
+                // Update brace depth and scope - still need to track even in continuation lines
+                braceDepth += this.countBraces(line);
+                this.updateClosedScopes(braceDepth, scopeStack, scopeStartDepths, symbols, lineIndex, line);
+                continue;
+            }
 
             // Check for block definition: identifier [address] {
             const blockMatch = trimmedLine.match(/^([a-zA-Z_\u00C0-\u024F\u0400-\u04FF][\w\u00C0-\u024F\u0400-\u04FF]*)\s*(\$[0-9a-fA-F]+)?\s*\{?\s*$/);
@@ -110,6 +174,7 @@ export class Prog8Parser {
             }
 
             // Check for subroutine: [inline] sub name(params) [-> returntype]
+            // First, check if this is a complete single-line declaration
             const subMatch = trimmedLine.match(/^(inline\s+)?(sub|asmsub)\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\)(\s*->\s*(.+?))?\s*\{?/);
             if (subMatch) {
                 const isInline = !!subMatch[1];
@@ -140,6 +205,30 @@ export class Prog8Parser {
                 if (trimmedLine.includes('{')) {
                     scopeStack.push({ name, kind: subKind, symbolIndex });
                     scopeStartDepths.push(braceDepth);
+                }
+            } else {
+                // Check for start of multiline sub declaration (has opening paren but no closing paren)
+                const multilineSubStart = trimmedLine.match(/^(inline\s+)?(sub|asmsub)\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\s*$/);
+                if (multilineSubStart) {
+                    const isInline = !!multilineSubStart[1];
+                    const subKind = multilineSubStart[2] === 'asmsub' ? SymbolKind.AsmSubroutine : SymbolKind.Subroutine;
+                    const name = multilineSubStart[3];
+                    const partialParams = multilineSubStart[4] || '';
+
+                    pendingSub = {
+                        startLine: lineIndex,
+                        firstLine: line,
+                        accumulatedParams: '(' + partialParams,
+                        isInline,
+                        subKind,
+                        name,
+                        scopePath
+                    };
+
+                    // Update brace depth and continue to next line
+                    braceDepth += this.countBraces(line);
+                    this.updateClosedScopes(braceDepth, scopeStack, scopeStartDepths, symbols, lineIndex, line);
+                    continue;
                 }
             }
 
@@ -389,6 +478,72 @@ export class Prog8Parser {
                 uri
             });
         }
+    }
+
+    /**
+     * Parse parameters from a multiline subroutine declaration.
+     * Searches each line in the span to find the actual positions of parameters.
+     */
+    private parseMultilineParameters(
+        params: string,
+        startLine: number,
+        endLine: number,
+        lines: string[],
+        subPath: string,
+        uri: vscode.Uri,
+        symbols: Prog8Symbol[]
+    ): void {
+        if (!params.trim()) return;
+
+        // Parse each parameter from the combined params string
+        const paramRegex = /(ubyte|byte|uword|word|long|ulong|float|bool|str)(\[\d*\])?\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)/g;
+        let match;
+        while ((match = paramRegex.exec(params)) !== null) {
+            const type = match[1] + (match[2] || '');
+            const name = match[3];
+            const fullPath = `${subPath}.${name}`;
+
+            // Find the actual position of this parameter name in the source lines
+            let foundLine = startLine;
+            let foundCol = 0;
+            let found = false;
+
+            // Search through the lines that comprise this multiline declaration
+            for (let lineIdx = startLine; lineIdx <= endLine && !found; lineIdx++) {
+                const line = lines[lineIdx];
+                // Look for the parameter pattern "type name" in this line
+                const lineParamRegex = new RegExp(
+                    `(ubyte|byte|uword|word|long|ulong|float|bool|str)(\\[\\d*\\])?\\s+(${this.escapeRegex(name)})\\b`,
+                    'g'
+                );
+                const lineMatch = lineParamRegex.exec(line);
+                if (lineMatch) {
+                    foundLine = lineIdx;
+                    // The name starts at the match position + the length before the name
+                    const nameOffsetInMatch = lineMatch[0].length - name.length;
+                    foundCol = lineMatch.index + nameOffsetInMatch;
+                    found = true;
+                }
+            }
+
+            symbols.push({
+                name,
+                kind: SymbolKind.Parameter,
+                type,
+                range: new vscode.Range(foundLine, foundCol, foundLine, foundCol + name.length),
+                selectionRange: new vscode.Range(foundLine, foundCol, foundLine, foundCol + name.length),
+                parent: subPath,
+                fullPath,
+                uri
+            });
+        }
+    }
+
+    /**
+     * Escape special regex characters in a string
+     */
+    private escapeRegex(str: string): string {
+        return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
 
     /**
