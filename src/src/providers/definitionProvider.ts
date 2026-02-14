@@ -1,10 +1,11 @@
 import * as vscode from 'vscode';
-import { unifiedParser, UnifiedSymbol, SymbolKind } from '../parser';
-import { getAllAccessibleSymbols, isLibrarySymbol } from '../parser/symbolAggregator';
+import { unifiedParser } from '../parser';
+import { getAllAccessibleSymbols } from '../parser/symbolAggregator';
 
 /**
  * Provides "Go to Definition" for Prog8 files.
- * Searches the current file first, then imported files, then library symbols.
+ * Searches the current file first, then imported files.
+ * Library symbols have no navigable location (hover handles them).
  */
 export class Prog8DefinitionProvider implements vscode.DefinitionProvider {
 
@@ -20,7 +21,7 @@ export class Prog8DefinitionProvider implements vscode.DefinitionProvider {
         }
 
         // Get all accessible symbols via the unified aggregator
-        const { localSymbols, importedFileSymbols, librarySymbols } = await getAllAccessibleSymbols(document);
+        const { localSymbols, importedFileSymbols } = await getAllAccessibleSymbols(document);
         
         // Get current scope for context
         const currentScope = unifiedParser.getScopeAtPosition(localSymbols, position);
@@ -33,7 +34,17 @@ export class Prog8DefinitionProvider implements vscode.DefinitionProvider {
 
         // 2. Check for struct member access (e.g., variable.member where variable has a struct type)
         if (word.includes('.')) {
-            const structMember = unifiedParser.resolveStructMemberAccess(word, localSymbols, currentScope);
+            // Try local symbols first
+            let structMember = unifiedParser.resolveStructMemberAccess(word, localSymbols, currentScope);
+            
+            // Then try imported file symbols
+            if (!structMember) {
+                for (const imported of importedFileSymbols) {
+                    structMember = unifiedParser.resolveStructMemberAccess(word, imported.symbols, currentScope);
+                    if (structMember) break;
+                }
+            }
+            
             if (structMember) {
                 return new vscode.Location(structMember.uri, structMember.selectionRange);
             }
@@ -55,12 +66,7 @@ export class Prog8DefinitionProvider implements vscode.DefinitionProvider {
             }
         }
 
-        // 3. Library symbols have no real file location — skip (hover handles them)
-        const libSymbol = unifiedParser.findSymbol(librarySymbols, word, currentScope);
-        if (libSymbol) {
-            return undefined;
-        }
-
+        // 4. Library symbols have no real file location — skip (hover handles them)
         return undefined;
     }
 }
