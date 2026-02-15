@@ -70,14 +70,19 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
         }
 
         // Parse imported local files for their symbols via the unified aggregator
-        const { importedFileSymbols } = await getAllAccessibleSymbols(document);
+        const { importedFileSymbols, librarySymbols } = await getAllAccessibleSymbols(document);
+
+        // Build filter set so we only show library completions for actually-imported items
+        const importedLibBlockNames = new Set(
+            librarySymbols.filter(s => s.kind === SymbolKind.Block).map(s => s.name)
+        );
 
         // Check if we're completing a qualified name (e.g., "txt." or "main.start.")
         const qualifiedPrefixValue = getQualifiedPrefix(linePrefix);
         
         if (qualifiedPrefixValue) {
             // Scoped completion - show only members of the specified scope
-            const scopedCompletions = this.getScopedCompletions(qualifiedPrefixValue, symbols, importedFileSymbols, currentScope);
+            const scopedCompletions = this.getScopedCompletions(qualifiedPrefixValue, symbols, importedFileSymbols, currentScope, importedLibBlockNames);
             completions.push(...scopedCompletions);
         } else {
             // Regular completion - show local variables and accessible symbols
@@ -88,8 +93,8 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
             const importedBlockCompletions = this.getImportedBlockCompletions(importedFileSymbols);
             completions.push(...importedBlockCompletions);
             
-            // Also add library block names for qualified access
-            const libraryBlockCompletions = this.getLibraryBlockCompletions();
+            // Also add library block names for qualified access (only for imported libraries)
+            const libraryBlockCompletions = this.getLibraryBlockCompletions(importedLibBlockNames);
             completions.push(...libraryBlockCompletions);
 
             // Add built-in functions if enabled in settings
@@ -172,15 +177,19 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
         prefix: string, 
         symbols: UnifiedSymbol[], 
         importedFileSymbols: ImportedFileSymbols[] = [],
-        currentScope?: string
+        currentScope?: string,
+        importedLibBlockNames?: Set<string>
     ): vscode.CompletionItem[] {
         const completions: vscode.CompletionItem[] = [];
         const addedNames = new Set<string>();
 
-        // First, check if this is a library block (e.g., "txt", "sys", "cx16")
-        const libraryCompletions = this.getLibraryMemberCompletions(prefix);
-        completions.push(...libraryCompletions);
-        libraryCompletions.forEach(item => addedNames.add(item.label as string));
+        // First, check if this is a library block (e.g., "txt", "sys", "cx16") - only if imported
+        const prefixBlockName = prefix.split('.')[0];
+        if (!importedLibBlockNames || importedLibBlockNames.has(prefixBlockName)) {
+            const libraryCompletions = this.getLibraryMemberCompletions(prefix);
+            completions.push(...libraryCompletions);
+            libraryCompletions.forEach(item => addedNames.add(item.label as string));
+        }
 
         // Check if prefix is a library block.sub path (e.g., "diskio.lf_start_list")
         // to offer subroutine parameter completions
@@ -376,13 +385,18 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
 
     /**
      * Get completions for library block names (txt, sys, cx16, etc.)
+     * Only shows blocks from libraries that are actually imported.
      */
-    private getLibraryBlockCompletions(): vscode.CompletionItem[] {
+    private getLibraryBlockCompletions(importedLibBlockNames: Set<string>): vscode.CompletionItem[] {
         const completions: vscode.CompletionItem[] = [];
         const addedBlocks = new Set<string>();
         
         const blocks = getAllBlocks(this.targetPlatform);
         for (const block of blocks) {
+            // Only show blocks from imported libraries
+            if (!importedLibBlockNames.has(block.name)) {
+                continue;
+            }
             if (addedBlocks.has(block.name)) {
                 continue;
             }
