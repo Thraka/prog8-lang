@@ -4,7 +4,7 @@ import { unifiedParser, UnifiedSymbol, SymbolKind } from '../parser';
 import { findSubroutine, findVariable, findConstant, findSubroutineParameter, getAllBlocks, findModule, formatSubroutineSignature, SubroutineInfo, BlockInfo, ModuleInfo, VariableInfo, ConstantInfo, Parameter } from '../data/librarySymbolsHelpers';
 import { getTargetPlatform, getTargetPlatformForDocument } from '../utils/targetPlatform';
 import { parseImports, findSymbolInImports, ImportedFileSymbols, resolveLocalImport, getSrcDirsForDocument } from '../parser/importResolver';
-import { getAllAccessibleSymbols } from '../parser/symbolAggregator';
+import { getAllAccessibleSymbols, resolveStructMemberInAccessible } from '../parser/symbolAggregator';
 import { isInImportStatement, getQualifiedNameAtPosition, isInComment } from './providerUtils';
 import { getBuiltinFunction } from '../data/builtinFunctions';
 
@@ -46,7 +46,8 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
         }
 
         // Parse imported file symbols once via the unified aggregator and reuse throughout
-        const { localSymbols: symbols, importedFileSymbols, librarySymbols } = await getAllAccessibleSymbols(document);
+        const accessible = await getAllAccessibleSymbols(document);
+        const { localSymbols: symbols, importedFileSymbols, librarySymbols } = accessible;
 
         // Build filter sets so we only show library hovers for actually-imported items
         const importedLibBlockNames = new Set(
@@ -83,7 +84,7 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
 
             // Check for struct member access (e.g., variable.member where variable has a struct type)
             const currentScope = unifiedParser.getScopeAtPosition(symbols, position);
-            const structMember = unifiedParser.resolveStructMemberAccess(qualifiedName, symbols, currentScope);
+            const structMember = resolveStructMemberInAccessible(qualifiedName, accessible, currentScope);
             if (structMember) {
                 return this.createHoverForSymbol(structMember);
             }

@@ -62,31 +62,71 @@ export function isLibrarySymbol(symbol: UnifiedSymbol): boolean {
 /**
  * Find a symbol by name across all accessible symbol sources.
  * Searches local symbols first, then imported files, then library symbols.
+ * 
+ * For qualified names (containing '.'), checks fullPath match first before
+ * falling back to scope-aware resolution.
  */
 export function findSymbolInAccessible(
     name: string,
     accessible: AccessibleSymbols,
     scope?: string
 ): UnifiedSymbol | undefined {
+    const isQualified = name.includes('.');
+
     // 1. Local symbols
+    if (isQualified) {
+        // For qualified names, try exact fullPath match first
+        const byPath = accessible.localSymbols.find(s => s.fullPath === name);
+        if (byPath) return byPath;
+    }
     const local = unifiedParser.findSymbol(accessible.localSymbols, name, scope);
     if (local) return local;
 
     // 2. Imported file symbols
     for (const imported of accessible.importedFileSymbols) {
-        const found = unifiedParser.findSymbol(imported.symbols, name, scope);
-        if (found) return found;
-
-        // For qualified names, also check fullPath directly
-        if (name.includes('.')) {
+        // For qualified names, try exact fullPath match first
+        if (isQualified) {
             const byPath = imported.symbols.find(s => s.fullPath === name);
             if (byPath) return byPath;
         }
+        // Fall back to scope-aware resolution
+        const found = unifiedParser.findSymbol(imported.symbols, name, scope);
+        if (found) return found;
     }
 
     // 3. Library symbols
+    if (isQualified) {
+        const byPath = accessible.librarySymbols.find(s => s.fullPath === name);
+        if (byPath) return byPath;
+    }
     const lib = unifiedParser.findSymbol(accessible.librarySymbols, name, scope);
     if (lib) return lib;
+
+    return undefined;
+}
+
+/**
+ * Resolve struct member access (e.g., "variable.field") across all accessible symbols.
+ * Returns the struct field symbol if the variable has a struct type and the field exists.
+ */
+export function resolveStructMemberInAccessible(
+    qualifiedName: string,
+    accessible: AccessibleSymbols,
+    scope?: string
+): UnifiedSymbol | undefined {
+    if (!qualifiedName.includes('.')) {
+        return undefined;
+    }
+
+    // Try local symbols first
+    let result = unifiedParser.resolveStructMemberAccess(qualifiedName, accessible.localSymbols, scope);
+    if (result) return result;
+
+    // Then try imported file symbols
+    for (const imported of accessible.importedFileSymbols) {
+        result = unifiedParser.resolveStructMemberAccess(qualifiedName, imported.symbols, scope);
+        if (result) return result;
+    }
 
     return undefined;
 }

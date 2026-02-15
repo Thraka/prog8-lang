@@ -150,6 +150,7 @@ export {
     getAllAccessibleSymbols,
     isLibrarySymbol,
     findSymbolInAccessible,
+    resolveStructMemberInAccessible,
     LIBRARY_SYMBOL_URI,
     type AccessibleSymbols
 } from './symbolAggregator';

@@ -2,7 +2,11 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { unifiedParser, UnifiedSymbol } from '../parser';
 import { isPositionInLineComment } from './providerUtils';
-import { getAllAccessibleSymbols } from '../parser/symbolAggregator';
+import { 
+    getAllAccessibleSymbols, 
+    findSymbolInAccessible, 
+    resolveStructMemberInAccessible 
+} from '../parser/symbolAggregator';
 
 /**
  * Provides "Find All References" for Prog8 files.
@@ -24,29 +28,15 @@ export class Prog8ReferenceProvider implements vscode.ReferenceProvider {
             return [];
         }
 
-        // Get all accessible symbols via the unified aggregator
-        const { localSymbols, importedFileSymbols, librarySymbols } = await getAllAccessibleSymbols(document);
-        const currentScope = unifiedParser.getScopeAtPosition(localSymbols, position);
+        const accessible = await getAllAccessibleSymbols(document);
+        const currentScope = unifiedParser.getScopeAtPosition(accessible.localSymbols, position);
         
-        // Try to find the symbol definition in local symbols first
-        let symbol = unifiedParser.findSymbol(localSymbols, word, currentScope);
+        // Find the symbol definition via unified lookup
+        let symbol = findSymbolInAccessible(word, accessible, currentScope);
         
-        // If not found locally, try struct member access resolution
+        // If not found, try struct member access resolution
         if (!symbol && word.includes('.')) {
-            symbol = unifiedParser.resolveStructMemberAccess(word, localSymbols, currentScope);
-        }
-
-        // If not found locally, check imported file symbols
-        if (!symbol) {
-            for (const imported of importedFileSymbols) {
-                symbol = unifiedParser.findSymbol(imported.symbols, word, currentScope);
-                if (symbol) break;
-            }
-        }
-
-        // If not found in imports, check library symbols
-        if (!symbol) {
-            symbol = unifiedParser.findSymbol(librarySymbols, word, currentScope);
+            symbol = resolveStructMemberInAccessible(word, accessible, currentScope);
         }
 
         // Get the target name to search for
