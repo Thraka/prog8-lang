@@ -16,8 +16,6 @@
   },
   "main": "./out/src/extension.js",
   "activationEvents": [
-    "onLanguage:prog8",
-    "onLanguage:progb",
     "onDebugResolve:prog8"
   ],
   "categories": [
