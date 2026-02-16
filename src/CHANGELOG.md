@@ -2,6 +2,11 @@
 
 All notable changes to the Prog8 Language Support extension will be documented in this file.
 
+## [1.6.13] - 2026-02-15
+
+- Added the ability to suppress a problem in the list of problems by adding a `; @ignore-error` comment to the end of the line.
+- Added a quick task to the error to add `; @ignore-error`.
+
 ## [1.6.12] - 2026-02-15
 
 - Cleaned up various provider code.
