@@ -2,6 +2,13 @@
 
 All notable changes to the Prog8 Language Support extension will be documented in this file.
 
+## [1.6.12] - 2026-02-15
+
+- Cleaned up various provider code.
+- Array declarations in multiline subs wasn't detected correctly.
+- Rewrite the compile tasks to properly detect file paths for VSCode integration.
+- Fix detection of voids as keywords when multiple returned in sub return values.
+
 ## [1.6.11] - 2026-02-12
 
 - Fix multiline subs.
