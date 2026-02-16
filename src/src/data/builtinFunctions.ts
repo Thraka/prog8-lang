@@ -261,10 +261,10 @@ export function getAllBuiltinNames(): string[] {
 }
 
 /**
- * Get built-in function info by name
+ * Get built-in function info by name (case-insensitive)
  */
 export function getBuiltinFunction(name: string): BuiltinFunctionInfo | undefined {
-    return builtinFunctions[name];
+    return builtinFunctions[name.toLowerCase()];
 }
 
 /**
