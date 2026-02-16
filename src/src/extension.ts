@@ -12,9 +12,13 @@ import { createStatusBarItem, selectTargetPlatform } from './utils/targetPlatfor
 import { Prog8DebugConfigurationProvider, Prog8DebugAdapterDescriptorFactory } from './project/debugConfigProvider';
 import { runCurrentProject, buildCurrentProject, disposeProjectRunner } from './project/projectRunner';
 import { initializeProject } from './project/projectFile';
+import { initDiagnostics } from './project/diagnostics';
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('Prog8 Language Support is now active');
+
+    // Initialize diagnostic collection for compiler errors/warnings
+    initDiagnostics(context);
 
     // Register the target platform selection command
     context.subscriptions.push(

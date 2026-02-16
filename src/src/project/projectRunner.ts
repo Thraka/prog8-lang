@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as cp from 'child_process';
 import { Prog8Project, getProjectForFile, validateProject } from './projectFile';
 import { TargetPlatform, isCustomTarget, BuiltinTargetPlatform } from '../utils/targetPlatform';
 import { 
@@ -10,6 +11,7 @@ import {
     resolveSrcDirs
 } from './compilationStrategy';
 import { resolveAllCompilerSettings } from './settingsResolver';
+import { clearDiagnostics, processCompilerOutput } from './diagnostics';
 
 /**
  * Output file extensions for each built-in target platform.
@@ -135,6 +137,200 @@ function buildEnvironmentVariablesObject(project: Prog8Project, pathAdditions: s
 }
 
 /**
+ * Interface for compilation execution context
+ */
+interface CompilationContext {
+    command: string;
+    args: string[];
+    cwd: string;
+    env: Record<string, string>;
+    projectDir: string;
+}
+
+/**
+ * Quote a path for shell usage, handling spaces and special characters.
+ * Uses single quotes on Unix (stronger quoting) and double quotes on Windows.
+ */
+function shellQuote(value: string): string {
+    // If already quoted, return as-is
+    if (value.startsWith('"') && value.endsWith('"')) {
+        return value;
+    }
+    if (value.startsWith("'") && value.endsWith("'")) {
+        return value;
+    }
+    
+    const isWindows = process.platform === 'win32';
+    
+    if (isWindows) {
+        // Windows: use double quotes, escape internal double quotes
+        // Also need to handle trailing backslashes - in cmd.exe \" is an escaped quote
+        // so "path\" becomes "path\\" to avoid the backslash escaping the quote
+        if (/[\s&|<>^()]/.test(value)) {
+            let escaped = value.replace(/"/g, '\\"');
+            // Double any trailing backslashes so they don't escape the closing quote
+            escaped = escaped.replace(/\\+$/, (match) => match + match);
+            return `"${escaped}"`;
+        }
+    } else {
+        // Unix: use single quotes (prevents all interpolation except single quotes)
+        // Single quotes are the safest quoting on Unix shells
+        if (/[\s&|<>()$`!\\*?#~]/.test(value)) {
+            // Escape single quotes by ending the string, adding escaped quote, and restarting
+            // 'path with'\''s quote' -> handles apostrophes
+            return `'${value.replace(/'/g, "'\\''")}'`;
+        }
+    }
+    return value;
+}
+
+/**
+ * Quote a value for use inside a PowerShell -Command string.
+ * Uses single quotes which are safer inside double-quoted command strings.
+ */
+function psQuote(value: string): string {
+    // Single quotes in PowerShell - escape by doubling them
+    return `'${value.replace(/'/g, "''")}'`;
+}
+
+/**
+ * Build the full command line for execution.
+ * Handles script files specially for each platform.
+ * Returns the shell to use and the full command as a single string.
+ */
+function buildCommandLine(command: string, args: string[]): { shell: string | boolean; commandLine: string } {
+    const isWindows = process.platform === 'win32';
+    const lowerCommand = command.toLowerCase();
+    const isPowerShellScript = lowerCommand.endsWith('.ps1');
+    const isShellScript = lowerCommand.endsWith('.sh');
+    
+    // Quote all parts properly
+    const quotedCommand = shellQuote(command);
+    const quotedArgs = args.map(shellQuote);
+    
+    if (isPowerShellScript) {
+        // PowerShell scripts - use pwsh (PowerShell Core) on all platforms
+        // Use single quotes (psQuote) inside the -Command to avoid escaping issues
+        // The & operator is needed to invoke a quoted path in PowerShell
+        const psQuotedCommand = psQuote(command);
+        const psQuotedArgs = args.map(psQuote);
+        const scriptInvocation = `& ${psQuotedCommand} ${psQuotedArgs.join(' ')}`;
+        // Use -ExecutionPolicy Bypass on Windows to avoid script execution restrictions
+        const execPolicy = isWindows ? '-ExecutionPolicy Bypass ' : '';
+        const commandLine = `pwsh ${execPolicy}-NoProfile -Command "${scriptInvocation}"`;
+        return {
+            shell: true,
+            commandLine
+        };
+    }
+    
+    if (isWindows) {
+        // Regular executables on Windows - use default shell (cmd.exe)
+        // This works for java, .exe files, etc.
+        const commandLine = `${quotedCommand} ${quotedArgs.join(' ')}`;
+        return {
+            shell: true,
+            commandLine
+        };
+    } else {
+        // Unix (Linux/macOS)
+        if (isShellScript) {
+            // Shell scripts - invoke with bash explicitly to ensure they run
+            const commandLine = `bash ${quotedCommand} ${quotedArgs.join(' ')}`;
+            return {
+                shell: true,
+                commandLine
+            };
+        } else {
+            // Regular executables
+            const commandLine = `${quotedCommand} ${quotedArgs.join(' ')}`;
+            return {
+                shell: true,
+                commandLine
+            };
+        }
+    }
+}
+
+/**
+ * Create a CustomExecution that runs the compiler and captures output for diagnostics.
+ * This allows us to parse the HTML-encoded file paths and properly populate the Problems panel.
+ */
+function createCompilerExecution(context: CompilationContext): vscode.CustomExecution {
+    return new vscode.CustomExecution(async (): Promise<vscode.Pseudoterminal> => {
+        const writeEmitter = new vscode.EventEmitter<string>();
+        const closeEmitter = new vscode.EventEmitter<number>();
+        
+        let allOutput = '';
+        
+        const pty: vscode.Pseudoterminal = {
+            onDidWrite: writeEmitter.event,
+            onDidClose: closeEmitter.event,
+            open: () => {
+                // Clear previous diagnostics at the start of a new build
+                clearDiagnostics();
+                
+                // Build the command line with proper quoting and PowerShell handling
+                const { shell, commandLine } = buildCommandLine(context.command, context.args);
+                
+                // Display the command being executed
+                writeEmitter.fire(`> ${commandLine}\r\n\r\n`);
+                
+                // Spawn the process - pass commandLine as a single string with shell
+                const spawnOptions: cp.SpawnOptions = {
+                    cwd: context.cwd,
+                    env: { ...process.env, ...context.env },
+                    shell: shell
+                };
+                
+                const proc = cp.spawn(commandLine, [], spawnOptions);
+                
+                proc.stdout?.on('data', (data: Buffer) => {
+                    const text = data.toString();
+                    allOutput += text;
+                    // Convert \n to \r\n for terminal display
+                    writeEmitter.fire(text.replace(/\r?\n/g, '\r\n'));
+                });
+                
+                proc.stderr?.on('data', (data: Buffer) => {
+                    const text = data.toString();
+                    allOutput += text;
+                    // Convert \n to \r\n for terminal display
+                    writeEmitter.fire(text.replace(/\r?\n/g, '\r\n'));
+                });
+                
+                proc.on('error', (err) => {
+                    writeEmitter.fire(`\r\nError: ${err.message}\r\n`);
+                    closeEmitter.fire(1);
+                });
+                
+                proc.on('close', (code) => {
+                    // Process the captured output for diagnostics
+                    const counts = processCompilerOutput(allOutput, context.projectDir);
+                    
+                    if (counts.errors > 0 || counts.warnings > 0 || counts.infos > 0) {
+                        writeEmitter.fire(`\r\n`);
+                        const parts: string[] = [];
+                        if (counts.errors > 0) parts.push(`${counts.errors} error(s)`);
+                        if (counts.warnings > 0) parts.push(`${counts.warnings} warning(s)`);
+                        if (counts.infos > 0) parts.push(`${counts.infos} info(s)`);
+                        writeEmitter.fire(`Problems: ${parts.join(', ')}\r\n`);
+                    }
+                    
+                    writeEmitter.fire(`\r\nProcess exited with code ${code ?? 0}\r\n`);
+                    closeEmitter.fire(code ?? 0);
+                });
+            },
+            close: () => {
+                // Nothing to clean up
+            }
+        };
+        
+        return pty;
+    });
+}
+
+/**
  * Ensure the task end listener is registered.
  * This listener handles post-build actions like running the emulator.
  */
@@ -257,14 +453,16 @@ export async function buildProject(project: Prog8Project, runAfterBuild: boolean
     const command = unquotedParts[0];
     const args = unquotedParts.slice(1);
     
-    // Create shell execution with environment variables
-    const shellOptions: vscode.ShellExecutionOptions = {
+    // Create custom execution to capture output and parse diagnostics
+    // This handles HTML-encoded file paths that the problem matcher can't process
+    const compilationContext: CompilationContext = {
+        command,
+        args,
         cwd: project.projectDir,
-        env
+        env,
+        projectDir: project.projectDir
     };
-    
-    // Use createShellExecution to handle PowerShell scripts and quoting properly
-    const execution = createShellExecution(command, args, shellOptions);
+    const execution = createCompilerExecution(compilationContext);
     
     const projectName = project.name || path.basename(project.projectDir);
     const task = new vscode.Task(
@@ -272,8 +470,8 @@ export async function buildProject(project: Prog8Project, runAfterBuild: boolean
         vscode.TaskScope.Workspace,
         `Build: ${projectName} [${strategy.getName()}]`,
         TASK_SOURCE,
-        execution,
-        '$prog8'  // Problem matcher for compiler errors
+        execution
+        // No problem matcher - we handle diagnostics manually via CustomExecution
     );
     
     // Configure task presentation
