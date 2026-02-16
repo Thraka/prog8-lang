@@ -600,13 +600,14 @@ export class ProgBParser {
     ): void {
         if (!params.trim()) return;
 
-        // ProgB parameter format: name AS TYPE [@reg]
+        // ProgB parameter format: name AS TYPE [@reg] or name[] AS TYPE [@reg] for arrays
         // Supports primitive types, pointer types (^, ^^), and custom type names
-        const paramRegex = /([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s+AS\s+(\^{0,2}(?:UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|PTR|[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*))(?:\s*(@\w+))?/gi;
+        const paramRegex = /([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)(\[\])?\s+AS\s+(\^{0,2}(?:UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|PTR|[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*))(?:\s*(@\w+))?/gi;
         let match;
         while ((match = paramRegex.exec(params)) !== null) {
             const name = match[1];
-            const type = this.convertProgBType(match[2]);
+            const isArray = !!match[2];
+            const type = this.convertProgBType(match[3]) + (isArray ? '[]' : '');
             const nameStart = fullLine.indexOf(name, fullLine.indexOf('('));
             const fullPath = `${subPath}.${name}`;
 
@@ -638,13 +639,14 @@ export class ProgBParser {
     ): void {
         if (!params.trim()) return;
 
-        // ProgB parameter format: name AS TYPE [@reg]
+        // ProgB parameter format: name AS TYPE [@reg] or name[] AS TYPE [@reg] for arrays
         // Supports primitive types, pointer types (^, ^^), and custom type names
-        const paramRegex = /([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s+AS\s+(\^{0,2}(?:UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|PTR|[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*))(?:\s*(@\w+))?/gi;
+        const paramRegex = /([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)(\[\])?\s+AS\s+(\^{0,2}(?:UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|PTR|[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*))(?:\s*(@\w+))?/gi;
         let match;
         while ((match = paramRegex.exec(params)) !== null) {
             const name = match[1];
-            const type = this.convertProgBType(match[2]);
+            const isArray = !!match[2];
+            const type = this.convertProgBType(match[3]) + (isArray ? '[]' : '');
             const fullPath = `${subPath}.${name}`;
 
             // Find the actual position of this parameter name in the source lines
@@ -655,9 +657,9 @@ export class ProgBParser {
             // Search through the lines that comprise this multiline declaration
             for (let lineIdx = startLine; lineIdx <= endLine && !found; lineIdx++) {
                 const line = lines[lineIdx];
-                // Look for the parameter pattern "name AS TYPE" in this line (case-insensitive)
+                // Look for the parameter pattern "name AS TYPE" or "name[] AS TYPE" in this line (case-insensitive)
                 const lineParamRegex = new RegExp(
-                    `(${this.escapeRegex(name)})\\s+AS\\s+(UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|PTR)`,
+                    `(${this.escapeRegex(name)})(\\[\\])?\\s+AS\\s+(UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|PTR)`,
                     'gi'
                 );
                 const lineMatch = lineParamRegex.exec(line);
