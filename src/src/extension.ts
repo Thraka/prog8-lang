@@ -7,6 +7,7 @@ import { Prog8ReferenceProvider } from './providers/referenceProvider';
 import { Prog8CompletionProvider } from './providers/completionProvider';
 import { ProgBFormattingProvider } from './providers/formattingProvider';
 import { Prog8SemanticTokensProvider, semanticTokensLegend } from './providers/semanticTokenProvider';
+import { Prog8CodeActionProvider } from './providers/codeActionProvider';
 import { applyKeywordCasingToLine, applyKeywordCasingToLineRange, getKeywordCasingStyle, findBlockStart, applyCommaSpacingToLine, applyCommaSpacingToLineRange, getFormatCommaSpacing } from './utils/progbAutoFormat';
 import { createStatusBarItem, selectTargetPlatform } from './utils/targetPlatform';
 import { Prog8DebugConfigurationProvider, Prog8DebugAdapterDescriptorFactory } from './project/debugConfigProvider';
@@ -99,6 +100,17 @@ export function activate(context: vscode.ExtensionContext) {
             prog8Selector,
             new Prog8SemanticTokensProvider(),
             semanticTokensLegend
+        )
+    );
+
+    // Register Code Action Provider for quick fixes (e.g., ignore error comments)
+    context.subscriptions.push(
+        vscode.languages.registerCodeActionsProvider(
+            prog8Selector,
+            new Prog8CodeActionProvider(),
+            {
+                providedCodeActionKinds: Prog8CodeActionProvider.providedCodeActionKinds
+            }
         )
     );
 

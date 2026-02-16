@@ -1,11 +1,20 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as fs from 'fs';
 
 /**
  * Diagnostic collection for Prog8 compiler problems.
  * Created once and reused across builds.
  */
 let diagnosticCollection: vscode.DiagnosticCollection | undefined;
+
+/**
+ * Pattern to match ignore comments in source code.
+ * Supports Prog8 (;) and ProgB (' or rem) comment syntax.
+ * Keywords: @ignore-error, prog8-ignore, noerror
+ * Case-insensitive, allows optional text after the keyword.
+ */
+const IGNORE_COMMENT_PATTERN = /(?:;|'|\brem\b)\s*(@ignore-error|prog8-ignore|noerror)\b/i;
 
 /**
  * Regex pattern to match compiler output lines.
@@ -53,6 +62,7 @@ export function getDiagnosticCollection(): vscode.DiagnosticCollection | undefin
  */
 export function clearDiagnostics(): void {
     diagnosticCollection?.clear();
+    clearFileContentsCache();
 }
 
 /**
@@ -163,21 +173,86 @@ function toVSCodeSeverity(severity: 'ERROR' | 'WARN' | 'INFO'): vscode.Diagnosti
 }
 
 /**
+ * Cache for file contents to avoid re-reading files multiple times.
+ * Cleared for each build via clearDiagnostics().
+ */
+let fileContentsCache = new Map<string, string[] | null>();
+
+/**
+ * Clear the file contents cache.
+ */
+function clearFileContentsCache(): void {
+    fileContentsCache.clear();
+}
+
+/**
+ * Get lines of a file (cached).
+ * Returns null if file cannot be read.
+ */
+function getFileLines(filePath: string): string[] | null {
+    if (fileContentsCache.has(filePath)) {
+        return fileContentsCache.get(filePath) ?? null;
+    }
+    
+    try {
+        const content = fs.readFileSync(filePath, 'utf-8');
+        const lines = content.split(/\r?\n/);
+        fileContentsCache.set(filePath, lines);
+        return lines;
+    } catch {
+        fileContentsCache.set(filePath, null);
+        return null;
+    }
+}
+
+/**
+ * Check if a specific line in a file has an ignore comment.
+ * 
+ * @param filePath Path to the source file
+ * @param lineNumber 1-based line number
+ * @returns true if the line contains an ignore comment
+ */
+function hasIgnoreComment(filePath: string, lineNumber: number): boolean {
+    const lines = getFileLines(filePath);
+    if (!lines) {
+        return false;
+    }
+    
+    // Convert to 0-based index
+    const lineIndex = lineNumber - 1;
+    if (lineIndex < 0 || lineIndex >= lines.length) {
+        return false;
+    }
+    
+    const line = lines[lineIndex];
+    return IGNORE_COMMENT_PATTERN.test(line);
+}
+
+/**
  * Create VS Code diagnostics from parsed compiler problems.
  * Groups diagnostics by file and adds them to the diagnostic collection.
+ * Skips problems on lines that contain ignore comments.
  * 
  * @param problems Array of parsed compiler problems
+ * @returns Number of problems that were ignored
  */
-export function addDiagnosticsFromProblems(problems: CompilerProblem[]): void {
+export function addDiagnosticsFromProblems(problems: CompilerProblem[]): number {
     if (!diagnosticCollection) {
         console.error('Diagnostic collection not initialized');
-        return;
+        return 0;
     }
     
     // Group problems by file
     const diagnosticsByFile = new Map<string, vscode.Diagnostic[]>();
+    let ignoredCount = 0;
     
     for (const problem of problems) {
+        // Check for ignore comment on this line
+        if (hasIgnoreComment(problem.filePath, problem.line)) {
+            ignoredCount++;
+            continue;
+        }
+        
         // Convert to 0-based line/column for VS Code
         const line = Math.max(0, problem.line - 1);
         const column = Math.max(0, problem.column - 1);
@@ -208,6 +283,8 @@ export function addDiagnosticsFromProblems(problems: CompilerProblem[]): void {
         const uri = vscode.Uri.parse(fileKey);
         diagnosticCollection.set(uri, diagnostics);
     }
+    
+    return ignoredCount;
 }
 
 /**
@@ -216,18 +293,19 @@ export function addDiagnosticsFromProblems(problems: CompilerProblem[]): void {
  * 
  * @param output The complete compiler output
  * @param projectDir The project directory
- * @returns The number of problems found
+ * @returns The number of problems found and ignored
  */
-export function processCompilerOutput(output: string, projectDir: string): { errors: number; warnings: number; infos: number } {
+export function processCompilerOutput(output: string, projectDir: string): { errors: number; warnings: number; infos: number; ignored: number } {
     const problems = parseCompilerOutput(output, projectDir);
     
     const counts = {
         errors: problems.filter(p => p.severity === 'ERROR').length,
         warnings: problems.filter(p => p.severity === 'WARN').length,
-        infos: problems.filter(p => p.severity === 'INFO').length
+        infos: problems.filter(p => p.severity === 'INFO').length,
+        ignored: 0
     };
     
-    addDiagnosticsFromProblems(problems);
+    counts.ignored = addDiagnosticsFromProblems(problems);
     
     return counts;
 }

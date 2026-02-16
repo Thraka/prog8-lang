@@ -308,12 +308,13 @@ function createCompilerExecution(context: CompilationContext): vscode.CustomExec
                     // Process the captured output for diagnostics
                     const counts = processCompilerOutput(allOutput, context.projectDir);
                     
-                    if (counts.errors > 0 || counts.warnings > 0 || counts.infos > 0) {
+                    if (counts.errors > 0 || counts.warnings > 0 || counts.infos > 0 || counts.ignored > 0) {
                         writeEmitter.fire(`\r\n`);
                         const parts: string[] = [];
                         if (counts.errors > 0) parts.push(`${counts.errors} error(s)`);
                         if (counts.warnings > 0) parts.push(`${counts.warnings} warning(s)`);
                         if (counts.infos > 0) parts.push(`${counts.infos} info(s)`);
+                        if (counts.ignored > 0) parts.push(`${counts.ignored} ignored`);
                         writeEmitter.fire(`Problems: ${parts.join(', ')}\r\n`);
                     }
                     
