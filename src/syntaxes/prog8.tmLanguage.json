@@ -161,8 +161,8 @@
       "patterns": [
         { "include": "#storage-type-declarations" },
         {
-          "comment": "Additional variables in comma-separated declarations (excludes type keywords)",
-          "match": ",\\s*(?!(byte|ubyte|word|uword|long|float|bool|str)\\b)([a-zA-Z_][a-zA-Z0-9_]*)",
+          "comment": "Additional variables in comma-separated declarations (excludes type keywords and void)",
+          "match": ",\\s*(?!(byte|ubyte|word|uword|long|float|bool|str|void)\\b)([a-zA-Z_][a-zA-Z0-9_]*)",
           "captures": {
             "2": { "name": "variable.other.declaration.prog8" }
           }
