@@ -200,7 +200,12 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
         }
 
         // Check if prefix is a variable with a struct type - offer struct fields
-        const structMemberCompletions = this.getStructMemberCompletions(prefix, symbols, currentScope);
+        // Merge local and imported symbols for cross-set struct resolution
+        const allSymbolsForStruct = [
+            ...symbols,
+            ...importedFileSymbols.flatMap(i => i.symbols)
+        ];
+        const structMemberCompletions = this.getStructMemberCompletions(prefix, allSymbolsForStruct, currentScope);
         completions.push(...structMemberCompletions);
         structMemberCompletions.forEach(item => addedNames.add(item.label as string));
 
@@ -260,9 +265,10 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
         const baseTypeName = variable.type.replace(/^\^+/, '');
 
         // Find the struct/type definition
+        // Check both name (for same-scope types) and fullPath (for qualified types like "other.DirEntry")
         const structSymbol = symbols.find(s => 
             (s.kind === SymbolKind.Struct || s.kind === SymbolKind.Alias) && 
-            s.name === baseTypeName
+            (s.name === baseTypeName || s.fullPath === baseTypeName)
         );
 
         if (!structSymbol) {

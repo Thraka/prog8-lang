@@ -273,8 +273,14 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
                 }
 
                 // If still not found and this is the second part, try struct member resolution
+                // Merge all symbol sets for cross-set resolution
                 if (!resolved && i === 1 && firstPartVariable && firstPartVariable.type) {
-                    resolved = unifiedParser.resolveStructMemberAccess(qualifiedName, symbols, scope);
+                    const allSymbols = [
+                        ...symbols,
+                        ...importedFileSymbols.flatMap(imp => imp.symbols),
+                        ...librarySymbols
+                    ];
+                    resolved = unifiedParser.resolveStructMemberAccess(qualifiedName, allSymbols, scope);
                 }
                 
                 if (resolved) {

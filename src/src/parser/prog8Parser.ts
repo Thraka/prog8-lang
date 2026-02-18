@@ -277,7 +277,8 @@ export class Prog8Parser {
             }
 
             // Check for variable declarations (various forms)
-            this.parseVariableDeclarations(trimmedLine, line, lineIndex, scopePath, document.uri, symbols);
+            const insideStruct = scopeStack.length > 0 && scopeStack[scopeStack.length - 1].kind === SymbolKind.Struct;
+            this.parseVariableDeclarations(trimmedLine, line, lineIndex, scopePath, document.uri, symbols, insideStruct);
 
             // Check for alias
             const aliasMatch = trimmedLine.match(/^alias\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*=\s*(.+)/);
@@ -365,7 +366,8 @@ export class Prog8Parser {
         lineIndex: number,
         scopePath: string,
         uri: vscode.Uri,
-        symbols: Prog8Symbol[]
+        symbols: Prog8Symbol[],
+        insideStruct: boolean = false
     ): void {
         // Skip if it's a keyword line
         if (/^(const|sub|asmsub|extsub|struct|if|else|when|for|while|do|repeat|return|goto|defer|alias|on)\b/.test(trimmedLine)) {
@@ -396,8 +398,8 @@ export class Prog8Parser {
         }
 
         // Regular variable: type [@tags] name [= value]
-        // Supports primitive types, pointer types (^, ^^), and custom type names
-        const varMatch = trimmedLine.match(/^(\^{0,2}(?:ubyte|byte|uword|word|long|ulong|float|bool|str|[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*))(\[\d*\])?\s+(@\w+\s+)*([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)/);
+        // Supports primitive types, pointer types (^, ^^), custom type names, and qualified type names (e.g., other.DirEntry)
+        const varMatch = trimmedLine.match(/^(\^{0,2}(?:ubyte|byte|uword|word|long|ulong|float|bool|str|[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*(?:\.[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)*))(\[\d*\])?\s+(@\w+\s+)*([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)/);
         if (varMatch) {
             const baseType = varMatch[1];
             const arrayPart = varMatch[2] || '';
@@ -408,7 +410,7 @@ export class Prog8Parser {
 
             symbols.push({
                 name,
-                kind: SymbolKind.Variable,
+                kind: insideStruct ? SymbolKind.StructField : SymbolKind.Variable,
                 type,
                 range: new vscode.Range(lineIndex, 0, lineIndex, fullLine.length),
                 selectionRange: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),
@@ -428,7 +430,7 @@ export class Prog8Parser {
 
                     symbols.push({
                         name: addName,
-                        kind: SymbolKind.Variable,
+                        kind: insideStruct ? SymbolKind.StructField : SymbolKind.Variable,
                         type: baseType,
                         range: new vscode.Range(lineIndex, 0, lineIndex, fullLine.length),
                         selectionRange: new vscode.Range(lineIndex, addNameStart, lineIndex, addNameStart + addName.length),

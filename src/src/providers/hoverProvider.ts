@@ -264,6 +264,15 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
                 }
                 markdown.appendMarkdown('\n\n*Alias*');
                 break;
+
+            case SymbolKind.StructField:
+                if (isProgB) {
+                    markdown.appendCodeblock(`${symbol.name} AS ${symbol.type?.toUpperCase() || 'UBYTE'}`, langId);
+                } else {
+                    markdown.appendCodeblock(`${symbol.type} ${symbol.name}`, langId);
+                }
+                markdown.appendMarkdown('\n\n*Struct field*');
+                break;
         }
 
         // Add full path if nested

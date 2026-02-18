@@ -91,9 +91,10 @@ export class UnifiedParser {
         const baseTypeName = variable.type.replace(/^\^+/, '');
 
         // Find the struct/type definition
+        // Check both name (for same-scope types like "DirEntry") and fullPath (for qualified types like "other.DirEntry")
         const structSymbol = symbols.find(s => 
             (s.kind === Prog8SymbolKind.Struct || s.kind === Prog8SymbolKind.Alias) && 
-            s.name === baseTypeName
+            (s.name === baseTypeName || s.fullPath === baseTypeName)
         );
 
         if (!structSymbol) {

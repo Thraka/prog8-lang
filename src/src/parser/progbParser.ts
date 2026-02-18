@@ -394,7 +394,8 @@ export class ProgBParser {
             }
 
             // Check for variable declarations (DIM)
-            this.parseVariableDeclarations(trimmedLine, line, lineIndex, scopePath, document.uri, symbols);
+            const insideStruct = scopeStack.length > 0 && scopeStack[scopeStack.length - 1].kind === SymbolKind.Struct;
+            this.parseVariableDeclarations(trimmedLine, line, lineIndex, scopePath, document.uri, symbols, insideStruct);
 
             // Check for alias: ALIAS short = long.name
             const aliasMatch = trimmedLine.match(/^ALIAS\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*=\s*(.+)/i);
@@ -523,7 +524,8 @@ export class ProgBParser {
         lineIndex: number,
         scopePath: string,
         uri: vscode.Uri,
-        symbols: ProgBSymbol[]
+        symbols: ProgBSymbol[],
+        insideStruct: boolean = false
     ): void {
         // Skip if not a DIM statement
         if (!/^DIM\b/i.test(trimmedLine)) {
@@ -531,8 +533,8 @@ export class ProgBParser {
         }
 
         // DIM with AT (memory-mapped): DIM name AS type AT $address
-        // Supports primitive types, pointer types (^, ^^), and custom type names
-        const memoryMatch = trimmedLine.match(/^DIM\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)(?:\s*\[([^\]]*)\])?\s+AS\s+(\^{0,2}(?:UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*))\s+AT\s+(\$[0-9a-fA-F]+)/i);
+        // Supports primitive types, pointer types (^, ^^), and custom type names (including qualified names like module.TypeName)
+        const memoryMatch = trimmedLine.match(/^DIM\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)(?:\s*\[([^\]]*)\])?\s+AS\s+(\^{0,2}(?:UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*(?:\.[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)*))\s+AT\s+(\$[0-9a-fA-F]+)/i);
         if (memoryMatch) {
             const name = memoryMatch[1];
             const arraySize = memoryMatch[2];
@@ -543,7 +545,7 @@ export class ProgBParser {
 
             symbols.push({
                 name,
-                kind: SymbolKind.Variable,
+                kind: insideStruct ? SymbolKind.StructField : SymbolKind.Variable,
                 type: arraySize ? `${type}[${arraySize}]` : `&${type}`,
                 detail: `@ ${address}`,
                 range: new vscode.Range(lineIndex, 0, lineIndex, fullLine.length),
@@ -557,8 +559,8 @@ export class ProgBParser {
 
         // Regular DIM: DIM name[size], name2 AS type [= value] [@tags]
         // Pattern: DIM var1[10], var2, var3 AS UBYTE
-        // Supports primitive types, pointer types (^, ^^), PTR prefix, and custom type names
-        const dimMatch = trimmedLine.match(/^DIM\s+(.+?)\s+AS\s+((?:PTR\s+)*\^{0,2}(?:UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*))(?:\s+(@\w+))?/i);
+        // Supports primitive types, pointer types (^, ^^), PTR prefix, and custom type names (including qualified names)
+        const dimMatch = trimmedLine.match(/^DIM\s+(.+?)\s+AS\s+((?:PTR\s+)*\^{0,2}(?:UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*(?:\.[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)*))(?:\s+(@\w+))?/i);
         if (dimMatch) {
             const varList = dimMatch[1];
             const baseType = this.convertProgBType(dimMatch[2]);
@@ -575,7 +577,7 @@ export class ProgBParser {
 
                 symbols.push({
                     name,
-                    kind: SymbolKind.Variable,
+                    kind: insideStruct ? SymbolKind.StructField : SymbolKind.Variable,
                     type,
                     range: new vscode.Range(lineIndex, 0, lineIndex, fullLine.length),
                     selectionRange: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),

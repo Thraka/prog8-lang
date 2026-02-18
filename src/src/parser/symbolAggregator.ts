@@ -108,6 +108,9 @@ export function findSymbolInAccessible(
 /**
  * Resolve struct member access (e.g., "variable.field") across all accessible symbols.
  * Returns the struct field symbol if the variable has a struct type and the field exists.
+ * 
+ * Merges all symbol sets so that cross-set resolution works (e.g., variable defined
+ * locally but struct type defined in an imported file).
  */
 export function resolveStructMemberInAccessible(
     qualifiedName: string,
@@ -118,17 +121,15 @@ export function resolveStructMemberInAccessible(
         return undefined;
     }
 
-    // Try local symbols first
-    let result = unifiedParser.resolveStructMemberAccess(qualifiedName, accessible.localSymbols, scope);
-    if (result) return result;
+    // Merge all symbols for cross-set resolution
+    // This handles cases where the variable is in one set and the struct in another
+    const allSymbols = [
+        ...accessible.localSymbols,
+        ...accessible.importedFileSymbols.flatMap(i => i.symbols),
+        ...accessible.librarySymbols
+    ];
 
-    // Then try imported file symbols
-    for (const imported of accessible.importedFileSymbols) {
-        result = unifiedParser.resolveStructMemberAccess(qualifiedName, imported.symbols, scope);
-        if (result) return result;
-    }
-
-    return undefined;
+    return unifiedParser.resolveStructMemberAccess(qualifiedName, allSymbols, scope);
 }
 
 /**
