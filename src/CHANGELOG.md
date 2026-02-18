@@ -2,6 +2,12 @@
 
 All notable changes to the Prog8 Language Support extension will be documented in this file.
 
+## [1.6.14] - 2026-02-17
+
+- Fix intellisense regression on displaying variables declared as structs.
+- Compiler parser error now shows as an inline error (this used a different string format).
+- Hover provider in ProgBasic wasn't showing the type declared with a pointer.
+
 ## [1.6.13] - 2026-02-15
 
 - Added the ability to suppress a problem in the list of problems by adding a `; @ignore-error` comment to the end of the line.
