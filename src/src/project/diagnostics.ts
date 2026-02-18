@@ -25,6 +25,14 @@ const IGNORE_COMMENT_PATTERN = /(?:;|'|\brem\b)\s*(@ignore-error|prog8-ignore|no
 const COMPILER_OUTPUT_PATTERN = /(ERROR|WARN|INFO)\s+file:\/\/\/(\S+?):(\d+):(\d+):\s*(.*)$/;
 
 /**
+ * Regex pattern to match parse error lines from the compiler.
+ * These occur before ERROR/WARN/INFO messages when the compiler cannot parse the source.
+ * Matches: file:///encoded/path:line:column: parse error: message
+ * Groups: 1=file path (URL-encoded), 2=line, 3=column, 4=error type, 5=message
+ */
+const PARSE_ERROR_PATTERN = /^file:\/\/\/(\S+?):(\d+):(\d+):\s*(parse error|syntax error):\s*(.*)$/;
+
+/**
  * Regex to strip ANSI escape codes from text
  */
 const ANSI_ESCAPE_PATTERN = /\x1b\[[0-9;]*m/g;
@@ -121,6 +129,23 @@ export function parseCompilerLine(line: string, projectDir: string): CompilerPro
     // Strip ANSI escape codes (color formatting) before parsing
     const cleanLine = line.replace(ANSI_ESCAPE_PATTERN, '');
     
+    // Try to match parse error format first (no severity prefix)
+    const parseErrorMatch = cleanLine.match(PARSE_ERROR_PATTERN);
+    if (parseErrorMatch) {
+        const [, encodedPath, lineStr, columnStr, errorType, message] = parseErrorMatch;
+        const filePath = normalizeFilePath(encodedPath, projectDir);
+        const cleanMessage = message.replace(ANSI_ESCAPE_PATTERN, '').trim();
+        
+        return {
+            severity: 'ERROR',  // Parse errors are always critical
+            filePath,
+            line: parseInt(lineStr, 10),
+            column: parseInt(columnStr, 10),
+            message: `${errorType}: ${cleanMessage}`
+        };
+    }
+    
+    // Try standard format with severity prefix
     const match = cleanLine.match(COMPILER_OUTPUT_PATTERN);
     if (!match) {
         return undefined;
