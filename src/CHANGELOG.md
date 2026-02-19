@@ -2,6 +2,10 @@
 
 All notable changes to the Prog8 Language Support extension will be documented in this file.
 
+## [1.6.17-prerelease] - 2026-02-19
+
+- Rewrite the language parser into a single file that branches when needed to prog8 or progb.
+
 ## [1.6.16] - 2026-02-19
 
 - Correct some files in the publishing package.
