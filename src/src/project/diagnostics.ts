@@ -9,6 +9,14 @@ import * as fs from 'fs';
 let diagnosticCollection: vscode.DiagnosticCollection | undefined;
 
 /**
+ * Map of file URI string → (0-based line number → original line text).
+ * When a diagnostic is created, the line text at compile time is stored here.
+ * Used to detect stale diagnostics: if a line's text changes after compile,
+ * the diagnostic on that line is considered stale and removed.
+ */
+let diagnosticLineTexts = new Map<string, Map<number, string>>();
+
+/**
  * Pattern to match ignore comments in source code.
  * Supports Prog8 (;) and ProgB (' or rem) comment syntax.
  * Keywords: @ignore-error, prog8-ignore, noerror
@@ -70,6 +78,7 @@ export function getDiagnosticCollection(): vscode.DiagnosticCollection | undefin
  */
 export function clearDiagnostics(): void {
     diagnosticCollection?.clear();
+    diagnosticLineTexts.clear();
     clearFileContentsCache();
 }
 
@@ -293,6 +302,17 @@ export function addDiagnosticsFromProblems(problems: CompilerProblem[]): number 
         );
         diagnostic.source = 'prog8c';
         
+        // Capture the original line text for stale diagnostic detection
+        const sourceLines = getFileLines(problem.filePath);
+        if (sourceLines && line >= 0 && line < sourceLines.length) {
+            const fileUri2 = vscode.Uri.file(problem.filePath);
+            const fileKey2 = fileUri2.toString();
+            if (!diagnosticLineTexts.has(fileKey2)) {
+                diagnosticLineTexts.set(fileKey2, new Map());
+            }
+            diagnosticLineTexts.get(fileKey2)!.set(line, sourceLines[line]);
+        }
+        
         // Get or create the array for this file
         const fileUri = vscode.Uri.file(problem.filePath);
         const fileKey = fileUri.toString();
@@ -310,6 +330,164 @@ export function addDiagnosticsFromProblems(problems: CompilerProblem[]): number 
     }
     
     return ignoredCount;
+}
+
+/**
+ * Adjust diagnostic positions after a document edit.
+ * When lines are inserted or deleted, diagnostics and their associated line texts
+ * must be shifted so they continue to point at the correct code.
+ * 
+ * Call this BEFORE removeStaleDiagnostics so the stale check compares
+ * against the correct (shifted) lines.
+ * 
+ * @param document The document that changed
+ * @param contentChanges The content changes from the TextDocumentChangeEvent
+ */
+export function adjustDiagnosticPositions(
+    document: vscode.TextDocument,
+    contentChanges: readonly vscode.TextDocumentContentChangeEvent[]
+): void {
+    if (!diagnosticCollection || contentChanges.length === 0) {
+        return;
+    }
+
+    const fileKey = document.uri.toString();
+    const currentDiagnostics = diagnosticCollection.get(document.uri);
+    if (!currentDiagnostics || currentDiagnostics.length === 0) {
+        return;
+    }
+
+    // Process each change to compute how lines shift.
+    // VS Code provides changes in reverse document order when there are multiple,
+    // so processing them in order is safe (later changes don't affect earlier positions).
+    for (const change of contentChanges) {
+        const changeStartLine = change.range.start.line;
+        const oldLineCount = change.range.end.line - change.range.start.line;
+        const newLineCount = (change.text.match(/\n/g) || []).length;
+        const lineDelta = newLineCount - oldLineCount;
+
+        if (lineDelta === 0) {
+            // No line shift, only in-line text change — nothing to adjust
+            continue;
+        }
+
+        // Rebuild diagnostics with shifted ranges
+        const adjusted: vscode.Diagnostic[] = [];
+        for (const diag of currentDiagnostics) {
+            const diagLine = diag.range.start.line;
+
+            if (diagLine <= changeStartLine) {
+                // Diagnostic is at or before the change point — no shift needed
+                adjusted.push(diag);
+            } else if (diagLine > changeStartLine + oldLineCount) {
+                // Diagnostic is after the changed region — shift by delta
+                const newLine = diagLine + lineDelta;
+                if (newLine >= 0) {
+                    const newDiag = new vscode.Diagnostic(
+                        new vscode.Range(
+                            newLine,
+                            diag.range.start.character,
+                            newLine + (diag.range.end.line - diag.range.start.line),
+                            diag.range.end.character
+                        ),
+                        diag.message,
+                        diag.severity
+                    );
+                    newDiag.source = diag.source;
+                    newDiag.code = diag.code;
+                    newDiag.relatedInformation = diag.relatedInformation;
+                    newDiag.tags = diag.tags;
+                    adjusted.push(newDiag);
+                }
+                // else: shifted to negative line, drop the diagnostic
+            } else {
+                // Diagnostic is inside the changed region — it may be invalidated,
+                // but keep it at the same position; removeStaleDiagnostics will
+                // catch it if the text changed
+                adjusted.push(diag);
+            }
+        }
+
+        // Also shift the stored line texts
+        const lineTexts = diagnosticLineTexts.get(fileKey);
+        if (lineTexts) {
+            const newLineTexts = new Map<number, string>();
+            for (const [lineNum, text] of lineTexts) {
+                if (lineNum <= changeStartLine) {
+                    newLineTexts.set(lineNum, text);
+                } else if (lineNum > changeStartLine + oldLineCount) {
+                    const newLine = lineNum + lineDelta;
+                    if (newLine >= 0) {
+                        newLineTexts.set(newLine, text);
+                    }
+                } else {
+                    // Inside the changed region — keep at same position,
+                    // stale check will handle text comparison
+                    newLineTexts.set(lineNum, text);
+                }
+            }
+            diagnosticLineTexts.set(fileKey, newLineTexts);
+        }
+
+        // Update the collection so subsequent changes see the shifted positions
+        diagnosticCollection.set(document.uri, adjusted);
+    }
+}
+
+/**
+ * Remove stale diagnostics from a document.
+ * Compares each diagnostic's line text against the stored original text from compile time.
+ * If the line text has changed, the diagnostic is removed as stale.
+ * If the line text is the same, the diagnostic is kept.
+ * 
+ * @param document The document to check for stale diagnostics
+ */
+export function removeStaleDiagnostics(document: vscode.TextDocument): void {
+    if (!diagnosticCollection) {
+        return;
+    }
+
+    const fileKey = document.uri.toString();
+    const lineTexts = diagnosticLineTexts.get(fileKey);
+    if (!lineTexts || lineTexts.size === 0) {
+        return;
+    }
+
+    const currentDiagnostics = diagnosticCollection.get(document.uri);
+    if (!currentDiagnostics || currentDiagnostics.length === 0) {
+        return;
+    }
+
+    const remaining: vscode.Diagnostic[] = [];
+    for (const diag of currentDiagnostics) {
+        const lineNum = diag.range.start.line;
+        const originalText = lineTexts.get(lineNum);
+
+        if (originalText === undefined) {
+            // No stored text for this line, keep the diagnostic
+            remaining.push(diag);
+            continue;
+        }
+
+        if (lineNum < document.lineCount) {
+            const currentText = document.lineAt(lineNum).text;
+            if (currentText === originalText) {
+                // Line hasn't changed, keep the diagnostic
+                remaining.push(diag);
+            } else {
+                // Line changed, diagnostic is stale — drop it and clean up stored text
+                lineTexts.delete(lineNum);
+            }
+        }
+        // If line no longer exists in the document, drop the diagnostic
+    }
+
+    if (remaining.length !== currentDiagnostics.length) {
+        diagnosticCollection.set(document.uri, remaining);
+        if (lineTexts.size === 0) {
+            diagnosticLineTexts.delete(fileKey);
+        }
+    }
 }
 
 /**

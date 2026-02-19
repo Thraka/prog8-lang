@@ -13,7 +13,7 @@ import { createStatusBarItem, selectTargetPlatform } from './utils/targetPlatfor
 import { Prog8DebugConfigurationProvider, Prog8DebugAdapterDescriptorFactory } from './project/debugConfigProvider';
 import { runCurrentProject, buildCurrentProject, disposeProjectRunner } from './project/projectRunner';
 import { initializeProject } from './project/projectFile';
-import { initDiagnostics } from './project/diagnostics';
+import { initDiagnostics, adjustDiagnosticPositions, removeStaleDiagnostics } from './project/diagnostics';
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('Prog8 Language Support is now active');
@@ -233,10 +233,16 @@ export function activate(context: vscode.ExtensionContext) {
         }
     }
 
-    // Listen for document changes to detect paste operations
+    // Listen for document changes to detect paste operations and remove stale diagnostics
     context.subscriptions.push(
         vscode.workspace.onDidChangeTextDocument(event => {
-            // Only process ProgB files
+            // Adjust diagnostic positions and remove stale diagnostics for any prog8/progb file
+            if (event.document.languageId === 'prog8' || event.document.languageId === 'progb') {
+                adjustDiagnosticPositions(event.document, event.contentChanges);
+                removeStaleDiagnostics(event.document);
+            }
+
+            // Only process ProgB files for keyword casing/comma spacing
             if (event.document.languageId !== 'progb') {
                 return;
             }
