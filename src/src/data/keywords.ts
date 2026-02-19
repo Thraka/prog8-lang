@@ -239,6 +239,10 @@ export const progbKeywords: { [key: string]: KeywordInfo } = {
     'FORCE_OUTPUT': { description: 'Force output of symbol', category: 'directive' },
     'VERAFXMULS': { description: 'Use VERA FX for multiplication', category: 'directive' },
     
+    // Built-in functions that need casing
+    'ADDRESSOF': { description: 'Get the address of a variable', category: 'declaration' },
+    'TYPEDADDR': { description: 'Get the typed address of a variable', category: 'declaration' },
+    
     // Literals
     'TRUE': { description: 'Boolean true value', category: 'literal' },
     'FALSE': { description: 'Boolean false value', category: 'literal' },

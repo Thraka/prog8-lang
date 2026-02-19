@@ -2,6 +2,12 @@
 
 All notable changes to the Prog8 Language Support extension will be documented in this file.
 
+## [1.6.15]
+
+- Diagnostics in the problem panel are kept in sync when you add/remove lines from the doc.
+- If you change a line that has a diagnostic item (squiggle) associated with it, it's deleted.
+- Fix ProgBasic colors and casing for `ADDRESSOF` and `TYPEDADDR`.
+
 ## [1.6.14] - 2026-02-17
 
 - Fix intellisense regression on displaying variables declared as structs.

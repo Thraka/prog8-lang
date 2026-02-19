@@ -141,7 +141,7 @@
         },
         {
           "name": "keyword.other.progb",
-          "match": "(?i)\\b(VOID|ALIAS|END\\s+TYPE|AT)\\b"
+          "match": "(?i)\\b(VOID|ALIAS|END\\s+TYPE|AT|ADDRESSOF|TYPEDADDR)\\b"
         }
       ]
     },
@@ -228,7 +228,7 @@
       "patterns": [
         {
           "name": "support.function.builtin.progb",
-          "match": "(?i)\\b(LEN|SIZEOF|OFFSETOF|ABS|CLAMP|DIVMOD|MAX|MIN|SGN|SQRT|CMP|LSB|LSW|MSB|MSW|MKWORD|MKLONG|MKLONG2|PEEK|PEEKBOOL|PEEKW|PEEKL|PEEKF|POKE|POKEBOOL|POKEW|POKEL|POKEF|POKEMON|ROL|ROL2|ROR|ROR2|SETLSB|SETMSB|MEMORY|CALL|CALLFAR|CALLFAR2|RSAVE|RSAVEX|RRESTORE|RRESTOREX|ADDRESSOF|TYPEDADDR)\\b"
+          "match": "(?i)\\b(LEN|SIZEOF|OFFSETOF|ABS|CLAMP|DIVMOD|MAX|MIN|SGN|SQRT|CMP|LSB|LSW|MSB|MSW|MKWORD|MKLONG|MKLONG2|PEEK|PEEKBOOL|PEEKW|PEEKL|PEEKF|POKE|POKEBOOL|POKEW|POKEL|POKEF|POKEMON|ROL|ROL2|ROR|ROR2|SETLSB|SETMSB|MEMORY|CALL|CALLFAR|CALLFAR2|RSAVE|RSAVEX|RRESTORE|RRESTOREX)\\b"
         },
         {
           "name": "support.function.builtin.array.progb",
