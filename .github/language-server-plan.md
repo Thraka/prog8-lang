@@ -146,6 +146,3 @@ Add full language support features to the VS Code extension for Prog8.
 ### Reference Documentation
 - Main docs: https://prog8.readthedocs.io/en/latest/
 - Context7 library ID for prog8: `/irmen/prog8`
-- **`.github/reference/` folder** - Contains information about prog8 and progb:
-  - Kotlin translator code
-  - ANTLR grammar files (useful for understanding the formal grammar)
