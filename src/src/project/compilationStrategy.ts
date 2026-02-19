@@ -35,6 +35,8 @@ export interface ValidationResult {
 export interface CommandInfo {
     /** The command parts to execute (will be joined with spaces) */
     commandParts: string[];
+    /** Raw arguments to append verbatim (no quoting applied) - e.g. user-provided compilerArgs */
+    rawArgs: string[];
     /** Environment PATH additions needed */
     pathAdditions: string[];
     /** Working directory for the command */
@@ -140,17 +142,19 @@ export class JavaCompilerStrategy extends CompilationStrategy {
         // Add common compiler arguments
         this.addCompilerArguments(commandParts, project, options);
         
-        // Add any custom compiler arguments
-        if (project.compilerArgs && project.compilerArgs.length > 0) {
-            commandParts.push(...project.compilerArgs);
-        }
-        
         // Add the main file
         const mainFilePath = path.join(project.projectDir, project.main);
         commandParts.push(quotePath(mainFilePath));
         
+        // Collect any custom compiler arguments as raw args (no quoting - user controls quoting)
+        const rawArgs: string[] = [];
+        if (project.compilerArgs && project.compilerArgs.length > 0) {
+            rawArgs.push(...project.compilerArgs);
+        }
+        
         return {
             commandParts,
+            rawArgs,
             pathAdditions: this.buildPathAdditions(config),
             workingDir: project.projectDir
         };
@@ -275,16 +279,18 @@ export class BinaryCompilerStrategy extends CompilationStrategy {
             commandParts.push('-srcdirs', quotePath(resolvedDirs.join(';')));
         }
         
-        // Add any custom compiler arguments
-        if (project.compilerArgs && project.compilerArgs.length > 0) {
-            commandParts.push(...project.compilerArgs);
-        }
-        
         const mainFilePath = path.join(project.projectDir, project.main);
         commandParts.push(quotePath(mainFilePath));
         
+        // Collect any custom compiler arguments as raw args (no quoting - user controls quoting)
+        const rawArgs: string[] = [];
+        if (project.compilerArgs && project.compilerArgs.length > 0) {
+            rawArgs.push(...project.compilerArgs);
+        }
+        
         return {
             commandParts,
+            rawArgs,
             pathAdditions: this.buildPathAdditions(config),
             workingDir: project.projectDir
         };
@@ -353,13 +359,15 @@ export class CustomScriptStrategy extends CompilationStrategy {
             commandParts.push(quotePath(mainFilePath));
         }
         
-        // Add any custom compiler arguments as additional script arguments
+        // Collect any custom compiler arguments as raw args (no quoting - user controls quoting)
+        const rawArgs: string[] = [];
         if (project.compilerArgs && project.compilerArgs.length > 0) {
-            commandParts.push(...project.compilerArgs);
+            rawArgs.push(...project.compilerArgs);
         }
         
         return {
             commandParts,
+            rawArgs,
             pathAdditions: [],
             workingDir: project.projectDir
         };

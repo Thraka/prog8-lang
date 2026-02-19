@@ -142,6 +142,7 @@ function buildEnvironmentVariablesObject(project: Prog8Project, pathAdditions: s
 interface CompilationContext {
     command: string;
     args: string[];
+    rawArgs: string[];
     cwd: string;
     env: Record<string, string>;
     projectDir: string;
@@ -198,7 +199,7 @@ function psQuote(value: string): string {
  * Handles script files specially for each platform.
  * Returns the shell to use and the full command as a single string.
  */
-function buildCommandLine(command: string, args: string[]): { shell: string | boolean; commandLine: string } {
+function buildCommandLine(command: string, args: string[], rawArgs: string[]): { shell: string | boolean; commandLine: string } {
     const isWindows = process.platform === 'win32';
     const lowerCommand = command.toLowerCase();
     const isPowerShellScript = lowerCommand.endsWith('.ps1');
@@ -207,6 +208,7 @@ function buildCommandLine(command: string, args: string[]): { shell: string | bo
     // Quote all parts properly
     const quotedCommand = shellQuote(command);
     const quotedArgs = args.map(shellQuote);
+    const rawSuffix = rawArgs.length > 0 ? ' ' + rawArgs.join(' ') : '';
     
     if (isPowerShellScript) {
         // PowerShell scripts - use pwsh (PowerShell Core) on all platforms
@@ -214,7 +216,7 @@ function buildCommandLine(command: string, args: string[]): { shell: string | bo
         // The & operator is needed to invoke a quoted path in PowerShell
         const psQuotedCommand = psQuote(command);
         const psQuotedArgs = args.map(psQuote);
-        const scriptInvocation = `& ${psQuotedCommand} ${psQuotedArgs.join(' ')}`;
+        const scriptInvocation = `& ${psQuotedCommand} ${psQuotedArgs.join(' ')}${rawSuffix}`;
         // Use -ExecutionPolicy Bypass on Windows to avoid script execution restrictions
         const execPolicy = isWindows ? '-ExecutionPolicy Bypass ' : '';
         const commandLine = `pwsh ${execPolicy}-NoProfile -Command "${scriptInvocation}"`;
@@ -227,7 +229,7 @@ function buildCommandLine(command: string, args: string[]): { shell: string | bo
     if (isWindows) {
         // Regular executables on Windows - use default shell (cmd.exe)
         // This works for java, .exe files, etc.
-        const commandLine = `${quotedCommand} ${quotedArgs.join(' ')}`;
+        const commandLine = `${quotedCommand} ${quotedArgs.join(' ')}${rawSuffix}`;
         return {
             shell: true,
             commandLine
@@ -236,14 +238,14 @@ function buildCommandLine(command: string, args: string[]): { shell: string | bo
         // Unix (Linux/macOS)
         if (isShellScript) {
             // Shell scripts - invoke with bash explicitly to ensure they run
-            const commandLine = `bash ${quotedCommand} ${quotedArgs.join(' ')}`;
+            const commandLine = `bash ${quotedCommand} ${quotedArgs.join(' ')}${rawSuffix}`;
             return {
                 shell: true,
                 commandLine
             };
         } else {
             // Regular executables
-            const commandLine = `${quotedCommand} ${quotedArgs.join(' ')}`;
+            const commandLine = `${quotedCommand} ${quotedArgs.join(' ')}${rawSuffix}`;
             return {
                 shell: true,
                 commandLine
@@ -271,7 +273,7 @@ function createCompilerExecution(context: CompilationContext): vscode.CustomExec
                 clearDiagnostics();
                 
                 // Build the command line with proper quoting and PowerShell handling
-                const { shell, commandLine } = buildCommandLine(context.command, context.args);
+                const { shell, commandLine } = buildCommandLine(context.command, context.args, context.rawArgs);
                 
                 // Display the command being executed
                 writeEmitter.fire(`> ${commandLine}\r\n\r\n`);
@@ -453,12 +455,14 @@ export async function buildProject(project: Prog8Project, runAfterBuild: boolean
     const unquotedParts = commandInfo.commandParts.map(stripOuterQuotes);
     const command = unquotedParts[0];
     const args = unquotedParts.slice(1);
+    const rawArgs = commandInfo.rawArgs || [];
     
     // Create custom execution to capture output and parse diagnostics
     // This handles HTML-encoded file paths that the problem matcher can't process
     const compilationContext: CompilationContext = {
         command,
         args,
+        rawArgs,
         cwd: project.projectDir,
         env,
         projectDir: project.projectDir
