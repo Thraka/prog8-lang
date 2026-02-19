@@ -2,6 +2,11 @@
 
 All notable changes to the Prog8 Language Support extension will be documented in this file.
 
+## [1.6.16] - 2026-02-19
+
+- Correct some files in the publishing package.
+- Update built in library symbols to 12.1.1
+
 ## [1.6.15] - 2026-02-19
 
 - Diagnostics in the problem panel are kept in sync when you add/remove lines from the doc.

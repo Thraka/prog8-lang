@@ -8,7 +8,7 @@ import { LibraryData } from "./librarySymbolsHelpers";
 
 export const library_cx16: LibraryData = {
   "target": "cx16",
-  "version": "12.1",
+  "version": "12.1.1",
   "modules": [
     {
       "name": "bcd",
@@ -1419,6 +1419,21 @@ export const library_cx16: LibraryData = {
               "clobbers": [
                 "Y"
               ]
+            },
+            {
+              "name": "str2long",
+              "parameters": [
+                {
+                  "name": "string",
+                  "type": "str"
+                }
+              ],
+              "returns": [
+                {
+                  "type": "long"
+                }
+              ],
+              "clobbers": []
             },
             {
               "name": "str2ubyte",
@@ -16849,7 +16864,7 @@ export const library_cx16: LibraryData = {
 
 export const library_c64: LibraryData = {
   "target": "c64",
-  "version": "12.1",
+  "version": "12.1.1",
   "modules": [
     {
       "name": "bcd",
@@ -17861,6 +17876,21 @@ export const library_c64: LibraryData = {
               "clobbers": [
                 "Y"
               ]
+            },
+            {
+              "name": "str2long",
+              "parameters": [
+                {
+                  "name": "string",
+                  "type": "str"
+                }
+              ],
+              "returns": [
+                {
+                  "type": "long"
+                }
+              ],
+              "clobbers": []
             },
             {
               "name": "str2ubyte",
@@ -26182,7 +26212,7 @@ export const library_c64: LibraryData = {
 
 export const library_c128: LibraryData = {
   "target": "c128",
-  "version": "12.1",
+  "version": "12.1.1",
   "modules": [
     {
       "name": "bcd",
@@ -27194,6 +27224,21 @@ export const library_c128: LibraryData = {
               "clobbers": [
                 "Y"
               ]
+            },
+            {
+              "name": "str2long",
+              "parameters": [
+                {
+                  "name": "string",
+                  "type": "str"
+                }
+              ],
+              "returns": [
+                {
+                  "type": "long"
+                }
+              ],
+              "clobbers": []
             },
             {
               "name": "str2ubyte",
@@ -34213,7 +34258,7 @@ export const library_c128: LibraryData = {
 
 export const library_pet32: LibraryData = {
   "target": "pet32",
-  "version": "12.1",
+  "version": "12.1.1",
   "modules": [
     {
       "name": "bcd",
@@ -35225,6 +35270,21 @@ export const library_pet32: LibraryData = {
               "clobbers": [
                 "Y"
               ]
+            },
+            {
+              "name": "str2long",
+              "parameters": [
+                {
+                  "name": "string",
+                  "type": "str"
+                }
+              ],
+              "returns": [
+                {
+                  "type": "long"
+                }
+              ],
+              "clobbers": []
             },
             {
               "name": "str2ubyte",
@@ -41668,7 +41728,7 @@ export const library_pet32: LibraryData = {
 
 export const library_virtual: LibraryData = {
   "target": "virtual",
-  "version": "12.1",
+  "version": "12.1.1",
   "modules": [
     {
       "name": "buffers",
@@ -42327,6 +42387,21 @@ export const library_virtual: LibraryData = {
               "returns": [
                 {
                   "type": "byte"
+                }
+              ],
+              "clobbers": []
+            },
+            {
+              "name": "str2long",
+              "parameters": [
+                {
+                  "name": "string",
+                  "type": "str"
+                }
+              ],
+              "returns": [
+                {
+                  "type": "long"
                 }
               ],
               "clobbers": []
