@@ -39,7 +39,25 @@
     "directives": {
       "patterns": [
         {
-          "match": "(?i)\\b(IMPORT|ENCODING|LAUNCHER|OPTION|OUTPUT|ZEROPAGE)\\b\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+          "name": "meta.directive.option.progb",
+          "begin": "(?i)\\b(OPTION)\\b",
+          "end": "(?='|/'|$)",
+          "beginCaptures": {
+            "1": { "name": "keyword.control.directive.progb" }
+          },
+          "patterns": [
+            {
+              "name": "entity.name.type.module.progb",
+              "match": "[a-zA-Z_][a-zA-Z0-9_]*"
+            },
+            {
+              "name": "punctuation.separator.comma.progb",
+              "match": ","
+            }
+          ]
+        },
+        {
+          "match": "(?i)\\b(IMPORT|ENCODING|LAUNCHER|OUTPUT|ZEROPAGE)\\b\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
           "captures": {
             "1": { "name": "keyword.control.directive.progb" },
             "2": { "name": "entity.name.type.module.progb" }

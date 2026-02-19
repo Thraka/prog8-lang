@@ -39,7 +39,25 @@
           "match": "%breakpoint!"
         },
         {
-          "match": "%(import|encoding|launcher|option|output|zeropage)\\b\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+          "name": "meta.directive.option.prog8",
+          "begin": "(%option)\\b",
+          "end": "(?=;|/\\*|$)",
+          "beginCaptures": {
+            "1": { "name": "keyword.control.directive.prog8" }
+          },
+          "patterns": [
+            {
+              "name": "entity.name.type.module.prog8",
+              "match": "[a-zA-Z_][a-zA-Z0-9_]*"
+            },
+            {
+              "name": "punctuation.separator.comma.prog8",
+              "match": ","
+            }
+          ]
+        },
+        {
+          "match": "%(import|encoding|launcher|output|zeropage)\\b\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
           "captures": {
             "0": { "name": "keyword.control.directive.prog8" },
             "2": { "name": "entity.name.type.module.prog8" }
