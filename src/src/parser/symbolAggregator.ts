@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
-import { unifiedParser, UnifiedSymbol } from './index';
-import { SymbolKind } from './prog8Parser';
+import { unifiedParser, UnifiedSymbol, SymbolKind } from './index';
 import { parseImports, parseImportedFileSymbols, ImportInfo, ImportedFileSymbols, getSrcDirsForDocument } from './importResolver';
 import { findModule } from '../data/librarySymbolsHelpers';
 import { getTargetPlatformForDocument } from '../utils/targetPlatform';
