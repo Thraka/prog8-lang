@@ -2,7 +2,7 @@
 
 All notable changes to the Prog8 Language Support extension will be documented in this file.
 
-## [1.6.15]
+## [1.6.15] - 2026-02-19
 
 - Diagnostics in the problem panel are kept in sync when you add/remove lines from the doc.
 - If you change a line that has a diagnostic item (squiggle) associated with it, it's deleted.
