@@ -178,9 +178,11 @@ export function getQualifiedNameAtPosition(document: vscode.TextDocument, positi
  * @returns The prefix if in a qualified context, undefined otherwise
  */
 export function getQualifiedPrefix(linePrefix: string): string | undefined {
-    // Match identifiers followed by a dot at the end
-    // e.g., "txt." -> "txt", "main.start." -> "main.start"
-    const match = linePrefix.match(/([a-zA-Z_][\w]*(?:\.[a-zA-Z_][\w]*)*)\.$/);
+    // Match identifiers followed by a dot, optionally with a partial identifier after it
+    // e.g., "txt." -> "txt", "main.start." -> "main.start", "txt.pr" -> "txt"
+    // The partial identifier after the dot is allowed so that Ctrl+Space works
+    // when the user has already typed some characters after the dot.
+    const match = linePrefix.match(/([a-zA-Z_][\w]*(?:\.[a-zA-Z_][\w]*)*)\.([a-zA-Z_]\w*)?$/);
     if (match) {
         return match[1];
     }

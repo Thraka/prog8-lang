@@ -2,6 +2,10 @@
 
 All notable changes to the Prog8 Language Support extension will be documented in this file.
 
+## [1.6.20] - 2026-02-19
+
+- `CTRL+SPACE` now triggers the completion provider.
+
 ## [1.6.19] - 2026-02-19
 
 - Fix color syntax on `%option` with multiple values.
