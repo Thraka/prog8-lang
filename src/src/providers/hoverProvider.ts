@@ -1,12 +1,26 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { unifiedParser, UnifiedSymbol, SymbolKind } from '../parser';
-import { findSubroutine, findVariable, findConstant, findSubroutineParameter, getAllBlocks, findModule, formatSubroutineSignature, SubroutineInfo, BlockInfo, ModuleInfo, VariableInfo, ConstantInfo, Parameter } from '../data/librarySymbolsHelpers';
+import { findSubroutine, findVariable, findConstant, findSubroutineParameter, getAllBlocks, findModule, SubroutineInfo, BlockInfo, ModuleInfo, VariableInfo, ConstantInfo, Parameter } from '../data/librarySymbolsHelpers';
 import { getTargetPlatform, getTargetPlatformForDocument } from '../utils/targetPlatform';
 import { parseImports, findSymbolInImports, ImportedFileSymbols, resolveLocalImport, getSrcDirsForDocument } from '../parser/importResolver';
 import { getAllAccessibleSymbols, resolveStructMemberInAccessible } from '../parser/symbolAggregator';
 import { isInImportStatement, getQualifiedNameAtPosition, isInComment } from './providerUtils';
 import { getBuiltinFunction } from '../data/builtinFunctions';
+import { getKeywordsForLanguage } from '../data/keywords';
+import {
+    formatUnifiedSymbolDoc,
+    formatLibrarySubroutineDoc,
+    formatLibraryVariableDoc,
+    formatLibraryConstantDoc,
+    formatLibraryParameterDoc,
+    formatBuiltinDoc,
+    formatKeywordDoc,
+    formatLibraryModuleDoc,
+    formatLibraryBlockDoc,
+    formatImportedBlockDoc,
+    formatLocalModuleDoc
+} from './symbolDocumentation';
 
 /**
  * Provides hover information for Prog8 files.
@@ -153,165 +167,7 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
      * @param isImported Whether the symbol comes from an imported file
      */
     private createHoverForSymbol(symbol: UnifiedSymbol, isProgB: boolean = false, isImported: boolean = false): vscode.Hover {
-        const markdown = new vscode.MarkdownString();
-        const langId = isProgB ? 'progb' : 'prog8';
-        
-        switch (symbol.kind) {
-            case SymbolKind.Block:
-                if (isProgB) {
-                    markdown.appendCodeblock(`MODULE ${symbol.name}${symbol.detail ? ' ' + symbol.detail : ''} ... END MODULE`, langId);
-                } else {
-                    markdown.appendCodeblock(`${symbol.name}${symbol.detail ? ' ' + symbol.detail : ''} { }`, langId);
-                }
-                markdown.appendMarkdown('\n\n*Block (namespace)*');
-                break;
-
-            case SymbolKind.Subroutine:
-                if (isProgB) {
-                    const subSig = symbol.returnType 
-                        ? `FUNCTION ${symbol.name}(${this.formatParamsProgB(symbol.parameters)}) AS ${symbol.returnType.toUpperCase()}`
-                        : `SUB ${symbol.name}(${this.formatParamsProgB(symbol.parameters)})`;
-                    markdown.appendCodeblock(subSig, langId);
-                } else {
-                    const subSig = `sub ${symbol.name}(${symbol.parameters || ''})${symbol.returnType ? ' -> ' + symbol.returnType : ''}`;
-                    markdown.appendCodeblock(subSig, langId);
-                }
-                if (symbol.detail === 'inline') {
-                    markdown.appendMarkdown('\n\n*Inline subroutine*');
-                }
-                break;
-
-            case SymbolKind.AsmSubroutine:
-                if (isProgB) {
-                    const asmSig = `ASMSUB ${symbol.name}(${this.formatParamsProgB(symbol.parameters)})`;
-                    markdown.appendCodeblock(asmSig, langId);
-                } else {
-                    const asmSig = `asmsub ${symbol.name}(${symbol.parameters || ''})`;
-                    markdown.appendCodeblock(asmSig, langId);
-                }
-                markdown.appendMarkdown('\n\n*Assembly subroutine*');
-                break;
-
-            case SymbolKind.ExtSubroutine:
-                if (isProgB) {
-                    const extSig = `EXTSUB ${symbol.detail} = ${symbol.name}(${this.formatParamsProgB(symbol.parameters)})`;
-                    markdown.appendCodeblock(extSig, langId);
-                } else {
-                    const extSig = `extsub ${symbol.detail} = ${symbol.name}(${symbol.parameters || ''})`;
-                    markdown.appendCodeblock(extSig, langId);
-                }
-                markdown.appendMarkdown('\n\n*External ROM/library routine*');
-                break;
-
-            case SymbolKind.Constant:
-                if (isProgB) {
-                    markdown.appendCodeblock(`CONST ${symbol.name} AS ${symbol.type?.toUpperCase() || 'UBYTE'} = ${symbol.detail}`, langId);
-                } else {
-                    markdown.appendCodeblock(`const ${symbol.type} ${symbol.name} = ${symbol.detail}`, langId);
-                }
-                markdown.appendMarkdown('\n\n*Constant*');
-                break;
-
-            case SymbolKind.Variable:
-                if (isProgB) {
-                    let varDecl = `DIM ${symbol.name} AS ${symbol.type?.toUpperCase() || 'UBYTE'}`;
-                    if (symbol.detail) {
-                        varDecl += ` ${symbol.detail}`;
-                    }
-                    markdown.appendCodeblock(varDecl, langId);
-                } else {
-                    let varDecl = `${symbol.type} ${symbol.name}`;
-                    if (symbol.detail) {
-                        varDecl += ` ${symbol.detail}`;
-                    }
-                    markdown.appendCodeblock(varDecl, langId);
-                }
-                if (symbol.type?.startsWith('&')) {
-                    markdown.appendMarkdown('\n\n*Memory-mapped variable*');
-                } else {
-                    markdown.appendMarkdown('\n\n*Variable*');
-                }
-                break;
-
-            case SymbolKind.Parameter:
-                if (isProgB) {
-                    markdown.appendCodeblock(`${symbol.name} AS ${symbol.type?.toUpperCase() || 'UBYTE'}`, langId);
-                } else {
-                    markdown.appendCodeblock(`${symbol.type} ${symbol.name}`, langId);
-                }
-                markdown.appendMarkdown('\n\n*Parameter*');
-                break;
-
-            case SymbolKind.Label:
-                markdown.appendCodeblock(`${symbol.name}:`, langId);
-                markdown.appendMarkdown('\n\n*Label*');
-                break;
-
-            case SymbolKind.Struct:
-                if (isProgB) {
-                    markdown.appendCodeblock(`TYPE ${symbol.name} ... END TYPE`, langId);
-                } else {
-                    markdown.appendCodeblock(`struct ${symbol.name} { }`, langId);
-                }
-                markdown.appendMarkdown('\n\n*Struct type*');
-                break;
-
-            case SymbolKind.Alias:
-                if (isProgB) {
-                    markdown.appendCodeblock(`ALIAS ${symbol.name} = ${symbol.detail}`, langId);
-                } else {
-                    markdown.appendCodeblock(`alias ${symbol.name} ${symbol.detail}`, langId);
-                }
-                markdown.appendMarkdown('\n\n*Alias*');
-                break;
-
-            case SymbolKind.StructField:
-                if (isProgB) {
-                    markdown.appendCodeblock(`${symbol.name} AS ${symbol.type?.toUpperCase() || 'UBYTE'}`, langId);
-                } else {
-                    markdown.appendCodeblock(`${symbol.type} ${symbol.name}`, langId);
-                }
-                markdown.appendMarkdown('\n\n*Struct field*');
-                break;
-        }
-
-        // Add full path if nested
-        if (symbol.parent) {
-            markdown.appendMarkdown(`\n\n*Defined in:* \`${symbol.fullPath}\``);
-        }
-
-        // Add source file info for imported symbols
-        if (isImported && symbol.uri) {
-            const fileName = path.basename(symbol.uri.fsPath);
-            markdown.appendMarkdown(`\n\n*From imported file:* \`${fileName}\``);
-        }
-
-        return new vscode.Hover(markdown);
-    }
-
-    /**
-     * Format prog8 parameter string to ProgB style (name AS TYPE)
-     */
-    private formatParamsProgB(params: string | undefined): string {
-        if (!params) return '';
-        // Convert "type name, type2 name2" to "name AS TYPE, name2 AS TYPE2"
-        return params.split(',').map(p => {
-            const trimmed = p.trim();
-            const parts = trimmed.split(/\s+/);
-            if (parts.length >= 2) {
-                const type = parts[0];
-                const rest = parts.slice(1).join(' ');
-                // Handle register annotations like @A
-                const regMatch = rest.match(/^(\w+)\s*(@\w+)?$/);
-                if (regMatch) {
-                    const name = regMatch[1];
-                    const reg = regMatch[2] || '';
-                    return `${name} AS ${type.toUpperCase()}${reg ? ' ' + reg : ''}`;
-                }
-                return `${rest} AS ${type.toUpperCase()}`;
-            }
-            return trimmed;
-        }).join(', ');
+        return new vscode.Hover(formatUnifiedSymbolDoc(symbol, isProgB, isImported));
     }
 
     /**
@@ -320,91 +176,21 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
     private getBuiltinHover(word: string, isProgB: boolean): vscode.Hover | undefined {
         const info = getBuiltinFunction(word);
         if (info) {
-            const markdown = new vscode.MarkdownString();
-            const langId = isProgB ? 'progb' : 'prog8';
-            // For progb, convert signature to uppercase style
-            const signature = isProgB ? info.signature.toUpperCase() : info.signature;
-            markdown.appendCodeblock(signature, langId);
-            markdown.appendMarkdown(`\n\n${info.description}`);
-            markdown.appendMarkdown('\n\n*Built-in function*');
-            return new vscode.Hover(markdown);
+            return new vscode.Hover(formatBuiltinDoc(info, isProgB));
         }
-
         return undefined;
     }
 
     /**
-     * Get hover for keywords
+     * Get hover for keywords.
+     * Uses the shared keyword data from keywords.ts via getKeywordsForLanguage().
      */
     private getKeywordHover(word: string, isProgB: boolean): vscode.Hover | undefined {
-        const langId = isProgB ? 'progb' : 'prog8';
-        const keywords: { [key: string]: string } = {
-            // Types
-            'ubyte': 'Unsigned 8-bit integer (0-255)',
-            'byte': 'Signed 8-bit integer (-128 to 127)',
-            'uword': 'Unsigned 16-bit integer (0-65535)',
-            'word': 'Signed 16-bit integer (-32768 to 32767)',
-            'ulong': 'Unsigned 32-bit integer',
-            'long': 'Signed 32-bit integer',
-            'float': 'Floating point number (5 bytes on CBM systems)',
-            'bool': 'Boolean value (true or false)',
-            'str': 'String (null-terminated)',
-            
-            // Control flow
-            'if': 'Conditional statement',
-            'else': 'Alternative branch of an if statement',
-            'when': 'Multi-way branch (like switch/case)',
-            'for': 'For loop - note: loop variable must be declared before the loop',
-            'while': 'While loop - executes while condition is true',
-            'do': 'Do-until loop - executes at least once',
-            'until': 'Loop termination condition',
-            'repeat': 'Repeat loop - executes a fixed number of times',
-            'unroll': 'Unroll a loop at compile time',
-            'break': 'Exit the current loop',
-            'continue': 'Skip to the next iteration of the loop',
-            
-            // Subroutines
-            'sub': 'Subroutine definition',
-            'asmsub': 'Assembly subroutine with register parameters',
-            'extsub': 'External subroutine (ROM or library)',
-            'inline': 'Inline the subroutine at each call site',
-            'return': 'Return from subroutine',
-            'defer': 'Execute statement when leaving the current subroutine',
-            
-            // Other
-            'const': 'Constant value (compile-time)',
-            'struct': 'Structure type definition',
-            'alias': 'Create an alias for another identifier',
-            'goto': 'Jump to a label',
-            'void': 'Discard the return value of a function',
-            'on': 'On-goto computed jump',
-            
-            // Operators
-            'and': 'Logical AND operator',
-            'or': 'Logical OR operator',
-            'xor': 'Logical XOR operator',
-            'not': 'Logical NOT operator',
-            'in': 'Check if value is in array or range',
-            'to': 'Range specifier (ascending)',
-            'downto': 'Range specifier (descending)',
-            'step': 'Loop step value',
-            
-            // Literals
-            'true': 'Boolean true value',
-            'false': 'Boolean false value',
-        };
-
-        const description = keywords[word];
-        if (description) {
-            const markdown = new vscode.MarkdownString();
-            // Display keyword in appropriate case for the language
-            const displayWord = isProgB ? word.toUpperCase() : word;
-            markdown.appendCodeblock(displayWord, langId);
-            markdown.appendMarkdown(`\n\n${description}`);
-            markdown.appendMarkdown('\n\n*Keyword*');
-            return new vscode.Hover(markdown);
+        const keywords = getKeywordsForLanguage(isProgB);
+        const info = keywords[word];
+        if (info) {
+            return new vscode.Hover(formatKeywordDoc(word, info.description, isProgB));
         }
-
         return undefined;
     }
 
@@ -451,41 +237,9 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
      */
     private getLibraryModuleHover(name: string, isProgB: boolean): vscode.Hover | undefined {
         const mod = findModule(name, getTargetPlatform());
-        const langId = isProgB ? 'progb' : 'prog8';
         
         if (mod) {
-            const markdown = new vscode.MarkdownString();
-            // Use IMPORT for progb, %import for prog8
-            const importSyntax = isProgB ? `IMPORT ${name}` : `%import ${name}`;
-            markdown.appendCodeblock(importSyntax, langId);
-            
-            // Count total items across all blocks
-            let totalSubs = 0;
-            let totalVars = 0;
-            let totalConsts = 0;
-            
-            for (const block of mod.blocks) {
-                totalSubs += block.subroutines.length;
-                totalVars += block.variables.length;
-                totalConsts += block.constants.length;
-            }
-            
-            markdown.appendMarkdown(`\n\n*Library module* with ${mod.blocks.length} block${mod.blocks.length !== 1 ? 's' : ''}`);
-            markdown.appendMarkdown(`, ${totalSubs} subroutines`);
-            if (totalVars > 0) {
-                markdown.appendMarkdown(`, ${totalVars} variables`);
-            }
-            if (totalConsts > 0) {
-                markdown.appendMarkdown(`, ${totalConsts} constants`);
-            }
-            
-            // Show the blocks this module provides
-            const blockNames = mod.blocks.map(b => b.name);
-            if (blockNames.length > 0) {
-                markdown.appendMarkdown(`\n\n**Blocks:** \`${blockNames.join('`, `')}\``);
-            }
-            
-            return new vscode.Hover(markdown);
+            return new vscode.Hover(formatLibraryModuleDoc(mod, isProgB));
         }
         
         return undefined;
@@ -498,37 +252,9 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
     private getLibraryBlockHover(name: string, isProgB: boolean): vscode.Hover | undefined {
         const blocks = getAllBlocks(getTargetPlatform());
         const block = blocks.find(b => b.name === name);
-        const langId = isProgB ? 'progb' : 'prog8';
         
         if (block) {
-            const markdown = new vscode.MarkdownString();
-            // Use MODULE syntax for progb, braces for prog8
-            const blockSyntax = isProgB ? `MODULE ${name} ... END MODULE` : `${name} { }`;
-            markdown.appendCodeblock(blockSyntax, langId);
-            
-            // Show a summary of what's in the block
-            const subCount = block.subroutines.length;
-            const varCount = block.variables.length;
-            const constCount = block.constants.length;
-            
-            markdown.appendMarkdown(`\n\n*Library block* with ${subCount} subroutines`);
-            if (varCount > 0) {
-                markdown.appendMarkdown(`, ${varCount} variables`);
-            }
-            if (constCount > 0) {
-                markdown.appendMarkdown(`, ${constCount} constants`);
-            }
-            
-            // Show some example functions
-            const examples = block.subroutines.slice(0, 5).map(s => s.name);
-            if (examples.length > 0) {
-                markdown.appendMarkdown(`\n\n**Functions:** \`${examples.join('`, `')}\``);
-                if (block.subroutines.length > 5) {
-                    markdown.appendMarkdown(`, ...`);
-                }
-            }
-            
-            return new vscode.Hover(markdown);
+            return new vscode.Hover(formatLibraryBlockDoc(block, isProgB));
         }
         
         return undefined;
@@ -539,47 +265,11 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
      * Shows information about blocks defined in imported files (not library modules)
      */
     private getImportedBlockHover(name: string, importedSymbols: ImportedFileSymbols[], isProgB: boolean): vscode.Hover | undefined {
-        const langId = isProgB ? 'progb' : 'prog8';
         for (const imported of importedSymbols) {
-            // Find a block with this name in the imported file
             const block = imported.symbols.find((s: UnifiedSymbol) => s.name === name && s.kind === SymbolKind.Block && !s.parent);
             if (block) {
-                const markdown = new vscode.MarkdownString();
-                // Use MODULE syntax for progb, braces for prog8
-                const blockSyntax = isProgB ? `MODULE ${name} ... END MODULE` : `${name} { }`;
-                markdown.appendCodeblock(blockSyntax, langId);
-                
-                // Count symbols in this block
-                const subroutines = imported.symbols.filter((s: UnifiedSymbol) => 
-                    (s.kind === SymbolKind.Subroutine || s.kind === SymbolKind.AsmSubroutine || s.kind === SymbolKind.ExtSubroutine) && 
-                    s.parent === name
-                );
-                const variables = imported.symbols.filter((s: UnifiedSymbol) => s.kind === SymbolKind.Variable && s.parent === name);
-                const constants = imported.symbols.filter((s: UnifiedSymbol) => s.kind === SymbolKind.Constant && s.parent === name);
-                
                 const fileName = path.basename(imported.filePath);
-                markdown.appendMarkdown(`\n\n*Block from imported file* \`${fileName}\``);
-                
-                if (subroutines.length > 0) {
-                    markdown.appendMarkdown(`\n\n${subroutines.length} subroutine${subroutines.length !== 1 ? 's' : ''}`);
-                }
-                if (variables.length > 0) {
-                    markdown.appendMarkdown(`, ${variables.length} variable${variables.length !== 1 ? 's' : ''}`);
-                }
-                if (constants.length > 0) {
-                    markdown.appendMarkdown(`, ${constants.length} constant${constants.length !== 1 ? 's' : ''}`);
-                }
-                
-                // Show some example functions
-                const examples = subroutines.slice(0, 5).map((s: UnifiedSymbol) => s.name);
-                if (examples.length > 0) {
-                    markdown.appendMarkdown(`\n\n**Functions:** \`${examples.join('`, `')}\``);
-                    if (subroutines.length > 5) {
-                        markdown.appendMarkdown(`, ...`);
-                    }
-                }
-                
-                return new vscode.Hover(markdown);
+                return new vscode.Hover(formatImportedBlockDoc(name, imported.symbols, fileName, isProgB));
             }
         }
         
@@ -594,7 +284,6 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
         const documentDir = path.dirname(document.uri.fsPath);
         const additionalDirs = getSrcDirsForDocument(document);
         const localFilePath = resolveLocalImport(documentDir, moduleName, additionalDirs);
-        const langId = isProgB ? 'progb' : 'prog8';
         
         if (localFilePath) {
             try {
@@ -602,21 +291,10 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
                 const importedDoc = await vscode.workspace.openTextDocument(uri);
                 const symbols = unifiedParser.parseDocument(importedDoc);
                 
-                const markdown = new vscode.MarkdownString();
-                // Use IMPORT for progb, %import for prog8
-                const importSyntax = isProgB ? `IMPORT ${moduleName}` : `%import ${moduleName}`;
-                markdown.appendCodeblock(importSyntax, langId);
-                
                 const fileName = path.basename(localFilePath);
-                markdown.appendMarkdown(`\n\n*Local module* from \`${fileName}\``);
-                
-                // Count blocks and their contents
                 const blocks = symbols.filter((s: UnifiedSymbol) => s.kind === SymbolKind.Block && !s.parent);
-                if (blocks.length > 0) {
-                    markdown.appendMarkdown(`\n\n**Blocks:** \`${blocks.map((b: UnifiedSymbol) => b.name).join('`, `')}\``);
-                }
                 
-                return new vscode.Hover(markdown);
+                return new vscode.Hover(formatLocalModuleDoc(moduleName, fileName, blocks, isProgB));
             } catch (error) {
                 // File might not be readable
             }
@@ -629,154 +307,28 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
      * Create hover for a library subroutine
      */
     private createHoverForLibrarySubroutine(sub: SubroutineInfo, qualifiedName: string, isProgB: boolean): vscode.Hover {
-        const markdown = new vscode.MarkdownString();
-        const langId = isProgB ? 'progb' : 'prog8';
-        
-        if (sub.isAlias) {
-            markdown.appendCodeblock(`${qualifiedName}  (alias for ${sub.isAlias})`, langId);
-            markdown.appendMarkdown(`\n\n*Library function alias*`);
-        } else {
-            let sig: string;
-            
-            if (isProgB) {
-                // ProgB style: name(param AS TYPE) AS RETURNTYPE
-                const params = sub.parameters.map(p => {
-                    let s = `${p.name} AS ${p.type.toUpperCase()}`;
-                    if (p.register) s += ` ${p.register}`;
-                    return s;
-                }).join(', ');
-                
-                if (sub.returns.length > 0) {
-                    const rets = sub.returns.map(r => {
-                        let s = r.type.toUpperCase();
-                        if (r.register) s += ` ${r.register}`;
-                        return s;
-                    }).join(', ');
-                    sig = `FUNCTION ${qualifiedName}(${params}) AS ${rets}`;
-                } else {
-                    sig = `SUB ${qualifiedName}(${params})`;
-                }
-            } else {
-                // Prog8 style: name(type param) -> returntype
-                const params = sub.parameters.map(p => {
-                    let s = `${p.type} ${p.name}`;
-                    if (p.register) s += ` ${p.register}`;
-                    return s;
-                }).join(', ');
-                
-                sig = `${qualifiedName}(${params})`;
-                
-                if (sub.returns.length > 0) {
-                    const rets = sub.returns.map(r => {
-                        let s = r.type;
-                        if (r.register) s += ` ${r.register}`;
-                        return s;
-                    }).join(', ');
-                    sig += ` -> ${rets}`;
-                }
-            }
-            
-            markdown.appendCodeblock(sig, langId);
-            
-            // Add metadata
-            const metadata: string[] = [];
-            
-            if (sub.clobbers.length > 0) {
-                metadata.push(`Clobbers: ${sub.clobbers.join(', ')}`);
-            }
-            
-            if (sub.address) {
-                metadata.push(`ROM address: ${sub.address}`);
-            }
-            
-            if (sub.bank !== undefined) {
-                metadata.push(`Bank: ${sub.bank}`);
-            }
-            
-            if (metadata.length > 0) {
-                markdown.appendMarkdown(`\n\n${metadata.join(' | ')}`);
-            }
-            
-            markdown.appendMarkdown(`\n\n*Library function*`);
-        }
-        
-        return new vscode.Hover(markdown);
+        return new vscode.Hover(formatLibrarySubroutineDoc(sub, qualifiedName, isProgB));
     }
 
     /**
      * Create hover for a library variable
      */
     private createHoverForLibraryVariable(variable: VariableInfo, qualifiedName: string, isProgB: boolean): vscode.Hover {
-        const markdown = new vscode.MarkdownString();
-        const langId = isProgB ? 'progb' : 'prog8';
-        
-        let decl: string;
-        if (isProgB) {
-            // ProgB style: DIM name AS TYPE
-            decl = `DIM ${qualifiedName} AS ${variable.type.toUpperCase()}`;
-        } else {
-            // Prog8 style: type name
-            decl = `${variable.type} ${qualifiedName}`;
-        }
-        markdown.appendCodeblock(decl, langId);
-
-        const tags: string[] = [];
-        if (variable.isMemoryMapped) tags.push('memory-mapped');
-        if (variable.isShared) tags.push('shared');
-        if (variable.isZeroPage) tags.push('zeropage');
-
-        if (tags.length > 0) {
-            markdown.appendMarkdown(`\n\n${tags.join(' | ')}`);
-        }
-        markdown.appendMarkdown('\n\n*Library variable*');
-        return new vscode.Hover(markdown);
+        return new vscode.Hover(formatLibraryVariableDoc(variable, qualifiedName, isProgB));
     }
 
     /**
      * Create hover for a library constant
      */
     private createHoverForLibraryConstant(constant: ConstantInfo, qualifiedName: string, isProgB: boolean): vscode.Hover {
-        const markdown = new vscode.MarkdownString();
-        const langId = isProgB ? 'progb' : 'prog8';
-        
-        let decl: string;
-        if (isProgB) {
-            // ProgB style: CONST name AS TYPE = value
-            decl = `CONST ${qualifiedName} AS ${constant.type.toUpperCase()}`;
-        } else {
-            // Prog8 style: const type name
-            decl = `const ${constant.type} ${qualifiedName}`;
-        }
-        if (constant.value) {
-            decl += ` = ${constant.value}`;
-        }
-        markdown.appendCodeblock(decl, langId);
-        markdown.appendMarkdown('\n\n*Library constant*');
-        return new vscode.Hover(markdown);
+        return new vscode.Hover(formatLibraryConstantDoc(constant, qualifiedName, isProgB));
     }
 
     /**
      * Create hover for a subroutine parameter accessed via scoped path
      */
     private createHoverForLibraryParameter(parameter: Parameter, sub: SubroutineInfo, qualifiedName: string, isProgB: boolean): vscode.Hover {
-        const markdown = new vscode.MarkdownString();
-        const langId = isProgB ? 'progb' : 'prog8';
-        
-        let decl: string;
-        if (isProgB) {
-            // ProgB style: name AS TYPE @register
-            decl = `${qualifiedName} AS ${parameter.type.toUpperCase()}`;
-        } else {
-            // Prog8 style: type name @register
-            decl = `${parameter.type} ${qualifiedName}`;
-        }
-        if (parameter.register) {
-            decl += ` @${parameter.register}`;
-        }
-        markdown.appendCodeblock(decl, langId);
-        markdown.appendMarkdown(`\n\n*Parameter of* \`${sub.name}()\``);
-        markdown.appendMarkdown('\n\n*Library symbol*');
-        return new vscode.Hover(markdown);
+        return new vscode.Hover(formatLibraryParameterDoc(parameter, sub, qualifiedName, isProgB));
     }
 
 }

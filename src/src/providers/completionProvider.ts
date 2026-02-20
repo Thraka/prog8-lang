@@ -19,6 +19,18 @@ import { getAllAccessibleSymbols } from '../parser/symbolAggregator';
 import { isInComment, isTypingImport, getQualifiedPrefix } from './providerUtils';
 import { builtinFunctions, BuiltinFunctionInfo } from '../data/builtinFunctions';
 import { getKeywordsForLanguage } from '../data/keywords';
+import {
+    formatUnifiedSymbolDoc,
+    formatBuiltinDoc,
+    formatKeywordDoc,
+    formatLibraryModuleDoc,
+    formatLibraryBlockDoc,
+    formatImportedBlockDoc,
+    formatLibrarySubroutineDoc,
+    formatLibraryVariableDoc,
+    formatLibraryConstantDoc,
+    formatLibraryParameterDoc
+} from './symbolDocumentation';
 
 /**
  * Provides auto-completion for Prog8 and ProgB files.
@@ -122,6 +134,7 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
     private getLibraryModuleCompletions(): vscode.CompletionItem[] {
         const completions: vscode.CompletionItem[] = [];
         const addedModules = new Set<string>();
+        const isProgB = false; // import context is always prog8-style for module listing
         
         const modules = getAllModules(this.targetPlatform);
         for (const mod of modules) {
@@ -144,26 +157,7 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
             }
             
             item.detail = `${mod.blocks.length} block${mod.blocks.length !== 1 ? 's' : ''}, ${totalSubs} subroutines`;
-            
-            const doc = new vscode.MarkdownString();
-            doc.appendCodeblock(`%import ${mod.name}`, 'prog8');
-            doc.appendMarkdown(`\n\n*Library module*\n\n`);
-            
-            // Show blocks this module provides
-            const blockNames = mod.blocks.map(b => b.name);
-            if (blockNames.length > 0) {
-                doc.appendMarkdown(`**Provides blocks:** \`${blockNames.join('`, `')}\`\n\n`);
-            }
-            
-            doc.appendMarkdown(`Contains ${totalSubs} subroutines`);
-            if (totalVars > 0) {
-                doc.appendMarkdown(`, ${totalVars} variables`);
-            }
-            if (totalConsts > 0) {
-                doc.appendMarkdown(`, ${totalConsts} constants`);
-            }
-            
-            item.documentation = doc;
+            item.documentation = formatLibraryModuleDoc(mod, isProgB);
             completions.push(item);
         }
         
@@ -292,6 +286,7 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
     private getImportedBlockCompletions(importedFileSymbols: ImportedFileSymbols[]): vscode.CompletionItem[] {
         const completions: vscode.CompletionItem[] = [];
         const addedBlocks = new Set<string>();
+        const isProgB = false; // completion context defaults to prog8
 
         for (const imported of importedFileSymbols) {
             for (const symbol of imported.symbols) {
@@ -307,12 +302,7 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
                 const item = new vscode.CompletionItem(symbol.name);
                 item.kind = vscode.CompletionItemKind.Module;
                 item.detail = `from ${imported.moduleName}`;
-
-                const doc = new vscode.MarkdownString();
-                doc.appendCodeblock(`${symbol.name} { }`, 'prog8');
-                doc.appendMarkdown(`\n\n*Block from imported file*\n\n`);
-                doc.appendMarkdown(`Source: \`${imported.moduleName}\``);
-                item.documentation = doc;
+                item.documentation = formatImportedBlockDoc(symbol.name, imported.symbols, imported.moduleName, isProgB);
 
                 // Trigger completion after inserting the block name
                 item.command = {
@@ -332,6 +322,7 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
      */
     private getLibraryMemberCompletions(blockName: string): vscode.CompletionItem[] {
         const completions: vscode.CompletionItem[] = [];
+        const isProgB = false; // completions default to prog8
         
         // Get library blocks for the selected target platform
         const blocks = getAllBlocks(this.targetPlatform);
@@ -343,19 +334,19 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
 
         // Add subroutines
         for (const sub of block.subroutines) {
-            const item = this.createLibrarySubroutineCompletion(sub, blockName);
+            const item = this.createLibrarySubroutineCompletion(sub, blockName, isProgB);
             completions.push(item);
         }
 
         // Add variables
         for (const variable of block.variables) {
-            const item = this.createLibraryVariableCompletion(variable, blockName);
+            const item = this.createLibraryVariableCompletion(variable, blockName, isProgB);
             completions.push(item);
         }
 
         // Add constants
         for (const constant of block.constants) {
-            const item = this.createLibraryConstantCompletion(constant, blockName);
+            const item = this.createLibraryConstantCompletion(constant, blockName, isProgB);
             completions.push(item);
         }
 
@@ -368,19 +359,23 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
      */
     private getLibrarySubMemberCompletions(prefix: string): vscode.CompletionItem[] {
         const completions: vscode.CompletionItem[] = [];
+        const isProgB = false; // completions default to prog8
 
         const params = getSubroutineMembers(prefix, this.targetPlatform);
         for (const param of params) {
             const item = new vscode.CompletionItem(param.name);
             item.kind = vscode.CompletionItemKind.Field;
             item.detail = `${param.type} (parameter)`;
-
+            // Re-use the shared parameter doc formatter with a dummy SubroutineInfo
+            // since we only need the parameter display
+            const qualifiedName = `${prefix}.${param.name}`;
             const doc = new vscode.MarkdownString();
-            let decl = `${param.type} ${prefix}.${param.name}`;
+            const langId = isProgB ? 'progb' : 'prog8';
+            let decl = `${param.type} ${qualifiedName}`;
             if (param.register) {
                 decl += ` @${param.register}`;
             }
-            doc.appendCodeblock(decl, 'prog8');
+            doc.appendCodeblock(decl, langId);
             doc.appendMarkdown(`\n\n*Subroutine parameter*`);
             item.documentation = doc;
             completions.push(item);
@@ -396,6 +391,7 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
     private getLibraryBlockCompletions(importedLibBlockNames: Set<string>): vscode.CompletionItem[] {
         const completions: vscode.CompletionItem[] = [];
         const addedBlocks = new Set<string>();
+        const isProgB = false; // completions default to prog8
         
         const blocks = getAllBlocks(this.targetPlatform);
         for (const block of blocks) {
@@ -411,18 +407,7 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
             const item = new vscode.CompletionItem(block.name);
             item.kind = vscode.CompletionItemKind.Module;
             item.detail = `library module`;
-            
-            const memberCount = block.subroutines.length + block.variables.length + block.constants.length;
-            const doc = new vscode.MarkdownString();
-            doc.appendMarkdown(`**${block.name}** - Prog8 library module\n\n`);
-            doc.appendMarkdown(`Contains ${block.subroutines.length} subroutines`);
-            if (block.variables.length > 0) {
-                doc.appendMarkdown(`, ${block.variables.length} variables`);
-            }
-            if (block.constants.length > 0) {
-                doc.appendMarkdown(`, ${block.constants.length} constants`);
-            }
-            item.documentation = doc;
+            item.documentation = formatLibraryBlockDoc(block, isProgB);
             
             // Trigger completion after inserting the block name
             item.command = {
@@ -441,6 +426,7 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
      */
     private getBuiltinFunctionCompletions(): vscode.CompletionItem[] {
         const completions: vscode.CompletionItem[] = [];
+        const isProgB = false; // completions default to prog8
 
         for (const [name, info] of Object.entries(builtinFunctions)) {
             const item = new vscode.CompletionItem(name);
@@ -458,13 +444,7 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
                 item.insertText = new vscode.SnippetString(`${name}()`);
             }
             
-            // Documentation
-            const doc = new vscode.MarkdownString();
-            doc.appendCodeblock(info.signature, 'prog8');
-            doc.appendMarkdown(`\n\n${info.description}`);
-            doc.appendMarkdown(`\n\n*Built-in function* (${info.category})`);
-            item.documentation = doc;
-            
+            item.documentation = formatBuiltinDoc(info, isProgB);
             completions.push(item);
         }
 
@@ -489,7 +469,6 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
      */
     private getDirectiveCompletions(document: vscode.TextDocument): vscode.CompletionItem[] {
         const completions: vscode.CompletionItem[] = [];
-        const languageId = 'prog8';
 
         const keywords = getKeywordsForLanguage(false); // Always prog8 for % directives
 
@@ -508,12 +487,7 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
             item.detail = name; // Show full directive in detail
             item.insertText = displayName; // Insert without % since user already typed it
             
-            // Documentation
-            const doc = new vscode.MarkdownString();
-            doc.appendCodeblock(name, languageId);
-            doc.appendMarkdown(`\n\n${info.description}`);
-            doc.appendMarkdown(`\n\n*Directive*`);
-            item.documentation = doc;
+            item.documentation = formatKeywordDoc(name, info.description, false, 'directive');
             
             completions.push(item);
         }
@@ -527,7 +501,6 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
     private getKeywordCompletions(document: vscode.TextDocument): vscode.CompletionItem[] {
         const completions: vscode.CompletionItem[] = [];
         const isProgB = unifiedParser.isProgB(document);
-        const languageId = isProgB ? 'progb' : 'prog8';
 
         const keywords = getKeywordsForLanguage(isProgB);
 
@@ -544,13 +517,7 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
             // Lower sort priority so local/imported symbols appear first
             item.sortText = `zzzz_${name}`;
             
-            // Documentation
-            const doc = new vscode.MarkdownString();
-            doc.appendCodeblock(name, languageId);
-            doc.appendMarkdown(`\n\n${info.description}`);
-            doc.appendMarkdown(`\n\n*Keyword* (${info.category})`);
-            item.documentation = doc;
-            
+            item.documentation = formatKeywordDoc(name, info.description, isProgB, info.category);
             completions.push(item);
         }
 
@@ -560,7 +527,7 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
     /**
      * Create a completion item for a library subroutine
      */
-    private createLibrarySubroutineCompletion(sub: SubroutineInfo, blockName: string): vscode.CompletionItem {
+    private createLibrarySubroutineCompletion(sub: SubroutineInfo, blockName: string, isProgB: boolean): vscode.CompletionItem {
         const item = new vscode.CompletionItem(sub.name);
         item.kind = vscode.CompletionItemKind.Function;
         
@@ -580,14 +547,7 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
             item.insertText = new vscode.SnippetString(`${sub.name}()`);
         }
         
-        // Documentation
-        const doc = new vscode.MarkdownString();
-        doc.appendCodeblock(formatSubroutineSignature(sub), 'prog8');
-        doc.appendMarkdown(`\n\nFrom library: \`${blockName}\``);
-        if (sub.address) {
-            doc.appendMarkdown(`\n\nAddress: \`${sub.address}\``);
-        }
-        item.documentation = doc;
+        item.documentation = formatLibrarySubroutineDoc(sub, `${blockName}.${sub.name}`, isProgB);
         
         return item;
     }
@@ -595,48 +555,24 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
     /**
      * Create a completion item for a library variable
      */
-    private createLibraryVariableCompletion(variable: VariableInfo, blockName: string): vscode.CompletionItem {
+    private createLibraryVariableCompletion(variable: VariableInfo, blockName: string, isProgB: boolean): vscode.CompletionItem {
         const item = new vscode.CompletionItem(variable.name);
         item.kind = vscode.CompletionItemKind.Variable;
         item.detail = variable.type;
         
-        const doc = new vscode.MarkdownString();
-        let decl = `${variable.type} ${variable.name}`;
-        if (variable.isMemoryMapped) {
-            decl = `&${decl}`;
-        }
-        doc.appendCodeblock(decl, 'prog8');
-        doc.appendMarkdown(`\n\nFrom library: \`${blockName}\``);
-        
-        const flags: string[] = [];
-        if (variable.isMemoryMapped) flags.push('memory-mapped');
-        if (variable.isShared) flags.push('shared');
-        if (variable.isZeroPage) flags.push('zeropage');
-        if (flags.length > 0) {
-            doc.appendMarkdown(`\n\n*${flags.join(', ')}*`);
-        }
-        
-        item.documentation = doc;
+        item.documentation = formatLibraryVariableDoc(variable, `${blockName}.${variable.name}`, isProgB);
         return item;
     }
 
     /**
      * Create a completion item for a library constant
      */
-    private createLibraryConstantCompletion(constant: ConstantInfo, blockName: string): vscode.CompletionItem {
+    private createLibraryConstantCompletion(constant: ConstantInfo, blockName: string, isProgB: boolean): vscode.CompletionItem {
         const item = new vscode.CompletionItem(constant.name);
         item.kind = vscode.CompletionItemKind.Constant;
         item.detail = `const ${constant.type}` + (constant.value ? ` = ${constant.value}` : '');
         
-        const doc = new vscode.MarkdownString();
-        let decl = `const ${constant.type} ${constant.name}`;
-        if (constant.value) {
-            decl += ` = ${constant.value}`;
-        }
-        doc.appendCodeblock(decl, 'prog8');
-        doc.appendMarkdown(`\n\nFrom library: \`${blockName}\``);
-        item.documentation = doc;
-        
+        item.documentation = formatLibraryConstantDoc(constant, `${blockName}.${constant.name}`, isProgB);
         return item;
     }
 
@@ -819,16 +755,9 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
             item.detail = (item.detail || '') + ` (from ${sourceModule})`;
         }
 
-        // Add documentation
-        const doc = new vscode.MarkdownString();
-        doc.appendCodeblock(this.formatSymbolSignature(symbol), 'prog8');
-        if (symbol.parent) {
-            doc.appendMarkdown(`\n\nDefined in: \`${symbol.parent}\``);
-        }
-        if (sourceModule) {
-            doc.appendMarkdown(`\n\nSource: \`${sourceModule}\``);
-        }
-        item.documentation = doc;
+        // Add documentation – use the shared formatter for consistency with hover
+        const isProgB = false; // completion context defaults to prog8
+        item.documentation = formatUnifiedSymbolDoc(symbol, isProgB);
 
         return item;
     }
@@ -847,35 +776,5 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
             detail += ` -> ${symbol.returnType}`;
         }
         return detail;
-    }
-
-    /**
-     * Format a symbol's signature for documentation
-     */
-    private formatSymbolSignature(symbol: UnifiedSymbol): string {
-        switch (symbol.kind) {
-            case SymbolKind.Variable:
-                return `${symbol.type || 'var'} ${symbol.name}`;
-            case SymbolKind.Constant:
-                return `const ${symbol.type} ${symbol.name}${symbol.detail ? ' = ' + symbol.detail : ''}`;
-            case SymbolKind.Parameter:
-                return `${symbol.type} ${symbol.name}`;
-            case SymbolKind.Subroutine:
-                return `sub ${symbol.name}(${symbol.parameters || ''})${symbol.returnType ? ' -> ' + symbol.returnType : ''}`;
-            case SymbolKind.AsmSubroutine:
-                return `asmsub ${symbol.name}(${symbol.parameters || ''})`;
-            case SymbolKind.ExtSubroutine:
-                return `extsub ${symbol.detail || ''} = ${symbol.name}(${symbol.parameters || ''})`;
-            case SymbolKind.Block:
-                return `${symbol.name} { }`;
-            case SymbolKind.Label:
-                return `${symbol.name}:`;
-            case SymbolKind.Struct:
-                return `struct ${symbol.name} { }`;
-            case SymbolKind.Alias:
-                return `alias ${symbol.name} ${symbol.detail || ''}`;
-            default:
-                return symbol.name;
-        }
     }
 }
