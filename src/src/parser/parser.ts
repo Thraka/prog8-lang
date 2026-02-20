@@ -9,6 +9,7 @@ export interface ParsedSymbol {
     kind: SymbolKind;
     type?: string;           // Data type for variables/constants
     detail?: string;         // Additional info (address, parameters, etc.)
+    description?: string;    // Documentation comment extracted from lines above the symbol
     range: vscode.Range;     // Full range of the declaration
     selectionRange: vscode.Range;  // Range of just the name
     parent?: string;         // Parent block/subroutine name
@@ -253,6 +254,7 @@ export class Parser {
                         name: pendingSub.name,
                         kind: pendingSub.subKind,
                         detail: pendingSub.isInline ? 'inline' : undefined,
+                        description: this.extractDescriptionAbove(lines, pendingSub.startLine, false),
                         range: new vscode.Range(pendingSub.startLine, 0, lineIndex, line.length),
                         selectionRange: new vscode.Range(pendingSub.startLine, nameStart, pendingSub.startLine, nameStart + pendingSub.name.length),
                         parent: pendingSub.scopePath || undefined,
@@ -289,6 +291,7 @@ export class Parser {
                     name,
                     kind: SymbolKind.Block,
                     detail: address || undefined,
+                    description: this.extractDescriptionAbove(lines, lineIndex, false),
                     range: new vscode.Range(lineIndex, 0, lineIndex, line.length),
                     selectionRange: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),
                     fullPath: name,
@@ -310,6 +313,7 @@ export class Parser {
                 symbols.push({
                     name,
                     kind: SymbolKind.Struct,
+                    description: this.extractDescriptionAbove(lines, lineIndex, false),
                     range: new vscode.Range(lineIndex, 0, lineIndex, line.length),
                     selectionRange: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),
                     parent: scopePath || undefined,
@@ -339,6 +343,7 @@ export class Parser {
                     name,
                     kind: subKind,
                     detail: isInline ? 'inline' : undefined,
+                    description: this.extractDescriptionAbove(lines, lineIndex, false),
                     range: new vscode.Range(lineIndex, 0, lineIndex, line.length),
                     selectionRange: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),
                     parent: scopePath || undefined,
@@ -392,6 +397,7 @@ export class Parser {
                     name,
                     kind: SymbolKind.ExtSubroutine,
                     detail: address,
+                    description: this.extractDescriptionAbove(lines, lineIndex, false),
                     range: new vscode.Range(lineIndex, 0, lineIndex, line.length),
                     selectionRange: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),
                     parent: scopePath || undefined,
@@ -425,7 +431,17 @@ export class Parser {
 
             // Variable declarations
             const insideStruct = scopeStack.length > 0 && scopeStack[scopeStack.length - 1].kind === SymbolKind.Struct;
+            const symbolCountBefore = symbols.length;
             this.parseProg8VariableDeclarations(trimmedLine, line, lineIndex, scopePath, document.uri, symbols, insideStruct);
+            // Attach description to any variables just added
+            if (symbols.length > symbolCountBefore) {
+                const desc = this.extractDescriptionAbove(lines, lineIndex, false);
+                if (desc) {
+                    for (let si = symbolCountBefore; si < symbols.length; si++) {
+                        symbols[si].description = desc;
+                    }
+                }
+            }
 
             // Alias
             const aliasMatch = trimmedLine.match(/^alias\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*=\s*(.+)/);
@@ -439,6 +455,7 @@ export class Parser {
                     name,
                     kind: SymbolKind.Alias,
                     detail: `= ${target}`,
+                    description: this.extractDescriptionAbove(lines, lineIndex, false),
                     range: new vscode.Range(lineIndex, 0, lineIndex, line.length),
                     selectionRange: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),
                     parent: scopePath || undefined,
@@ -457,6 +474,7 @@ export class Parser {
                 symbols.push({
                     name,
                     kind: SymbolKind.Label,
+                    description: this.extractDescriptionAbove(lines, lineIndex, false),
                     range: new vscode.Range(lineIndex, 0, lineIndex, line.length),
                     selectionRange: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),
                     parent: scopePath || undefined,
@@ -530,6 +548,48 @@ export class Parser {
             }
         }
         return count;
+    }
+
+    /**
+     * Extract the documentation comment block directly above a given line.
+     * Only collects lines that start with a triple comment prefix (`;;;` for
+     * Prog8, `'''` for ProgB) to distinguish doc-comments from regular comments.
+     * Collects consecutive doc-comment lines walking upward — any non-doc-comment
+     * line (including single-`;` comments) stops collection.
+     *
+     * Example (Prog8):
+     * ```
+     * ; This is a regular comment — NOT included.
+     *
+     * ;;; Does something fun using the `position` parameter.
+     * ;;; Line 2
+     * ;;;
+     * ;;; More comment added
+     * sub MySub1(ubyte position) {
+     * ```
+     * → returns "Does something fun using the `position` parameter.\nLine 2\n\nMore comment added"
+     */
+    private extractDescriptionAbove(lines: string[], lineIndex: number, isProgB: boolean): string | undefined {
+        const commentLines: string[] = [];
+        const prefix = isProgB ? "'''" : ';;;';
+
+        for (let i = lineIndex - 1; i >= 0; i--) {
+            const trimmed = lines[i].trim();
+
+            if (trimmed.startsWith(prefix)) {
+                // Strip the triple prefix and optional single space
+                const text = trimmed.substring(prefix.length);
+                commentLines.unshift(text.startsWith(' ') ? text.substring(1) : text);
+            } else {
+                break; // non-doc-comment line stops collection
+            }
+        }
+
+        if (commentLines.length === 0) {
+            return undefined;
+        }
+
+        return commentLines.join('\n');
     }
 
     /**
@@ -790,6 +850,7 @@ export class Parser {
                         name: pendingSub.name,
                         kind: pendingSub.subKind,
                         detail: pendingSub.isInline ? 'inline' : undefined,
+                        description: this.extractDescriptionAbove(lines, pendingSub.startLine, true),
                         range: new vscode.Range(pendingSub.startLine, 0, lineIndex, line.length),
                         selectionRange: new vscode.Range(pendingSub.startLine, nameStart, pendingSub.startLine, nameStart + pendingSub.name.length),
                         parent: pendingSub.scopePath || undefined,
@@ -820,6 +881,7 @@ export class Parser {
                     name,
                     kind: SymbolKind.Block,
                     detail: address || undefined,
+                    description: this.extractDescriptionAbove(lines, lineIndex, true),
                     range: new vscode.Range(lineIndex, 0, lineIndex, line.length),
                     selectionRange: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),
                     fullPath: name,
@@ -847,6 +909,7 @@ export class Parser {
                 symbols.push({
                     name,
                     kind: SymbolKind.Struct,
+                    description: this.extractDescriptionAbove(lines, lineIndex, true),
                     range: new vscode.Range(lineIndex, 0, lineIndex, line.length),
                     selectionRange: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),
                     parent: scopePath || undefined,
@@ -879,6 +942,7 @@ export class Parser {
                     name,
                     kind: SymbolKind.Subroutine,
                     detail: isInline ? 'inline' : undefined,
+                    description: this.extractDescriptionAbove(lines, lineIndex, true),
                     range: new vscode.Range(lineIndex, 0, lineIndex, line.length),
                     selectionRange: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),
                     parent: scopePath || undefined,
@@ -934,6 +998,7 @@ export class Parser {
                     name,
                     kind: SymbolKind.Subroutine,
                     detail: isInline ? 'inline' : undefined,
+                    description: this.extractDescriptionAbove(lines, lineIndex, true),
                     range: new vscode.Range(lineIndex, 0, lineIndex, line.length),
                     selectionRange: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),
                     parent: scopePath || undefined,
@@ -991,6 +1056,7 @@ export class Parser {
                     name,
                     kind: SymbolKind.AsmSubroutine,
                     detail: isInline ? 'inline' : undefined,
+                    description: this.extractDescriptionAbove(lines, lineIndex, true),
                     range: new vscode.Range(lineIndex, 0, lineIndex, line.length),
                     selectionRange: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),
                     parent: scopePath || undefined,
@@ -1043,6 +1109,7 @@ export class Parser {
                     name,
                     kind: SymbolKind.ExtSubroutine,
                     detail: address,
+                    description: this.extractDescriptionAbove(lines, lineIndex, true),
                     range: new vscode.Range(lineIndex, 0, lineIndex, line.length),
                     selectionRange: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),
                     parent: scopePath || undefined,
@@ -1067,6 +1134,7 @@ export class Parser {
                     kind: SymbolKind.Constant,
                     type,
                     detail: value,
+                    description: this.extractDescriptionAbove(lines, lineIndex, true),
                     range: new vscode.Range(lineIndex, 0, lineIndex, line.length),
                     selectionRange: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),
                     parent: scopePath || undefined,
@@ -1078,7 +1146,17 @@ export class Parser {
 
             // Variable declarations (DIM)
             const insideStruct = scopeStack.length > 0 && scopeStack[scopeStack.length - 1].kind === SymbolKind.Struct;
+            const symbolCountBefore = symbols.length;
             this.parseProgBVariableDeclarations(trimmedLine, line, lineIndex, scopePath, document.uri, symbols, insideStruct);
+            // Attach description to any variables just added
+            if (symbols.length > symbolCountBefore) {
+                const desc = this.extractDescriptionAbove(lines, lineIndex, true);
+                if (desc) {
+                    for (let si = symbolCountBefore; si < symbols.length; si++) {
+                        symbols[si].description = desc;
+                    }
+                }
+            }
 
             // ALIAS short = long.name
             const aliasMatch = trimmedLine.match(/^ALIAS\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*=\s*(.+)/i);
@@ -1092,6 +1170,7 @@ export class Parser {
                     name,
                     kind: SymbolKind.Alias,
                     detail: `= ${target}`,
+                    description: this.extractDescriptionAbove(lines, lineIndex, true),
                     range: new vscode.Range(lineIndex, 0, lineIndex, line.length),
                     selectionRange: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),
                     parent: scopePath || undefined,
@@ -1111,6 +1190,7 @@ export class Parser {
                 symbols.push({
                     name,
                     kind: SymbolKind.Label,
+                    description: this.extractDescriptionAbove(lines, lineIndex, true),
                     range: new vscode.Range(lineIndex, 0, lineIndex, line.length),
                     selectionRange: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),
                     parent: scopePath || undefined,
@@ -1133,6 +1213,7 @@ export class Parser {
                         name,
                         kind: SymbolKind.StructField,
                         type,
+                        description: this.extractDescriptionAbove(lines, lineIndex, true),
                         range: new vscode.Range(lineIndex, 0, lineIndex, line.length),
                         selectionRange: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),
                         parent: scopePath || undefined,

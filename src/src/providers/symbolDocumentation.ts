@@ -198,6 +198,11 @@ export function formatUnifiedSymbolDoc(
         markdown.appendMarkdown(`\n\n*From imported file:* \`${fileName}\``);
     }
 
+    // Documentation comment extracted from source code
+    if (symbol.description) {
+        markdown.appendMarkdown('\n\n---\n\n' + symbol.description);
+    }
+
     return markdown;
 }
 

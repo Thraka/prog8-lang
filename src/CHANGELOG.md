@@ -2,6 +2,13 @@
 
 All notable changes to the Prog8 Language Support extension will be documented in this file.
 
+## [1.6.19] - 2026-02-19
+
+- Fix color syntax on `%option` with multiple values.
+- Prevent the `compilerArgs` project option from forcing quotes around the argument.
+- More fixes of unifying the popup tooltips and stuff.
+- Add triple ;;; comment support to declarations.
+
 ## [1.6.17/18-prerelease] - 2026-02-19
 
 - Rewrite the language parser into a single file that branches when needed to prog8 or progb.
