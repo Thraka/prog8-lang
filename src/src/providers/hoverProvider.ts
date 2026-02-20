@@ -189,7 +189,7 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
         const keywords = getKeywordsForLanguage(isProgB);
         const info = keywords[word];
         if (info) {
-            return new vscode.Hover(formatKeywordDoc(word, info.description, isProgB));
+            return new vscode.Hover(formatKeywordDoc(word, info.description, isProgB, info.category));
         }
         return undefined;
     }

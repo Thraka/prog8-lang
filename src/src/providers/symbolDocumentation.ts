@@ -396,7 +396,9 @@ export function formatKeywordDoc(
     const displayWord = isProgB ? word.toUpperCase() : word;
     markdown.appendCodeblock(displayWord, langId);
     markdown.appendMarkdown(`\n\n${description}`);
-    if (category) {
+    if (category === 'type') {
+        markdown.appendMarkdown('\n\n*Type*');
+    } else if (category) {
         markdown.appendMarkdown(`\n\n*Keyword* (${category})`);
     } else {
         markdown.appendMarkdown('\n\n*Keyword*');

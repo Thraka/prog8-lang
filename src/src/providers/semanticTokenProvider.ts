@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { unifiedParser, UnifiedSymbol, SymbolKind } from '../parser';
 import { ImportedFileSymbols } from '../parser/importResolver';
 import { getAllAccessibleSymbols, isLibrarySymbol } from '../parser/symbolAggregator';
+import { prog8Keywords, progbKeywords } from '../data/keywords';
 
 /**
  * Semantic token types used by this provider.
@@ -49,6 +50,15 @@ export const semanticTokensLegend = new vscode.SemanticTokensLegend(tokenTypes, 
  * - Color qualified references (e.g., `myblock.myvar`)
  * - Color labels distinctly
  */
+
+/** Type keywords derived from keywords.ts — entries with category 'type'. */
+const prog8TypeKeywords = new Set(
+    Object.entries(prog8Keywords).filter(([, info]) => info.category === 'type').map(([name]) => name)
+);
+const progbTypeKeywords = new Set(
+    Object.entries(progbKeywords).filter(([, info]) => info.category === 'type').map(([name]) => name)
+);
+
 export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticTokensProvider {
 
     async provideDocumentSemanticTokens(
@@ -80,8 +90,12 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
         // Phase 1: Emit tokens for declaration sites (local symbols only)
         this.emitDeclarationTokens(builder, symbols, documentCommentRanges);
 
+        // Determine which type keyword set to use based on language variant
+        const isProgB = unifiedParser.isProgB(document);
+        const typeKeywords = isProgB ? progbTypeKeywords : prog8TypeKeywords;
+
         // Phase 2: Scan every line for usage sites
-        this.emitUsageTokens(builder, document, symbols, symbolsByName, importedFileSymbols, librarySymbols, documentCommentRanges);
+        this.emitUsageTokens(builder, document, symbols, symbolsByName, importedFileSymbols, librarySymbols, documentCommentRanges, typeKeywords, isProgB);
 
         return builder.build();
     }
@@ -120,7 +134,9 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
         symbolsByName: Map<string, UnifiedSymbol[]>,
         importedFileSymbols: ImportedFileSymbols[],
         librarySymbols: UnifiedSymbol[],
-        documentCommentRanges: Map<number, Array<{ start: number; end: number }>>
+        documentCommentRanges: Map<number, Array<{ start: number; end: number }>>,
+        typeKeywords: Set<string>,
+        isProgB: boolean
     ): void {
         const text = document.getText();
         const lines = text.split(/\r?\n/);
@@ -172,6 +188,17 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
 
                 // Skip if this is a declaration position (already emitted)
                 if (declPositions.has(`${lineIndex}:${col}:${endCol}`)) {
+                    continue;
+                }
+
+                // Check if this word is a type keyword — emit as 'type' token
+                const lookupWord = isProgB ? word.toUpperCase() : word;
+                if (typeKeywords.has(lookupWord)) {
+                    builder.push(
+                        new vscode.Range(lineIndex, col, lineIndex, endCol),
+                        'type',
+                        []
+                    );
                     continue;
                 }
 

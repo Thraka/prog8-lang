@@ -511,7 +511,9 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
             }
 
             const item = new vscode.CompletionItem(name);
-            item.kind = vscode.CompletionItemKind.Keyword;
+            item.kind = info.category === 'type'
+                ? vscode.CompletionItemKind.TypeParameter
+                : vscode.CompletionItemKind.Keyword;
             item.detail = info.category;
             
             // Lower sort priority so local/imported symbols appear first

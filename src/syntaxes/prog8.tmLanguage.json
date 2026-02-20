@@ -170,6 +170,14 @@
           "match": "\\b(if_cs|if_cc|if_vs|if_vc|if_eq|if_z|if_ne|if_nz|if_pl|if_pos|if_mi|if_neg)\\b"
         },
         {
+          "comment": "Subroutine declarations: sub/asmsub/extsub followed by name",
+          "match": "\\b(sub|asmsub|extsub)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+          "captures": {
+            "1": { "name": "keyword.other.prog8" },
+            "2": { "name": "entity.name.function.prog8" }
+          }
+        },
+        {
           "name": "keyword.other.prog8",
           "match": "\\b(sub|asmsub|extsub|inline|clobbers|void|alias)\\b"
         }

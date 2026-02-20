@@ -108,7 +108,7 @@ export const prog8Keywords: { [key: string]: KeywordInfo } = {
  * ProgB-specific keywords (BASIC-style syntax, uppercase)
  */
 export const progbKeywords: { [key: string]: KeywordInfo } = {
-    // Types (uppercase, STRING instead of str, PTR added)
+    // Types (uppercase, STRING instead of str)
     'UBYTE': { description: 'Unsigned 8-bit integer (0-255)', category: 'type' },
     'BYTE': { description: 'Signed 8-bit integer (-128 to 127)', category: 'type' },
     'UWORD': { description: 'Unsigned 16-bit integer (0-65535)', category: 'type' },
@@ -117,7 +117,6 @@ export const progbKeywords: { [key: string]: KeywordInfo } = {
     'FLOAT': { description: 'Floating point number (5 bytes on CBM systems)', category: 'type' },
     'BOOL': { description: 'Boolean value (TRUE or FALSE)', category: 'type' },
     'STRING': { description: 'String (null-terminated)', category: 'type' },
-    'PTR': { description: 'Pointer type', category: 'type' },
     
     // Control flow
     'IF': { description: 'Conditional statement', category: 'control flow' },
@@ -180,7 +179,7 @@ export const progbKeywords: { [key: string]: KeywordInfo } = {
     'SHR': { description: 'Shift right operator', category: 'operator' },
     
     // Other operators
-    'MOD': { description: 'Modulo operator', category: 'operator' },
+    'MOD': { description: 'Remainder operator', category: 'operator' },
     'IN': { description: 'Check if value is in array or range', category: 'operator' },
     'TO': { description: 'Range specifier (ascending)', category: 'operator' },
     'DOWNTO': { description: 'Range specifier (descending)', category: 'operator' },

@@ -154,6 +154,14 @@
           "match": "(?i)\\b(END\\s+MODULE)\\b"
         },
         {
+          "comment": "Subroutine declarations: SUB/FUNCTION/ASMSUB/EXTSUB followed by name",
+          "match": "(?i)\\b(SUB|FUNCTION|ASMSUB|EXTSUB)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+          "captures": {
+            "1": { "name": "keyword.other.function.progb" },
+            "2": { "name": "entity.name.function.progb" }
+          }
+        },
+        {
           "name": "keyword.other.function.progb",
           "match": "(?i)\\b(SUB|END\\s+SUB|FUNCTION|END\\s+FUNCTION|ASMSUB|END\\s+ASMSUB|EXTSUB|INLINE|CLOBBERS|AT\\s+BANK)\\b"
         },
