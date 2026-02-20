@@ -8,7 +8,6 @@ import {
     Parameter,
     BlockInfo,
     ModuleInfo,
-    formatSubroutineSignature
 } from '../data/librarySymbolsHelpers';
 import { BuiltinFunctionInfo } from '../data/builtinFunctions';
 import { ImportedFileSymbols } from '../parser/importResolver';
@@ -171,7 +170,7 @@ export function formatUnifiedSymbolDoc(
 
         case SymbolKind.Alias:
             if (isProgB) {
-                markdown.appendCodeblock(`ALIAS ${symbol.name} = ${symbol.detail}`, langId);
+                markdown.appendCodeblock(`ALIAS ${symbol.name} ${symbol.detail}`, langId);
             } else {
                 markdown.appendCodeblock(`alias ${symbol.name} ${symbol.detail}`, langId);
             }

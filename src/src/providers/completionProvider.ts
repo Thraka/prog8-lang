@@ -8,7 +8,6 @@ import {
     SubroutineInfo, 
     VariableInfo, 
     ConstantInfo,
-    formatSubroutineSignature 
 } from '../data/librarySymbolsHelpers';
 import { TargetPlatform } from '../utils/targetPlatform';
 import { getTargetPlatformForDocument } from '../utils/targetPlatform';

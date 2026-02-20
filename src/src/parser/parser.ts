@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { prog8Keywords, progbKeywords } from '../data/keywords';
 
 /**
  * Represents a parsed symbol from either Prog8 or ProgB code
@@ -437,7 +438,7 @@ export class Parser {
                 symbols.push({
                     name,
                     kind: SymbolKind.Alias,
-                    detail: `-> ${target}`,
+                    detail: `= ${target}`,
                     range: new vscode.Range(lineIndex, 0, lineIndex, line.length),
                     selectionRange: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),
                     parent: scopePath || undefined,
@@ -550,14 +551,7 @@ export class Parser {
      * Check if a word is a Prog8 keyword
      */
     private isProg8Keyword(word: string): boolean {
-        const keywords = [
-            'if', 'else', 'when', 'for', 'while', 'do', 'until', 'repeat', 'unroll',
-            'sub', 'asmsub', 'extsub', 'inline', 'return', 'break', 'continue',
-            'goto', 'defer', 'struct', 'const', 'alias', 'on', 'void', 'call',
-            'ubyte', 'byte', 'uword', 'word', 'long', 'ulong', 'float', 'bool', 'str',
-            'true', 'false', 'not', 'and', 'or', 'xor', 'in', 'to', 'downto', 'step'
-        ];
-        return keywords.includes(word);
+        return word in prog8Keywords;
     }
 
     /**
@@ -1097,7 +1091,7 @@ export class Parser {
                 symbols.push({
                     name,
                     kind: SymbolKind.Alias,
-                    detail: `-> ${target}`,
+                    detail: `= ${target}`,
                     range: new vscode.Range(lineIndex, 0, lineIndex, line.length),
                     selectionRange: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),
                     parent: scopePath || undefined,
@@ -1238,18 +1232,7 @@ export class Parser {
      * Check if a word is a ProgB keyword
      */
     private isProgBKeyword(word: string): boolean {
-        const keywords = [
-            'if', 'then', 'elseif', 'else', 'end', 'select', 'case', 'for', 'next',
-            'to', 'downto', 'step', 'in', 'while', 'wend', 'do', 'loop', 'until',
-            'repeat', 'unroll', 'sub', 'function', 'asmsub', 'extsub', 'inline',
-            'return', 'break', 'continue', 'exit', 'goto', 'defer', 'type', 'module',
-            'dim', 'const', 'alias', 'on', 'void', 'call', 'as', 'at',
-            'ubyte', 'byte', 'uword', 'word', 'long', 'float', 'bool', 'string', 'ptr',
-            'true', 'false', 'not', 'and', 'or', 'xor', 'mod', 'shl', 'shr',
-            'import', 'encoding', 'launcher', 'option', 'output', 'zeropage',
-            'asm', 'ir', 'clobbers', 'rem'
-        ];
-        return keywords.includes(word.toLowerCase());
+        return word.toUpperCase() in progbKeywords;
     }
 
     /**
