@@ -1398,7 +1398,7 @@ export class Parser {
     ): void {
         if (!params.trim()) return;
 
-        const paramRegex = /([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)(\[\])?\s+AS\s+(\^{0,2}(?:UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|PTR|[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*))(?:\s*(@\w+))?/gi;
+        const paramRegex = /([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)(\[\])?\s+AS\s+((?:PTR\s+)*\^{0,2}(?:UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*))(?:\s*(@\w+))?/gi;
         let match;
         while ((match = paramRegex.exec(params)) !== null) {
             const name = match[1];
