@@ -1,5 +1,7 @@
 # Prog8 to ProgB Conversion Guide for AI
 
+<!-- Document version 1 -->
+
 This document provides systematic instructions for converting Prog8 source code (`.p8` files) to ProgB syntax (`.pb` files). ProgB is a QuickBASIC-style syntax that compiles to the same AST as Prog8.
 
 ## Key Principles
@@ -9,6 +11,7 @@ This document provides systematic instructions for converting Prog8 source code 
 3. **Braces become END blocks** - `{ }` becomes `... END X` where X is the block type
 4. **Semicolon comments become apostrophe** - `; comment` becomes `' comment`
 5. **File extension changes** - `.p8` → `.pb`
+6. **prog8 doesn't have a line break for statements8** - Progb uses `:` to put more than one statement on a line, but prog8 doesn't support that. Lines in Progb must be broken into multiple lines for prog8 conversion.
 
 ---
 
@@ -32,6 +35,14 @@ This document provides systematic instructions for converting Prog8 source code 
 /' Multi-line
    comment '/
 ```
+
+## 1.1 Triple comments
+
+These comments represent a helper to the vscode language extension, they're like `///` C# documentation comments. Don't convert these down to single `'` or `;` commnets, but convert them to triple.
+
+| Prog8 | ProgB |
+|-------|-------|
+| `;;; line comment` | `''' line comment` |
 
 ---
 
