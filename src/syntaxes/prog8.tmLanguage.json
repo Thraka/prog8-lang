@@ -16,6 +16,7 @@
     { "include": "#operators" },
     { "include": "#inline-assembly" },
     { "include": "#blocks" },
+    { "include": "#punctuation" },
     { "include": "#identifiers" }
   ],
   "repository": {
@@ -174,8 +175,8 @@
           "match": "\\b(if_cs|if_cc|if_vs|if_vc|if_eq|if_z|if_ne|if_nz|if_pl|if_pos|if_mi|if_neg)\\b"
         },
         {
-          "comment": "Subroutine declarations: [private] [inline] sub/asmsub/extsub followed by name",
-          "match": "\\b(?:private\\s+)?(?:inline\\s+)?(sub|asmsub|extsub)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+          "comment": "Subroutine declarations: [private] [inline] sub/asmsub followed by name (extsub excluded: its name follows the address after '=', so it's never a bare word here)",
+          "match": "\\b(?:private\\s+)?(?:inline\\s+)?(sub|asmsub)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
           "captures": {
             "1": { "name": "keyword.other.prog8" },
             "2": { "name": "entity.name.function.prog8" }
@@ -373,6 +374,26 @@
             "1": { "name": "keyword.other.prog8" },
             "2": { "name": "entity.name.type.enum.prog8" }
           }
+        }
+      ]
+    },
+    "punctuation": {
+      "patterns": [
+        {
+          "name": "punctuation.section.parens.begin.prog8",
+          "match": "\\("
+        },
+        {
+          "name": "punctuation.section.parens.end.prog8",
+          "match": "\\)"
+        },
+        {
+          "name": "punctuation.section.brackets.begin.prog8",
+          "match": "\\["
+        },
+        {
+          "name": "punctuation.section.brackets.end.prog8",
+          "match": "\\]"
         }
       ]
     },

@@ -168,6 +168,11 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
                 continue;
             }
 
+            // ProgB-specific keyword statements/modifiers that are easy to miss with symbol-only coloring.
+            const forceKeywordPositions = isProgB
+                ? this.emitProgBSpecialKeywordTokens(builder, line, lineIndex, commentRanges)
+                : new Set<string>();
+
             identRegex.lastIndex = 0;
             let match: RegExpExecArray | null;
 
@@ -188,6 +193,11 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
 
                 // Skip if this is a declaration position (already emitted)
                 if (declPositions.has(`${lineIndex}:${col}:${endCol}`)) {
+                    continue;
+                }
+
+                // Skip if this segment was already emitted as a forced ProgB keyword/modifier token.
+                if (forceKeywordPositions.has(`${lineIndex}:${col}:${endCol}`)) {
                     continue;
                 }
 
@@ -249,6 +259,34 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
                 }
             }
         }
+    }
+
+    /**
+     * Emit explicit ProgB tokens for special statement/modifier forms.
+     * Returns position keys of emitted tokens so the identifier pass can skip them.
+     */
+    private emitProgBSpecialKeywordTokens(
+        builder: vscode.SemanticTokensBuilder,
+        line: string,
+        lineIndex: number,
+        commentRanges: Array<{ start: number; end: number }>
+    ): Set<string> {
+        const emitted = new Set<string>();
+
+        // SWAP(x, y) is now a keyword statement in ProgB.
+        const swapRegex = /\bSWAP\b(?=\s*\()/ig;
+        let swapMatch: RegExpExecArray | null;
+        while ((swapMatch = swapRegex.exec(line)) !== null) {
+            const start = swapMatch.index;
+            const end = start + swapMatch[0].length;
+            if (this.isInLineComment(line, start) || this.isInCommentRanges(start, commentRanges) || this.isInString(line, start)) {
+                continue;
+            }
+            builder.push(new vscode.Range(lineIndex, start, lineIndex, end), 'keyword', []);
+            emitted.add(`${lineIndex}:${start}:${end}`);
+        }
+
+        return emitted;
     }
 
     /**
