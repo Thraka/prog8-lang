@@ -1,13 +1,15 @@
-# Prog8 Language Support for VS Code
+# Prog8 and ProgB Language Support for VS Code
 
-Language support extension for [Prog8](https://prog8.readthedocs.io/), a structured programming language designed for 8-bit 6502/65c02 microprocessors, including the Commodore 64, Commander X16, and other retro computers.
+Language support extension for [Prog8](https://prog8.readthedocs.io/) (and [ProgB](#progb)) a structured programming language designed for 8-bit 6502/65c02 microprocessors, including the Commodore 64, Commander X16, and other retro computers.
+
+This extension was built for Prog8 v12.2.1.
 
 ![demo](./images/demo.png)
 
 ## Features
 
 ### Syntax Highlighting
-Comprehensive syntax highlighting for `.p8` files with support for:
+Comprehensive syntax highlighting for `.p8` and `.pb` files with support for:
 - Control flow statements and keywords
 - Data types and type annotations
 - Compiler directives and pragmas
@@ -49,7 +51,7 @@ Create a `prog8.project.json` file in your project root to configure compilation
 
 **Required fields:**
 - `main` - Main source file to compile.
-- `target` - Target platform: `cx16`, `c64`, `c128`, `pet32`, or `virtual`.
+- `target` - Target platform: `cx16`, `c64`, `c128`, `pet32`, `virtual`, or path to a custom target `.properties` file (e.g., `./nes.properties`).
 
 **Optional fields:**
 - `name` - Project name for display.
@@ -62,6 +64,20 @@ Create a `prog8.project.json` file in your project root to configure compilation
 - `compilationMode` - Compilation strategy: `auto`, `standard`, or `custom-script`.
 - `progb` - ProgB-specific formatting settings.
 
+#### Custom Targets
+
+When using a custom target (`.properties` file), the extension cannot provide IntelliSense for the built-in libraries since they are defined externally. To enable hover information, code completion, and syntax coloring for your custom target's library symbols, add the custom target's library directory to `srcdirs`:
+
+```json
+{
+  "main": "main.p8",
+  "target": "./nes.properties",
+  "srcdirs": ["path/to/custom-target/lib"]
+}
+```
+
+This allows the extension to parse the library source files and provide full language support.
+
 #### Environment Variables During Compilation
 
 | Variable Name | Description | With Project File | Without Project File |
@@ -72,7 +88,8 @@ Create a `prog8.project.json` file in your project root to configure compilation
 | PROG8_VSCODE_MAIN_FILE_NAME | Main code file name with extension | ✓ | ✓ |
 | PROG8_VSCODE_MAIN_FILE_BASENAME | Main code file name without extension | ✓ | ✓ |
 | PROG8_VSCODE_MAIN_FILE_DIR | Directory containing the main code file | ✓ | ✓ |
-| PROG8_VSCODE_TARGET | Target platform (cx16, c64, c128, pet32, virtual) | ✓ | ✓ |
+| PROG8_VSCODE_TARGET | Target platform (cx16, c64, etc.) or custom target path | ✓ | ✓ |
+| PROG8_VSCODE_TARGET_FILE | Full resolved path to custom target .properties file | ✓ (custom only) | |
 | PROG8_VSCODE_OUTPUT_FILE | Full path to the compiled .prg output file | ✓ | ✓ |
 | PROG8_VSCODE_PROJECT_DIR | Root directory of the project | ✓ | |
 | PROG8_VSCODE_SRC_DIRS | Semicolon-separated list of source directories | ✓ | |
@@ -91,6 +108,12 @@ This extension supports Prog8 development for:
 - **Commodore 64**
 - **Commodore 128**
 - **Commodore PET**
+
+## ProgB
+
+ProgB is a custom version of Prog8 that not only supports the Prog8 language, but also provides a BASIC-style version. Code for ProgB and Prog8 compile to the exact same assembly code. It's simply a syntax language over Prog8's system. You can see an example of both a Prog8 and ProgB program that output the same exact code in the [Example Code](#example-code) section.
+
+You can download the jar release of progb from [GitHub](https://github.com/Thraka/prog8/releases/). Replace the jar from Prog8 with this version (or keep it side-by-side) and configure it in the extension settings.aaa
 
 ## Example Code
 
@@ -111,6 +134,25 @@ main {
         return
     }
 }
+```
+
+```basic
+IMPORT textio
+ZEROPAGE basicsafe
+
+MODULE main
+    SUB start()
+        txt.print("Hello, ProgB!\n")
+        
+        DIM counter AS UBYTE
+        FOR counter = 0 TO 10
+            txt.print_ub(counter)
+            txt.nl()
+        NEXT
+        
+        RETURN
+    END SUB
+END MODULE
 ```
 
 ## Installation
