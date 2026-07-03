@@ -2,9 +2,21 @@
 
 All notable changes to the Prog8 Language Support extension will be documented in this file.
 
+## [1.7.1] - 2026-07-03
+
+- Updated built-in function data to latest.
+- Fixed syslib definitions to use stable sources instead of latest sources.
+
+## [1.7.0] - 2026-07-02
+
+- Fixed intellisense on ProgB `PTR` method parameters.
+- Added support for `enum`, `private`, and `swap`.
+- Fixed highlighting issues for some keywords and brackets.
+
 ## [1.6.20] - 2026-02-19
 
 - `CTRL+SPACE` now triggers the completion provider.
+- Added F2 rename support for symbols.
 
 ## [1.6.19] - 2026-02-19
 
