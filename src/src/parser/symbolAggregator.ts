@@ -59,8 +59,47 @@ export function isLibrarySymbol(symbol: UnifiedSymbol): boolean {
 }
 
 /**
+ * Check if a symbol is accessible from a given scope, respecting private visibility.
+ * 
+ * Private symbols can only be accessed:
+ * - Within their own defining block (e.g., symbols in "main" from within "main")
+ * - From nested scopes of their block (e.g., from "main.myfunction", can access "main.myvar")
+ * 
+ * Private symbols in imported files are never accessible (they can only be used within that file).
+ */
+function isSymbolAccessibleInScope(symbol: UnifiedSymbol, currentScope?: string, symbolFromImportedFile: boolean = false): boolean {
+    // Private symbols from imported files are never accessible
+    if (symbolFromImportedFile && symbol.isPrivate) {
+        return false;
+    }
+
+    // If not private, always accessible
+    if (!symbol.isPrivate) {
+        return true;
+    }
+
+    // For private symbols: check if current scope is within the symbol's defining block
+    const symbolBlockName = symbol.parent;
+    if (!symbolBlockName) {
+        // Symbol is top-level (not in any block)
+        // Private top-level symbols are not accessible outside of their own file
+        // In local scope, this should be fine (they're private to the file)
+        return !symbolFromImportedFile;
+    }
+
+    if (!currentScope) {
+        // No current scope and symbol is private to a block - not accessible
+        return false;
+    }
+
+    // Check if current scope is within or equal to the symbol's block
+    return currentScope === symbolBlockName || currentScope.startsWith(symbolBlockName + '.');
+}
+
+/**
  * Find a symbol by name across all accessible symbol sources.
  * Searches local symbols first, then imported files, then library symbols.
+ * Respects private visibility rules.
  * 
  * For qualified names (containing '.'), checks fullPath match first before
  * falling back to scope-aware resolution.
@@ -79,26 +118,27 @@ export function findSymbolInAccessible(
         // For qualified names, try exact fullPath match first, then suffix match
         // (e.g., "Mode.ON" matches "main.Mode.ON" for enum/module-qualified references)
         const byPath = accessible.localSymbols.find(s =>
-            s.fullPath === normalizedName || s.fullPath.endsWith('.' + normalizedName));
+            (s.fullPath === normalizedName || s.fullPath.endsWith('.' + normalizedName)) &&
+            isSymbolAccessibleInScope(s, scope, false));
         if (byPath) return byPath;
     }
     const local = unifiedParser.findSymbol(accessible.localSymbols, normalizedName, scope);
-    if (local) return local;
+    if (local && isSymbolAccessibleInScope(local, scope, false)) return local;
 
-    // 2. Imported file symbols
+    // 2. Imported file symbols - private symbols are completely blocked
     for (const imported of accessible.importedFileSymbols) {
         // For qualified names, try exact fullPath match first, then suffix match
         if (isQualified) {
             const byPath = imported.symbols.find(s =>
                 s.fullPath === normalizedName || s.fullPath.endsWith('.' + normalizedName));
-            if (byPath) return byPath;
+            if (byPath && isSymbolAccessibleInScope(byPath, scope, true)) return byPath;
         }
         // Fall back to scope-aware resolution
         const found = unifiedParser.findSymbol(imported.symbols, normalizedName, scope);
-        if (found) return found;
+        if (found && isSymbolAccessibleInScope(found, scope, true)) return found;
     }
 
-    // 3. Library symbols
+    // 3. Library symbols (not private)
     if (isQualified) {
         const byPath = accessible.librarySymbols.find(s =>
             s.fullPath === normalizedName || s.fullPath.endsWith('.' + normalizedName));

@@ -168,7 +168,10 @@ export function findSymbolInImports(
     if (name.includes('.')) {
         for (const imported of importedSymbols) {
             const symbol = imported.symbols.find(s => s.fullPath === name);
-            if (symbol) return symbol;
+            // Skip private symbols from imported files - they are never accessible
+            if (symbol && !symbol.isPrivate) {
+                return symbol;
+            }
         }
     }
 
@@ -176,11 +179,17 @@ export function findSymbolInImports(
     for (const imported of importedSymbols) {
         // First try to find in top-level (blocks)
         const topLevel = imported.symbols.find(s => s.name === name && !s.parent);
-        if (topLevel) return topLevel;
+        // Skip private symbols - they are never accessible from outside their file
+        if (topLevel && !topLevel.isPrivate) {
+            return topLevel;
+        }
         
         // Then search all symbols
         const symbol = unifiedParser.findSymbol(imported.symbols, name, currentScope);
-        if (symbol) return symbol;
+        // Skip private symbols from imported files
+        if (symbol && !symbol.isPrivate) {
+            return symbol;
+        }
     }
 
     return undefined;

@@ -17,6 +17,7 @@ export interface ParsedSymbol {
     parameters?: string;     // For subroutines
     returnType?: string;     // For subroutines with return values
     uri: vscode.Uri;         // Document URI
+    isPrivate?: boolean;     // True if symbol is marked with 'private' keyword
 }
 
 export enum SymbolKind {
@@ -221,6 +222,7 @@ export class Parser {
             subKind: SymbolKind;
             name: string;
             scopePath: string;
+            isPrivate?: boolean;
         } | null = null;
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
@@ -264,7 +266,8 @@ export class Parser {
                         fullPath,
                         parameters: params.trim(),
                         returnType,
-                        uri: document.uri
+                        uri: document.uri,
+                        isPrivate: pendingSub.isPrivate
                     });
 
                     this.parseProg8MultilineParameters(params.trim(), pendingSub.startLine, lineIndex, lines, fullPath, document.uri, symbols);
@@ -306,9 +309,10 @@ export class Parser {
             }
 
             // Struct definition
-            const structMatch = trimmedLine.match(/^(?:private\s+)?struct\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\{?/);
+            const structMatch = trimmedLine.match(/^(private\s+)?struct\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\{?/);
             if (structMatch) {
-                const name = structMatch[1];
+                const isPrivate = !!structMatch[1];
+                const name = structMatch[2];
                 const nameStart = line.indexOf(name);
                 const fullPath = scopePath ? `${scopePath}.${name}` : name;
 
@@ -321,7 +325,8 @@ export class Parser {
                     selectionRange: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),
                     parent: scopePath || undefined,
                     fullPath,
-                    uri: document.uri
+                    uri: document.uri,
+                    isPrivate
                 });
 
                 if (trimmedLine.includes('{')) {
@@ -331,10 +336,11 @@ export class Parser {
             }
 
             // Enum definition: [private] enum Name { [members] }
-            const enumMatch = trimmedLine.match(/^(?:private\s+)?enum\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*(\{.*)?$/);
+            const enumMatch = trimmedLine.match(/^(private\s+)?enum\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*(\{.*)?$/);
             if (enumMatch) {
-                const name = enumMatch[1];
-                const rest = enumMatch[2] || '';
+                const isPrivate = !!enumMatch[1];
+                const name = enumMatch[2];
+                const rest = enumMatch[3] || '';
                 const nameStart = line.indexOf(name);
                 const fullPath = scopePath ? `${scopePath}.${name}` : name;
 
@@ -347,7 +353,8 @@ export class Parser {
                     selectionRange: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),
                     parent: scopePath || undefined,
                     fullPath,
-                    uri: document.uri
+                    uri: document.uri,
+                    isPrivate
                 });
 
                 if (rest.includes('{') && rest.includes('}')) {
@@ -363,14 +370,15 @@ export class Parser {
                 }
             }
 
-            // Subroutine: [private] [private] [inline] sub|asmsub name(params) [-> returntype]
-            const subMatch = trimmedLine.match(/^(?:private\s+)?(inline\s+)?(sub|asmsub)\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\)(\s*->\s*(.+?))?\s*\{?/);
+            // Subroutine: [private] [inline] sub|asmsub name(params) [-> returntype]
+            const subMatch = trimmedLine.match(/^(private\s+)?(inline\s+)?(sub|asmsub)\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\)(\s*->\s*(.+?))?\s*\{?/);
             if (subMatch) {
-                const isInline = !!subMatch[1];
-                const subKind = subMatch[2] === 'asmsub' ? SymbolKind.AsmSubroutine : SymbolKind.Subroutine;
-                const name = subMatch[3];
-                const params = subMatch[4] || '';
-                const returnType = subMatch[6]?.trim();
+                const isPrivate = !!subMatch[1];
+                const isInline = !!subMatch[2];
+                const subKind = subMatch[3] === 'asmsub' ? SymbolKind.AsmSubroutine : SymbolKind.Subroutine;
+                const name = subMatch[4];
+                const params = subMatch[5] || '';
+                const returnType = subMatch[7]?.trim();
                 const nameStart = line.indexOf(name);
                 const fullPath = scopePath ? `${scopePath}.${name}` : name;
 
@@ -386,7 +394,8 @@ export class Parser {
                     fullPath,
                     parameters: params,
                     returnType,
-                    uri: document.uri
+                    uri: document.uri,
+                    isPrivate
                 });
 
                 this.parseProg8Parameters(params, lineIndex, line, fullPath, document.uri, symbols);
@@ -397,12 +406,13 @@ export class Parser {
                 }
             } else {
                 // Multiline sub declaration start
-                const multilineSubStart = trimmedLine.match(/^(?:private\s+)?(inline\s+)?(sub|asmsub)\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\s*$/);
+                const multilineSubStart = trimmedLine.match(/^(private\s+)?(inline\s+)?(sub|asmsub)\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\s*$/);
                 if (multilineSubStart) {
-                    const isInline = !!multilineSubStart[1];
-                    const subKind = multilineSubStart[2] === 'asmsub' ? SymbolKind.AsmSubroutine : SymbolKind.Subroutine;
-                    const name = multilineSubStart[3];
-                    const partialParams = multilineSubStart[4] || '';
+                    const isPrivate = !!multilineSubStart[1];
+                    const isInline = !!multilineSubStart[2];
+                    const subKind = multilineSubStart[3] === 'asmsub' ? SymbolKind.AsmSubroutine : SymbolKind.Subroutine;
+                    const name = multilineSubStart[4];
+                    const partialParams = multilineSubStart[5] || '';
 
                     pendingSub = {
                         startLine: lineIndex,
@@ -411,7 +421,8 @@ export class Parser {
                         isInline,
                         subKind,
                         name,
-                        scopePath
+                        scopePath,
+                        isPrivate
                     };
 
                     braceDepth += this.countBraces(line);
@@ -421,11 +432,12 @@ export class Parser {
             }
 
             // extsub [$addr | @bank N $addr] = name(params)
-            const extsubMatch = trimmedLine.match(/^(?:private\s+)?extsub\s+(?:@bank\s+\d+\s+)?(\$[0-9a-fA-F]+)\s*=\s*([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\)/);
+            const extsubMatch = trimmedLine.match(/^(private\s+)?extsub\s+(?:@bank\s+\d+\s+)?(\$[0-9a-fA-F]+)\s*=\s*([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\)/);
             if (extsubMatch) {
-                const address = extsubMatch[1];
-                const name = extsubMatch[2];
-                const params = extsubMatch[3] || '';
+                const isPrivate = !!extsubMatch[1];
+                const address = extsubMatch[2];
+                const name = extsubMatch[3];
+                const params = extsubMatch[4] || '';
                 const nameStart = line.indexOf(name);
                 const fullPath = scopePath ? `${scopePath}.${name}` : name;
 
@@ -439,16 +451,18 @@ export class Parser {
                     parent: scopePath || undefined,
                     fullPath,
                     parameters: params,
-                    uri: document.uri
+                    uri: document.uri,
+                    isPrivate
                 });
             }
 
             // const type name = value
-            const constMatch = trimmedLine.match(/^(?:private\s+)?const\s+(ubyte|byte|uword|word|long|ulong|float|bool|str)\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*=\s*(.+)/);
+            const constMatch = trimmedLine.match(/^(private\s+)?const\s+(ubyte|byte|uword|word|long|ulong|float|bool|str)\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*=\s*(.+)/);
             if (constMatch) {
-                const type = constMatch[1];
-                const name = constMatch[2];
-                const value = constMatch[3];
+                const isPrivate = !!constMatch[1];
+                const type = constMatch[2];
+                const name = constMatch[3];
+                const value = constMatch[4];
                 const nameStart = line.indexOf(name);
                 const fullPath = scopePath ? `${scopePath}.${name}` : name;
 
@@ -461,7 +475,8 @@ export class Parser {
                     selectionRange: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),
                     parent: scopePath || undefined,
                     fullPath,
-                    uri: document.uri
+                    uri: document.uri,
+                    isPrivate
                 });
             }
 
@@ -487,10 +502,11 @@ export class Parser {
             }
 
             // Alias
-            const aliasMatch = trimmedLine.match(/^(?:private\s+)?alias\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*=\s*(.+)/);
+            const aliasMatch = trimmedLine.match(/^(private\s+)?alias\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*=\s*(.+)/);
             if (aliasMatch) {
-                const name = aliasMatch[1];
-                const target = aliasMatch[2];
+                const isPrivate = !!aliasMatch[1];
+                const name = aliasMatch[2];
+                const target = aliasMatch[3];
                 const nameStart = line.indexOf(name);
                 const fullPath = scopePath ? `${scopePath}.${name}` : name;
 
@@ -503,7 +519,8 @@ export class Parser {
                     selectionRange: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),
                     parent: scopePath || undefined,
                     fullPath,
-                    uri: document.uri
+                    uri: document.uri,
+                    isPrivate
                 });
             }
 
@@ -907,6 +924,7 @@ export class Parser {
             name: string;
             scopePath: string;
             keyword: string;  // 'SUB', 'FUNCTION', 'ASMSUB'
+            isPrivate?: boolean;
         } | null = null;
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
@@ -952,7 +970,8 @@ export class Parser {
                         fullPath,
                         parameters: this.convertProgBParams(params.trim()),
                         returnType,
-                        uri: document.uri
+                        uri: document.uri,
+                        isPrivate: pendingSub.isPrivate
                     });
 
                     this.parseProgBMultilineParameters(params.trim(), pendingSub.startLine, lineIndex, lines, fullPath, document.uri, symbols);
@@ -994,9 +1013,10 @@ export class Parser {
             }
 
             // TYPE (struct) definition: [PRIVATE] TYPE Name
-            const typeMatch = trimmedLine.match(/^(?:PRIVATE\s+)?TYPE\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)/i);
+            const typeMatch = trimmedLine.match(/^(PRIVATE\s+)?TYPE\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)/i);
             if (typeMatch) {
-                const name = typeMatch[1];
+                const isPrivate = !!typeMatch[1];
+                const name = typeMatch[2];
                 const nameStart = line.toUpperCase().indexOf(name.toUpperCase(), line.toUpperCase().indexOf('TYPE') + 4);
                 const fullPath = scopePath ? `${scopePath}.${name}` : name;
 
@@ -1009,7 +1029,8 @@ export class Parser {
                     selectionRange: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),
                     parent: scopePath || undefined,
                     fullPath,
-                    uri: document.uri
+                    uri: document.uri,
+                    isPrivate
                 });
 
                 scopeStack.push({ name, kind: SymbolKind.Struct, symbolIndex, startLine: lineIndex });
@@ -1023,9 +1044,10 @@ export class Parser {
             }
 
             // ENUM definition: [PRIVATE] ENUM Name
-            const progbEnumMatch = trimmedLine.match(/^(?:PRIVATE\s+)?ENUM\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)/i);
+            const progbEnumMatch = trimmedLine.match(/^(PRIVATE\s+)?ENUM\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)/i);
             if (progbEnumMatch) {
-                const name = progbEnumMatch[1];
+                const isPrivate = !!progbEnumMatch[1];
+                const name = progbEnumMatch[2];
                 const nameStart = this.findIdentifierStart(line, name, 'ENUM');
                 const fullPath = scopePath ? `${scopePath}.${name}` : name;
 
@@ -1038,7 +1060,8 @@ export class Parser {
                     selectionRange: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),
                     parent: scopePath || undefined,
                     fullPath,
-                    uri: document.uri
+                    uri: document.uri,
+                    isPrivate
                 });
 
                 scopeStack.push({ name, kind: SymbolKind.Enum, symbolIndex, startLine: lineIndex });
@@ -1132,11 +1155,12 @@ export class Parser {
             }
 
             // SUB definition: [PRIVATE] [INLINE] SUB name(params)
-            const subMatch = trimmedLine.match(/^(?:PRIVATE\s+)?(INLINE\s+)?SUB\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\)/i);
+            const subMatch = trimmedLine.match(/^(PRIVATE\s+)?(INLINE\s+)?SUB\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\)/i);
             if (subMatch && !/^END\s+SUB\b/i.test(trimmedLine)) {
-                const isInline = !!subMatch[1];
-                const name = subMatch[2];
-                const params = subMatch[3] || '';
+                const isPrivate = !!subMatch[1];
+                const isInline = !!subMatch[2];
+                const name = subMatch[3];
+                const params = subMatch[4] || '';
                 const nameStart = this.findIdentifierStart(line, name, 'SUB');
                 const fullPath = scopePath ? `${scopePath}.${name}` : name;
 
@@ -1151,7 +1175,8 @@ export class Parser {
                     parent: scopePath || undefined,
                     fullPath,
                     parameters: this.convertProgBParams(params),
-                    uri: document.uri
+                    uri: document.uri,
+                    isPrivate
                 });
 
                 this.parseProgBParameters(params, lineIndex, line, fullPath, document.uri, symbols);
@@ -1160,11 +1185,12 @@ export class Parser {
                 continue;
             } else if (!/^END\s+SUB\b/i.test(trimmedLine)) {
                 // Multiline SUB declaration start
-                const multilineSubStart = trimmedLine.match(/^(?:PRIVATE\s+)?(INLINE\s+)?SUB\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\s*$/i);
+                const multilineSubStart = trimmedLine.match(/^(PRIVATE\s+)?(INLINE\s+)?SUB\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\s*$/i);
                 if (multilineSubStart) {
-                    const isInline = !!multilineSubStart[1];
-                    const name = multilineSubStart[2];
-                    const partialParams = multilineSubStart[3] || '';
+                    const isPrivate = !!multilineSubStart[1];
+                    const isInline = !!multilineSubStart[2];
+                    const name = multilineSubStart[3];
+                    const partialParams = multilineSubStart[4] || '';
 
                     pendingSub = {
                         startLine: lineIndex,
@@ -1174,7 +1200,8 @@ export class Parser {
                         subKind: SymbolKind.Subroutine,
                         name,
                         scopePath,
-                        keyword: 'SUB'
+                        keyword: 'SUB',
+                        isPrivate
                     };
                     continue;
                 }
@@ -1187,11 +1214,12 @@ export class Parser {
             }
 
             // ASMSUB definition: [PRIVATE] [INLINE] ASMSUB name(params) [CLOBBERS(...)] [AS type @reg]
-            const asmsubMatch = trimmedLine.match(/^(?:PRIVATE\s+)?(INLINE\s+)?ASMSUB\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\)/i);
+            const asmsubMatch = trimmedLine.match(/^(PRIVATE\s+)?(INLINE\s+)?ASMSUB\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\)/i);
             if (asmsubMatch) {
-                const isInline = !!asmsubMatch[1];
-                const name = asmsubMatch[2];
-                const params = asmsubMatch[3] || '';
+                const isPrivate = !!asmsubMatch[1];
+                const isInline = !!asmsubMatch[2];
+                const name = asmsubMatch[3];
+                const params = asmsubMatch[4] || '';
                 const nameStart = this.findIdentifierStart(line, name, 'ASMSUB');
                 const fullPath = scopePath ? `${scopePath}.${name}` : name;
 
@@ -1210,18 +1238,20 @@ export class Parser {
                     fullPath,
                     parameters: this.convertProgBParams(params),
                     returnType: this.convertProgBType(returnType),
-                    uri: document.uri
+                    uri: document.uri,
+                    isPrivate
                 });
 
                 scopeStack.push({ name, kind: SymbolKind.AsmSubroutine, symbolIndex, startLine: lineIndex });
                 continue;
             } else {
                 // Multiline ASMSUB declaration start
-                const multilineAsmsubStart = trimmedLine.match(/^(?:PRIVATE\s+)?(INLINE\s+)?ASMSUB\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\s*$/i);
+                const multilineAsmsubStart = trimmedLine.match(/^(PRIVATE\s+)?(INLINE\s+)?ASMSUB\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\s*$/i);
                 if (multilineAsmsubStart) {
-                    const isInline = !!multilineAsmsubStart[1];
-                    const name = multilineAsmsubStart[2];
-                    const partialParams = multilineAsmsubStart[3] || '';
+                    const isPrivate = !!multilineAsmsubStart[1];
+                    const isInline = !!multilineAsmsubStart[2];
+                    const name = multilineAsmsubStart[3];
+                    const partialParams = multilineAsmsubStart[4] || '';
 
                     pendingSub = {
                         startLine: lineIndex,
@@ -1231,7 +1261,8 @@ export class Parser {
                         subKind: SymbolKind.AsmSubroutine,
                         name,
                         scopePath,
-                        keyword: 'ASMSUB'
+                        keyword: 'ASMSUB',
+                        isPrivate
                     };
                     continue;
                 }
@@ -1244,11 +1275,12 @@ export class Parser {
             }
 
             // EXTSUB: [PRIVATE] EXTSUB [AT BANK n] $addr = name(params) [AS type @reg] [CLOBBERS(...)]
-            const extsubMatch = trimmedLine.match(/^(?:PRIVATE\s+)?EXTSUB\s+(?:AT\s+BANK\s+\d+\s+)?(\$[0-9a-fA-F]+)\s*=\s*([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\)/i);
+            const extsubMatch = trimmedLine.match(/^(PRIVATE\s+)?EXTSUB\s+(?:AT\s+BANK\s+\d+\s+)?(\$[0-9a-fA-F]+)\s*=\s*([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\)/i);
             if (extsubMatch) {
-                const address = extsubMatch[1];
-                const name = extsubMatch[2];
-                const params = extsubMatch[3] || '';
+                const isPrivate = !!extsubMatch[1];
+                const address = extsubMatch[2];
+                const name = extsubMatch[3];
+                const params = extsubMatch[4] || '';
                 const nameStart = line.indexOf(name);
                 const fullPath = scopePath ? `${scopePath}.${name}` : name;
 
@@ -1262,17 +1294,19 @@ export class Parser {
                     parent: scopePath || undefined,
                     fullPath,
                     parameters: this.convertProgBParams(params),
-                    uri: document.uri
+                    uri: document.uri,
+                    isPrivate
                 });
                 continue;
             }
 
             // CONST name AS type = value
-            const constMatch = trimmedLine.match(/^(?:PRIVATE\s+)?CONST\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s+AS\s+((?:PTR\s+)*\^{0,2}(?:UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*))\s*=\s*(.+)/i);
+            const constMatch = trimmedLine.match(/^(PRIVATE\s+)?CONST\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s+AS\s+((?:PTR\s+)*\^{0,2}(?:UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*))\s*=\s*(.+)/i);
             if (constMatch) {
-                const name = constMatch[1];
-                const type = this.convertProgBType(constMatch[2]);
-                const value = constMatch[3];
+                const isPrivate = !!constMatch[1];
+                const name = constMatch[2];
+                const type = this.convertProgBType(constMatch[3]);
+                const value = constMatch[4];
                 const nameStart = this.findIdentifierStart(line, name, 'CONST');
                 const fullPath = scopePath ? `${scopePath}.${name}` : name;
 
@@ -1286,7 +1320,8 @@ export class Parser {
                     selectionRange: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),
                     parent: scopePath || undefined,
                     fullPath,
-                    uri: document.uri
+                    uri: document.uri,
+                    isPrivate
                 });
                 continue;
             }

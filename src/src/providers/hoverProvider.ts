@@ -4,7 +4,7 @@ import { unifiedParser, UnifiedSymbol, SymbolKind } from '../parser';
 import { findSubroutine, findVariable, findConstant, findSubroutineParameter, getAllBlocks, findModule, SubroutineInfo, BlockInfo, ModuleInfo, VariableInfo, ConstantInfo, Parameter } from '../data/librarySymbolsHelpers';
 import { getTargetPlatform, getTargetPlatformForDocument } from '../utils/targetPlatform';
 import { parseImports, findSymbolInImports, ImportedFileSymbols, resolveLocalImport, getSrcDirsForDocument } from '../parser/importResolver';
-import { getAllAccessibleSymbols, resolveStructMemberInAccessible } from '../parser/symbolAggregator';
+import { getAllAccessibleSymbols, resolveStructMemberInAccessible, findSymbolInAccessible } from '../parser/symbolAggregator';
 import { isInImportStatement, getQualifiedNameAtPosition, isInComment } from './providerUtils';
 import { getBuiltinFunction } from '../data/builtinFunctions';
 import { getKeywordsForLanguage } from '../data/keywords';
@@ -94,14 +94,15 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
             }
             
             // Also check current file for qualified names (e.g., myblock.mysub within same file)
-            const localQualifiedSymbol = symbols.find(s => s.fullPath === qualifiedName);
+            // Use findSymbolInAccessible to respect private visibility
+            const currentScopeForQualified = unifiedParser.getScopeAtPosition(symbols, position);
+            const localQualifiedSymbol = await findSymbolInAccessible(qualifiedName, accessible, currentScopeForQualified);
             if (localQualifiedSymbol) {
                 return this.createHoverForSymbol(localQualifiedSymbol, isProgB);
             }
 
             // Check for struct member access (e.g., variable.member where variable has a struct type)
-            const currentScope = unifiedParser.getScopeAtPosition(symbols, position);
-            const structMember = resolveStructMemberInAccessible(qualifiedName, accessible, currentScope);
+            const structMember = resolveStructMemberInAccessible(qualifiedName, accessible, currentScopeForQualified);
             if (structMember) {
                 return this.createHoverForSymbol(structMember, isProgB);
             }
@@ -144,8 +145,8 @@ export class Prog8HoverProvider implements vscode.HoverProvider {
         // Get current scope for context
         const currentScope = unifiedParser.getScopeAtPosition(symbols, position);
 
-        // Find the symbol in current file
-        const symbol = unifiedParser.findSymbol(symbols, word, currentScope);
+        // Find the symbol in current file using accessible symbols (respects private visibility)
+        const symbol = await findSymbolInAccessible(word, accessible, currentScope);
         
         if (symbol) {
             return this.createHoverForSymbol(symbol, isProgB);

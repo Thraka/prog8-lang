@@ -101,8 +101,40 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
     }
 
     /**
-     * Emit semantic tokens for all symbol declaration sites.
+     * Check if a symbol is accessible from a given scope, respecting private visibility.
+     * Private symbols are only accessible within their defining block or nested scopes.
+     * Private symbols from imported files are never accessible.
      */
+    private isSymbolAccessibleInScope(
+        symbol: UnifiedSymbol,
+        scope: string | undefined,
+        isFromImportedFile: boolean
+    ): boolean {
+        // Private symbols from imported files are never accessible
+        if (isFromImportedFile && symbol.isPrivate) {
+            return false;
+        }
+
+        // If not private, it's accessible
+        if (!symbol.isPrivate) {
+            return true;
+        }
+
+        // Private local symbols: check if current scope is within their defining block
+        if (!symbol.parent) {
+            // Top-level private symbol - only accessible in its own file
+            return !isFromImportedFile;
+        }
+
+        if (!scope) {
+            // No current scope and symbol is private - not accessible
+            return false;
+        }
+
+        // Check if current scope is within the symbol's block
+        const symbolBlockName = symbol.parent;
+        return scope === symbolBlockName || scope.startsWith(symbolBlockName + '.');
+    }
     private emitDeclarationTokens(
         builder: vscode.SemanticTokensBuilder,
         symbols: UnifiedSymbol[],
@@ -234,12 +266,16 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
                 } else {
                     // Try to resolve unqualified name in local symbols first
                     let resolved = unifiedParser.findSymbol(symbols, word, scope);
+                    let isFromImportedFile = false;
                     
                     // If not found locally, search in imported file symbols
                     if (!resolved) {
                         for (const imported of importedFileSymbols) {
                             resolved = unifiedParser.findSymbol(imported.symbols, word, scope);
-                            if (resolved) break;
+                            if (resolved) {
+                                isFromImportedFile = true;
+                                break;
+                            }
                         }
                     }
 
@@ -248,7 +284,7 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
                         resolved = unifiedParser.findSymbol(librarySymbols, word, scope);
                     }
                     
-                    if (resolved) {
+                    if (resolved && this.isSymbolAccessibleInScope(resolved, scope, isFromImportedFile)) {
                         const { tokenType, modifiers } = this.classifySymbol(resolved);
                         builder.push(
                             new vscode.Range(lineIndex, col, lineIndex, endCol),
@@ -296,6 +332,7 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
      * 
      * Walks the segments left to right, building up the qualified path
      * and resolving each segment to its own symbol.
+     * Respects private visibility - does not color inaccessible private symbols.
      */
     private emitQualifiedName(
         builder: vscode.SemanticTokensBuilder,
@@ -328,6 +365,7 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
 
                 // Try to resolve this segment as a symbol in local symbols first
                 let resolved = unifiedParser.findSymbol(symbols, pathSoFar, scope);
+                let isFromImportedFile = false;
                 
                 // For qualified names, if not found by exact path, try suffix matching
                 // (e.g., "lines.boxes" matches "main.lines.boxes" for enum members)
@@ -342,12 +380,18 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
                     for (const imported of importedFileSymbols) {
                         // Check for exact fullPath match
                         resolved = imported.symbols.find(s => s.fullPath === pathSoFar);
-                        if (resolved) break;
+                        if (resolved) {
+                            isFromImportedFile = true;
+                            break;
+                        }
                         
                         // For single-segment paths (e.g., just "helpers"), also check top-level names
                         if (!pathSoFar.includes('.')) {
                             resolved = imported.symbols.find(s => s.name === pathSoFar && !s.parent);
-                            if (resolved) break;
+                            if (resolved) {
+                                isFromImportedFile = true;
+                                break;
+                            }
                         }
                     }
                 }
@@ -371,7 +415,8 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
                     resolved = unifiedParser.resolveStructMemberAccess(pathSoFar, allSymbols, scope);
                 }
                 
-                if (resolved) {
+                // Only emit token if the symbol is accessible (respects private visibility)
+                if (resolved && this.isSymbolAccessibleInScope(resolved, scope, isFromImportedFile)) {
                     const { tokenType, modifiers } = this.classifySymbol(resolved);
                     builder.push(
                         new vscode.Range(lineIndex, currentCol, lineIndex, partEnd),

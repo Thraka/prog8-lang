@@ -228,6 +228,10 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
                 // Only add direct children, not nested ones
                 const relativePath = symbol.fullPath.substring(resolvedPrefix.length + 1);
                 if (!relativePath.includes('.')) {
+                    // Filter private symbols - they're not accessible from outside their block
+                    if (symbol.isPrivate && currentScope && !this.isSymbolAccessible(symbol, currentScope, false)) {
+                        continue;
+                    }
                     if (!addedNames.has(symbol.name)) {
                         addedNames.add(symbol.name);
                         const item = this.createCompletionItem(symbol);
@@ -259,6 +263,10 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
                 if (symbol.parent === resolvedImportedPrefix || symbol.fullPath.startsWith(resolvedImportedPrefix + '.')) {
                     const relativePath = symbol.fullPath.substring(resolvedImportedPrefix.length + 1);
                     if (!relativePath.includes('.')) {
+                        // Block private symbols from imported files completely
+                        if (symbol.isPrivate) {
+                            continue;
+                        }
                         if (!addedNames.has(symbol.name)) {
                             addedNames.add(symbol.name);
                             const item = this.createCompletionItem(symbol, imported.moduleName);
@@ -691,23 +699,40 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
 
     /**
      * Check if a symbol is accessible from the given scope.
-     * In Prog8:
-     * - Variables in a subroutine are accessible within that subroutine
-     * - Nested subroutines can access parent subroutine variables
-     * - Block-level symbols are accessible within the block
+     * Respects both scope accessibility and private visibility rules.
+     * 
+     * Private visibility:
+     * - Private symbols can only be accessed within their defining block or nested scopes
+     * - Private top-level symbols in imported files are never accessible
      */
-    private isSymbolAccessible(symbol: UnifiedSymbol, currentScope: string | undefined): boolean {
+    private isSymbolAccessible(symbol: UnifiedSymbol, currentScope: string | undefined, isFromImportedFile: boolean = false): boolean {
+        // Private symbols from imported files are never accessible
+        if (isFromImportedFile && symbol.isPrivate) {
+            return false;
+        }
+
         if (!currentScope) {
             // At top level, only top-level symbols are directly accessible
+            // But private top-level symbols are only accessible in their own file
+            if (isFromImportedFile && symbol.isPrivate) {
+                return false;
+            }
             return !symbol.parent;
         }
 
-        // If symbol has no parent, it's at top level - accessible everywhere
+        // If symbol has no parent, it's at top level - accessible everywhere (unless private from imported file)
         if (!symbol.parent) {
-            return true;
+            return !isFromImportedFile || !symbol.isPrivate;
         }
 
-        // Check if the symbol's parent scope is the current scope or an ancestor
+        // For private symbols, check if current scope is within the symbol's defining block
+        if (symbol.isPrivate) {
+            const symbolBlockName = symbol.parent;
+            // Private symbol is accessible if current scope is within its block
+            return currentScope === symbolBlockName || currentScope.startsWith(symbolBlockName + '.');
+        }
+
+        // Public symbols: check if the symbol's parent scope is the current scope or an ancestor
         const scopeParts = currentScope.split('.');
         for (let i = scopeParts.length; i >= 1; i--) {
             const ancestorScope = scopeParts.slice(0, i).join('.');
