@@ -272,11 +272,11 @@
       "patterns": [
         {
           "name": "support.function.builtin.prog8",
-          "match": "\\b(len|sizeof|offsetof|abs|clamp|divmod|max|min|sgn|sqrt|cmp|lsb|lsw|msb|msw|mkword|mklong|mklong2|peek|peekbool|peekw|peekl|peekf|poke|pokebool|pokew|pokel|pokef|pokemon|rol|rol2|ror|ror2|setlsb|setmsb|memory|call|callfar|callfar2|rsave|rsavex|rrestore|rrestorex)\\b"
+          "match": "\\b(setlsb|setmsb|rol|ror|rol2|ror2|cmp|abs|len|sizeof|offsetof|sgn|sqrt|divmod|lmh|lsb|msb|lsw|msw|mkword|mklong|mklong2|clamp|min|max|peek|peekbool|peekw|peekl|peekf|poke|pokebool|pokebowl|pokew|pokel|pokef|pokemon|rsave|rrestore|memory|callfar|callfar2|call)\\b"
         },
         {
           "name": "support.function.builtin.array.prog8",
-          "match": "\\b(push|pop|pushw|popw|pushl|popl)\\b"
+          "match": "\\b(push|pushw|pushl|pushf|pop|popw|popl|popf)\\b"
         }
       ]
     },

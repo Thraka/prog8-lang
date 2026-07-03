@@ -2,6 +2,8 @@
 
 Language support extension for [Prog8](https://prog8.readthedocs.io/) (and [ProgB](#progb)) a structured programming language designed for 8-bit 6502/65c02 microprocessors, including the Commodore 64, Commander X16, and other retro computers.
 
+This extension was built for Prog8 v12.2.1.
+
 ![demo](./images/demo.png)
 
 ## Features
