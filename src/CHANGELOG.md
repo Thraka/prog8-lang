@@ -4,6 +4,7 @@ All notable changes to the Prog8 Language Support extension will be documented i
 
 ## [1.7.1] - 2026-07-03
 
+- Respect private scope in symbol and token parsing.
 - Updated built-in function data to latest.
 - Fixed syslib definitions to use stable sources instead of latest sources.
 
