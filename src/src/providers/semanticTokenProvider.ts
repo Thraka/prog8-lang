@@ -58,6 +58,14 @@ const prog8TypeKeywords = new Set(
 const progbTypeKeywords = new Set(
     Object.entries(progbKeywords).filter(([, info]) => info.category === 'type').map(([name]) => name)
 );
+const progbSemanticKeywords = new Set(
+    Object.entries(progbKeywords)
+        .filter(([name, info]) => info.category !== 'type' && info.category !== 'comment' && !name.includes(' '))
+        .map(([name]) => name)
+);
+const progbCompoundSemanticKeywords = Object.entries(progbKeywords)
+    .filter(([name, info]) => info.category !== 'type' && info.category !== 'comment' && name.includes(' '))
+    .map(([name]) => name);
 
 export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticTokensProvider {
 
@@ -309,7 +317,47 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
     ): Set<string> {
         const emitted = new Set<string>();
 
-        // SWAP(x, y) is now a keyword statement in ProgB.
+        for (const keyword of progbCompoundSemanticKeywords) {
+            const keywordRegex = new RegExp(`\\b${keyword.replace(/\s+/g, '\\s+')}\\b`, 'ig');
+            let keywordMatch: RegExpExecArray | null;
+
+            while ((keywordMatch = keywordRegex.exec(line)) !== null) {
+                const keywordText = keywordMatch[0];
+                const start = keywordMatch.index;
+
+                if (this.isInLineComment(line, start) || this.isInCommentRanges(start, commentRanges) || this.isInString(line, start)) {
+                    continue;
+                }
+
+                const wordRegex = /\S+/g;
+                let wordMatch: RegExpExecArray | null;
+                while ((wordMatch = wordRegex.exec(keywordText)) !== null) {
+                    const wordStart = start + wordMatch.index;
+                    const wordEnd = wordStart + wordMatch[0].length;
+                    builder.push(new vscode.Range(lineIndex, wordStart, lineIndex, wordEnd), 'keyword', []);
+                    emitted.add(`${lineIndex}:${wordStart}:${wordEnd}`);
+                }
+            }
+        }
+
+        for (const keyword of progbSemanticKeywords) {
+            const keywordRegex = new RegExp(`\\b${keyword}\\b`, 'ig');
+            let keywordMatch: RegExpExecArray | null;
+
+            while ((keywordMatch = keywordRegex.exec(line)) !== null) {
+                const start = keywordMatch.index;
+                const end = start + keywordMatch[0].length;
+
+                if (this.isInLineComment(line, start) || this.isInCommentRanges(start, commentRanges) || this.isInString(line, start)) {
+                    continue;
+                }
+
+                builder.push(new vscode.Range(lineIndex, start, lineIndex, end), 'keyword', []);
+                emitted.add(`${lineIndex}:${start}:${end}`);
+            }
+        }
+
+        // Keep SWAP(x, y) covered explicitly in case it is used in call-like form.
         const swapRegex = /\bSWAP\b(?=\s*\()/ig;
         let swapMatch: RegExpExecArray | null;
         while ((swapMatch = swapRegex.exec(line)) !== null) {
@@ -318,8 +366,10 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
             if (this.isInLineComment(line, start) || this.isInCommentRanges(start, commentRanges) || this.isInString(line, start)) {
                 continue;
             }
-            builder.push(new vscode.Range(lineIndex, start, lineIndex, end), 'keyword', []);
-            emitted.add(`${lineIndex}:${start}:${end}`);
+            if (!emitted.has(`${lineIndex}:${start}:${end}`)) {
+                builder.push(new vscode.Range(lineIndex, start, lineIndex, end), 'keyword', []);
+                emitted.add(`${lineIndex}:${start}:${end}`);
+            }
         }
 
         return emitted;
