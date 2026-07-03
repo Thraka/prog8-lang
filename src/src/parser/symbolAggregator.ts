@@ -70,35 +70,41 @@ export function findSymbolInAccessible(
     accessible: AccessibleSymbols,
     scope?: string
 ): UnifiedSymbol | undefined {
-    const isQualified = name.includes('.');
+    // Normalize :: separator (Prog8 enum/module qualifier) to . for symbol table lookup
+    const normalizedName = name.replace(/::/g, '.');
+    const isQualified = normalizedName.includes('.');
 
     // 1. Local symbols
     if (isQualified) {
-        // For qualified names, try exact fullPath match first
-        const byPath = accessible.localSymbols.find(s => s.fullPath === name);
+        // For qualified names, try exact fullPath match first, then suffix match
+        // (e.g., "Mode.ON" matches "main.Mode.ON" for enum/module-qualified references)
+        const byPath = accessible.localSymbols.find(s =>
+            s.fullPath === normalizedName || s.fullPath.endsWith('.' + normalizedName));
         if (byPath) return byPath;
     }
-    const local = unifiedParser.findSymbol(accessible.localSymbols, name, scope);
+    const local = unifiedParser.findSymbol(accessible.localSymbols, normalizedName, scope);
     if (local) return local;
 
     // 2. Imported file symbols
     for (const imported of accessible.importedFileSymbols) {
-        // For qualified names, try exact fullPath match first
+        // For qualified names, try exact fullPath match first, then suffix match
         if (isQualified) {
-            const byPath = imported.symbols.find(s => s.fullPath === name);
+            const byPath = imported.symbols.find(s =>
+                s.fullPath === normalizedName || s.fullPath.endsWith('.' + normalizedName));
             if (byPath) return byPath;
         }
         // Fall back to scope-aware resolution
-        const found = unifiedParser.findSymbol(imported.symbols, name, scope);
+        const found = unifiedParser.findSymbol(imported.symbols, normalizedName, scope);
         if (found) return found;
     }
 
     // 3. Library symbols
     if (isQualified) {
-        const byPath = accessible.librarySymbols.find(s => s.fullPath === name);
+        const byPath = accessible.librarySymbols.find(s =>
+            s.fullPath === normalizedName || s.fullPath.endsWith('.' + normalizedName));
         if (byPath) return byPath;
     }
-    const lib = unifiedParser.findSymbol(accessible.librarySymbols, name, scope);
+    const lib = unifiedParser.findSymbol(accessible.librarySymbols, normalizedName, scope);
     if (lib) return lib;
 
     return undefined;

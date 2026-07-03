@@ -8,8 +8,151 @@ import { LibraryData } from "./librarySymbolsHelpers";
 
 export const library_cx16: LibraryData = {
   "target": "cx16",
-  "version": "12.1.1",
+  "version": "12.3",
   "modules": [
+    {
+      "name": "adpcm",
+      "blocks": [
+        {
+          "name": "adpcm",
+          "subroutines": [
+            {
+              "name": "decode_block_mono",
+              "parameters": [
+                {
+                  "name": "nibblesptr",
+                  "type": "uword"
+                }
+              ],
+              "returns": [],
+              "clobbers": []
+            },
+            {
+              "name": "decode_block_stereo",
+              "parameters": [
+                {
+                  "name": "nibblesptr",
+                  "type": "uword"
+                }
+              ],
+              "returns": [],
+              "clobbers": []
+            },
+            {
+              "name": "decode_nibble",
+              "parameters": [
+                {
+                  "name": "nibble",
+                  "type": "ubyte"
+                }
+              ],
+              "returns": [],
+              "clobbers": []
+            },
+            {
+              "name": "decode_nibble_second",
+              "parameters": [
+                {
+                  "name": "nibble",
+                  "type": "ubyte"
+                }
+              ],
+              "returns": [],
+              "clobbers": []
+            },
+            {
+              "name": "init",
+              "parameters": [
+                {
+                  "name": "startPredict",
+                  "type": "uword"
+                },
+                {
+                  "name": "startIndex",
+                  "type": "ubyte"
+                }
+              ],
+              "returns": [],
+              "clobbers": []
+            },
+            {
+              "name": "init_second",
+              "parameters": [
+                {
+                  "name": "startPredict_2",
+                  "type": "uword"
+                },
+                {
+                  "name": "startIndex_2",
+                  "type": "ubyte"
+                }
+              ],
+              "returns": [],
+              "clobbers": []
+            }
+          ],
+          "variables": [
+            {
+              "name": "index",
+              "type": "ubyte @requirezp",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "index_2",
+              "type": "ubyte @requirezp",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "predict",
+              "type": "uword @requirezp",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "predict_2",
+              "type": "uword @requirezp",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "pstep",
+              "type": "uword @requirezp",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "pstep_2",
+              "type": "uword @requirezp",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "t_index",
+              "type": "byte[]",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "t_step",
+              "type": "uword[]",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            }
+          ],
+          "constants": []
+        }
+      ]
+    },
     {
       "name": "bcd",
       "blocks": [
@@ -783,7 +926,7 @@ export const library_cx16: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "pop",
+              "name": "pop_b",
               "parameters": [],
               "returns": [
                 {
@@ -793,7 +936,7 @@ export const library_cx16: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "popw",
+              "name": "pop_w",
               "parameters": [],
               "returns": [
                 {
@@ -803,7 +946,7 @@ export const library_cx16: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "push",
+              "name": "push_b",
               "parameters": [
                 {
                   "name": "value",
@@ -814,7 +957,7 @@ export const library_cx16: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "pushw",
+              "name": "push_w",
               "parameters": [
                 {
                   "name": "value",
@@ -898,7 +1041,7 @@ export const library_cx16: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "pop",
+              "name": "pop_b",
               "parameters": [],
               "returns": [
                 {
@@ -908,7 +1051,7 @@ export const library_cx16: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "popw",
+              "name": "pop_w",
               "parameters": [],
               "returns": [
                 {
@@ -918,7 +1061,7 @@ export const library_cx16: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "push",
+              "name": "push_b",
               "parameters": [
                 {
                   "name": "value",
@@ -929,7 +1072,7 @@ export const library_cx16: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "pushw",
+              "name": "push_w",
               "parameters": [
                 {
                   "name": "value",
@@ -1390,21 +1533,6 @@ export const library_cx16: LibraryData = {
               ],
               "returns": [],
               "clobbers": []
-            },
-            {
-              "name": "internal_uword2hex",
-              "parameters": [
-                {
-                  "name": "value",
-                  "type": "uword",
-                  "register": "@AY"
-                }
-              ],
-              "returns": [],
-              "clobbers": [
-                "A",
-                "Y"
-              ]
             },
             {
               "name": "str2byte",
@@ -2034,7 +2162,11 @@ export const library_cx16: LibraryData = {
                   "type": "long"
                 }
               ],
-              "returns": [],
+              "returns": [
+                {
+                  "type": "bool"
+                }
+              ],
               "clobbers": []
             },
             {
@@ -2045,7 +2177,11 @@ export const library_cx16: LibraryData = {
                   "type": "long"
                 }
               ],
-              "returns": [],
+              "returns": [
+                {
+                  "type": "bool"
+                }
+              ],
               "clobbers": []
             },
             {
@@ -2106,85 +2242,6 @@ export const library_cx16: LibraryData = {
               "returns": [
                 {
                   "type": "uword"
-                }
-              ],
-              "clobbers": []
-            },
-            {
-              "name": "internal_f_open_w",
-              "parameters": [
-                {
-                  "name": "filename",
-                  "type": "str"
-                },
-                {
-                  "name": "open_for_seeks",
-                  "type": "bool"
-                }
-              ],
-              "returns": [
-                {
-                  "type": "bool"
-                }
-              ],
-              "clobbers": []
-            },
-            {
-              "name": "internal_load_routine",
-              "parameters": [
-                {
-                  "name": "filenameptr",
-                  "type": "str"
-                },
-                {
-                  "name": "address_override",
-                  "type": "uword"
-                },
-                {
-                  "name": "headerless",
-                  "type": "bool"
-                }
-              ],
-              "returns": [
-                {
-                  "type": "uword"
-                }
-              ],
-              "clobbers": []
-            },
-            {
-              "name": "internal_next_entry",
-              "parameters": [],
-              "returns": [
-                {
-                  "type": "bool"
-                }
-              ],
-              "clobbers": []
-            },
-            {
-              "name": "internal_save_routine",
-              "parameters": [
-                {
-                  "name": "filenameptr",
-                  "type": "str"
-                },
-                {
-                  "name": "startaddress",
-                  "type": "uword"
-                },
-                {
-                  "name": "savesize",
-                  "type": "uword"
-                },
-                {
-                  "name": "headerless",
-                  "type": "bool"
-                }
-              ],
-              "returns": [
-                {
-                  "type": "bool"
                 }
               ],
               "clobbers": []
@@ -2413,16 +2470,6 @@ export const library_cx16: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "read8hex",
-              "parameters": [],
-              "returns": [
-                {
-                  "type": "long"
-                }
-              ],
-              "clobbers": []
-            },
-            {
               "name": "relabel",
               "parameters": [
                 {
@@ -2456,6 +2503,12 @@ export const library_cx16: LibraryData = {
             },
             {
               "name": "reset_write_channel",
+              "parameters": [],
+              "returns": [],
+              "clobbers": []
+            },
+            {
+              "name": "reuse_last_drive",
               "parameters": [],
               "returns": [],
               "clobbers": []
@@ -2608,13 +2661,6 @@ export const library_cx16: LibraryData = {
               "isZeroPage": false
             },
             {
-              "name": "iteration_in_progress",
-              "type": "bool",
-              "isMemoryMapped": false,
-              "isShared": false,
-              "isZeroPage": false
-            },
-            {
               "name": "list_blocks",
               "type": "uword",
               "isMemoryMapped": false,
@@ -2638,20 +2684,6 @@ export const library_cx16: LibraryData = {
             {
               "name": "list_pattern",
               "type": "^^ubyte",
-              "isMemoryMapped": false,
-              "isShared": false,
-              "isZeroPage": false
-            },
-            {
-              "name": "list_skip_disk_name",
-              "type": "bool",
-              "isMemoryMapped": false,
-              "isShared": false,
-              "isZeroPage": false
-            },
-            {
-              "name": "write_iteration_in_progress",
-              "type": "bool",
               "isMemoryMapped": false,
               "isShared": false,
               "isZeroPage": false
@@ -3784,40 +3816,7 @@ export const library_cx16: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "highest_bit_in_byte",
-              "parameters": [
-                {
-                  "name": "value",
-                  "type": "ubyte",
-                  "register": "@A"
-                }
-              ],
-              "returns": [],
-              "clobbers": []
-            },
-            {
-              "name": "internal_get_vptr_highest_bit_pos",
-              "parameters": [
-                {
-                  "name": "vptr",
-                  "type": "^^ubyte"
-                }
-              ],
-              "returns": [
-                {
-                  "type": "ubyte"
-                }
-              ],
-              "clobbers": []
-            },
-            {
               "name": "internal_long_AY_to_FAC",
-              "parameters": [],
-              "returns": [],
-              "clobbers": []
-            },
-            {
-              "name": "internal_long_R1_to_float_AY",
               "parameters": [],
               "returns": [],
               "clobbers": []
@@ -3968,6 +3967,25 @@ export const library_cx16: LibraryData = {
               "clobbers": []
             },
             {
+              "name": "mod",
+              "parameters": [
+                {
+                  "name": "value",
+                  "type": "float"
+                },
+                {
+                  "name": "divisor",
+                  "type": "float"
+                }
+              ],
+              "returns": [
+                {
+                  "type": "float"
+                }
+              ],
+              "clobbers": []
+            },
+            {
               "name": "normalize",
               "parameters": [
                 {
@@ -3988,12 +4006,6 @@ export const library_cx16: LibraryData = {
                   "register": "@AY"
                 }
               ],
-              "returns": [],
-              "clobbers": []
-            },
-            {
-              "name": "pop",
-              "parameters": [],
               "returns": [],
               "clobbers": []
             },
@@ -4031,18 +4043,6 @@ export const library_cx16: LibraryData = {
                 "X",
                 "Y"
               ]
-            },
-            {
-              "name": "push",
-              "parameters": [
-                {
-                  "name": "value",
-                  "type": "float",
-                  "register": "@FAC1"
-                }
-              ],
-              "returns": [],
-              "clobbers": []
             },
             {
               "name": "rad",
@@ -5682,6 +5682,99 @@ export const library_cx16: LibraryData = {
       ]
     },
     {
+      "name": "lineclip",
+      "blocks": [
+        {
+          "name": "lineclip",
+          "subroutines": [
+            {
+              "name": "clip",
+              "parameters": [
+                {
+                  "name": "x1",
+                  "type": "word"
+                },
+                {
+                  "name": "y1",
+                  "type": "word"
+                },
+                {
+                  "name": "x2",
+                  "type": "word"
+                },
+                {
+                  "name": "y2",
+                  "type": "word"
+                }
+              ],
+              "returns": [
+                {
+                  "type": "bool"
+                },
+                {
+                  "type": "word"
+                },
+                {
+                  "type": "word"
+                },
+                {
+                  "type": "word"
+                },
+                {
+                  "type": "word"
+                }
+              ],
+              "clobbers": []
+            },
+            {
+              "name": "inside",
+              "parameters": [
+                {
+                  "name": "x",
+                  "type": "word"
+                },
+                {
+                  "name": "y",
+                  "type": "word"
+                }
+              ],
+              "returns": [
+                {
+                  "type": "bool"
+                }
+              ],
+              "clobbers": []
+            },
+            {
+              "name": "set_cliprect",
+              "parameters": [
+                {
+                  "name": "x1",
+                  "type": "word"
+                },
+                {
+                  "name": "y1",
+                  "type": "word"
+                },
+                {
+                  "name": "x2",
+                  "type": "word"
+                },
+                {
+                  "name": "y2",
+                  "type": "word"
+                }
+              ],
+              "returns": [],
+              "clobbers": []
+            }
+          ],
+          "variables": [],
+          "constants": []
+        }
+      ]
+    },
+    {
       "name": "math",
       "blocks": [
         {
@@ -5780,6 +5873,14 @@ export const library_cx16: LibraryData = {
                 {
                   "name": "length",
                   "type": "uword"
+                },
+                {
+                  "name": "initvalue",
+                  "type": "uword"
+                },
+                {
+                  "name": "xorout",
+                  "type": "uword"
                 }
               ],
               "returns": [
@@ -5791,7 +5892,12 @@ export const library_cx16: LibraryData = {
             },
             {
               "name": "crc16_end",
-              "parameters": [],
+              "parameters": [
+                {
+                  "name": "xorout",
+                  "type": "uword"
+                }
+              ],
               "returns": [
                 {
                   "type": "uword"
@@ -5801,7 +5907,12 @@ export const library_cx16: LibraryData = {
             },
             {
               "name": "crc16_start",
-              "parameters": [],
+              "parameters": [
+                {
+                  "name": "initvalue",
+                  "type": "uword"
+                }
+              ],
               "returns": [],
               "clobbers": []
             },
@@ -5838,16 +5949,6 @@ export const library_cx16: LibraryData = {
             },
             {
               "name": "crc32_end",
-              "parameters": [],
-              "returns": [
-                {
-                  "type": "long"
-                }
-              ],
-              "clobbers": []
-            },
-            {
-              "name": "crc32_end_result",
               "parameters": [],
               "returns": [],
               "clobbers": []
@@ -7493,56 +7594,7 @@ export const library_cx16: LibraryData = {
           ],
           "variables": [
             {
-              "name": "envelope_attacks",
-              "type": "ubyte[]",
-              "isMemoryMapped": false,
-              "isShared": false,
-              "isZeroPage": false
-            },
-            {
-              "name": "envelope_maxvolumes",
-              "type": "ubyte[]",
-              "isMemoryMapped": false,
-              "isShared": false,
-              "isZeroPage": false
-            },
-            {
-              "name": "envelope_releases",
-              "type": "ubyte[]",
-              "isMemoryMapped": false,
-              "isShared": false,
-              "isZeroPage": false
-            },
-            {
-              "name": "envelope_states",
-              "type": "ubyte[]",
-              "isMemoryMapped": false,
-              "isShared": false,
-              "isZeroPage": false
-            },
-            {
-              "name": "envelope_sustains",
-              "type": "ubyte[]",
-              "isMemoryMapped": false,
-              "isShared": false,
-              "isZeroPage": false
-            },
-            {
-              "name": "envelope_volumes",
-              "type": "uword[]",
-              "isMemoryMapped": false,
-              "isShared": false,
-              "isZeroPage": false
-            },
-            {
               "name": "voices",
-              "type": "^^psg2.Voice",
-              "isMemoryMapped": false,
-              "isShared": false,
-              "isZeroPage": false
-            },
-            {
-              "name": "vptr",
               "type": "^^psg2.Voice",
               "isMemoryMapped": false,
               "isShared": false,
@@ -7559,19 +7611,19 @@ export const library_cx16: LibraryData = {
               "type": "ubyte"
             },
             {
-              "name": "E_ATTACK",
+              "name": "EnvelopeState::ATTACK",
               "type": "ubyte"
             },
             {
-              "name": "E_OFF",
+              "name": "EnvelopeState::OFF",
               "type": "ubyte"
             },
             {
-              "name": "E_RELEASE",
+              "name": "EnvelopeState::RELEASE",
               "type": "ubyte"
             },
             {
-              "name": "E_SUSTAIN",
+              "name": "EnvelopeState::SUSTAIN",
               "type": "ubyte"
             },
             {
@@ -7600,6 +7652,375 @@ export const library_cx16: LibraryData = {
             },
             {
               "name": "TRIANGLE",
+              "type": "ubyte"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "serial",
+      "blocks": [
+        {
+          "name": "serial",
+          "subroutines": [
+            {
+              "name": "detect_uarts",
+              "parameters": [],
+              "returns": [
+                {
+                  "type": "uword"
+                },
+                {
+                  "type": "uword"
+                }
+              ],
+              "clobbers": []
+            },
+            {
+              "name": "discard_until",
+              "parameters": [
+                {
+                  "name": "uart_addr",
+                  "type": "uword"
+                },
+                {
+                  "name": "match",
+                  "type": "str"
+                }
+              ],
+              "returns": [],
+              "clobbers": []
+            },
+            {
+              "name": "get_baud_string",
+              "parameters": [
+                {
+                  "name": "baud",
+                  "type": "uword"
+                }
+              ],
+              "returns": [
+                {
+                  "type": "str"
+                }
+              ],
+              "clobbers": []
+            },
+            {
+              "name": "initialize_uart",
+              "parameters": [
+                {
+                  "name": "uart_addr",
+                  "type": "uword"
+                },
+                {
+                  "name": "baud_divisor",
+                  "type": "uword"
+                }
+              ],
+              "returns": [],
+              "clobbers": []
+            },
+            {
+              "name": "read_until",
+              "parameters": [
+                {
+                  "name": "uart_addr",
+                  "type": "uword"
+                },
+                {
+                  "name": "match",
+                  "type": "str"
+                },
+                {
+                  "name": "buffer",
+                  "type": "^^ubyte"
+                },
+                {
+                  "name": "max_size",
+                  "type": "uword"
+                }
+              ],
+              "returns": [
+                {
+                  "type": "uword"
+                }
+              ],
+              "clobbers": []
+            },
+            {
+              "name": "write",
+              "parameters": [
+                {
+                  "name": "uart_addr",
+                  "type": "uword"
+                },
+                {
+                  "name": "data",
+                  "type": "str"
+                }
+              ],
+              "returns": [],
+              "clobbers": []
+            },
+            {
+              "name": "zi_end_get_file",
+              "parameters": [],
+              "returns": [],
+              "clobbers": []
+            },
+            {
+              "name": "zi_get_file_chunk",
+              "parameters": [
+                {
+                  "name": "buffer",
+                  "type": "^^ubyte"
+                },
+                {
+                  "name": "buffer_size",
+                  "type": "uword"
+                },
+                {
+                  "name": "remaining_file_size",
+                  "type": "long"
+                }
+              ],
+              "returns": [
+                {
+                  "type": "uword"
+                }
+              ],
+              "clobbers": []
+            },
+            {
+              "name": "zi_get_file_chunk_hexmode",
+              "parameters": [
+                {
+                  "name": "buffer",
+                  "type": "^^ubyte"
+                },
+                {
+                  "name": "buffer_size",
+                  "type": "uword"
+                }
+              ],
+              "returns": [
+                {
+                  "type": "uword"
+                }
+              ],
+              "clobbers": []
+            },
+            {
+              "name": "zi_get_ip_address",
+              "parameters": [],
+              "returns": [
+                {
+                  "type": "str"
+                }
+              ],
+              "clobbers": []
+            },
+            {
+              "name": "zi_initialize",
+              "parameters": [
+                {
+                  "name": "uart_addr",
+                  "type": "uword"
+                },
+                {
+                  "name": "baud_divisor",
+                  "type": "uword"
+                }
+              ],
+              "returns": [],
+              "clobbers": []
+            },
+            {
+              "name": "zi_reset",
+              "parameters": [],
+              "returns": [],
+              "clobbers": []
+            },
+            {
+              "name": "zi_start_get_file",
+              "parameters": [
+                {
+                  "name": "filename",
+                  "type": "str"
+                }
+              ],
+              "returns": [
+                {
+                  "type": "long"
+                }
+              ],
+              "clobbers": []
+            },
+            {
+              "name": "zi_start_get_file_hexmode",
+              "parameters": [
+                {
+                  "name": "filename",
+                  "type": "str"
+                }
+              ],
+              "returns": [
+                {
+                  "type": "bool"
+                }
+              ],
+              "clobbers": []
+            },
+            {
+              "name": "zi_write_cmd",
+              "parameters": [
+                {
+                  "name": "command",
+                  "type": "str"
+                }
+              ],
+              "returns": [],
+              "clobbers": []
+            }
+          ],
+          "variables": [],
+          "constants": [
+            {
+              "name": "BAUD::B115200",
+              "type": "uword"
+            },
+            {
+              "name": "BAUD::B1200",
+              "type": "uword"
+            },
+            {
+              "name": "BAUD::B14400",
+              "type": "uword"
+            },
+            {
+              "name": "BAUD::B19200",
+              "type": "uword"
+            },
+            {
+              "name": "BAUD::B230400",
+              "type": "uword"
+            },
+            {
+              "name": "BAUD::B2400",
+              "type": "uword"
+            },
+            {
+              "name": "BAUD::B28800",
+              "type": "uword"
+            },
+            {
+              "name": "BAUD::B300",
+              "type": "uword"
+            },
+            {
+              "name": "BAUD::B38400",
+              "type": "uword"
+            },
+            {
+              "name": "BAUD::B460800",
+              "type": "uword"
+            },
+            {
+              "name": "BAUD::B4800",
+              "type": "uword"
+            },
+            {
+              "name": "BAUD::B57600",
+              "type": "uword"
+            },
+            {
+              "name": "BAUD::B600",
+              "type": "uword"
+            },
+            {
+              "name": "BAUD::B921600",
+              "type": "uword"
+            },
+            {
+              "name": "BAUD::B9600",
+              "type": "uword"
+            },
+            {
+              "name": "LSR::BI",
+              "type": "ubyte"
+            },
+            {
+              "name": "LSR::DR",
+              "type": "ubyte"
+            },
+            {
+              "name": "LSR::FE",
+              "type": "ubyte"
+            },
+            {
+              "name": "LSR::OE",
+              "type": "ubyte"
+            },
+            {
+              "name": "LSR::PE",
+              "type": "ubyte"
+            },
+            {
+              "name": "LSR::RCVR",
+              "type": "ubyte"
+            },
+            {
+              "name": "LSR::TEMT",
+              "type": "ubyte"
+            },
+            {
+              "name": "LSR::THRE",
+              "type": "ubyte"
+            },
+            {
+              "name": "REG_DIVISOR_LATCH_HI",
+              "type": "ubyte"
+            },
+            {
+              "name": "REG_DIVISOR_LATCH_LOW",
+              "type": "ubyte"
+            },
+            {
+              "name": "REG_FIFO_CONTROL",
+              "type": "ubyte"
+            },
+            {
+              "name": "REG_INTERRUPT_ENABLE",
+              "type": "ubyte"
+            },
+            {
+              "name": "REG_INTERRUPT_IDENT",
+              "type": "ubyte"
+            },
+            {
+              "name": "REG_LINE_CONTROL",
+              "type": "ubyte"
+            },
+            {
+              "name": "REG_LINE_STATUS",
+              "type": "ubyte"
+            },
+            {
+              "name": "REG_MODEM_CONTROL",
+              "type": "ubyte"
+            },
+            {
+              "name": "REG_MODEM_STATUS",
+              "type": "ubyte"
+            },
+            {
+              "name": "REG_SCRATCH",
+              "type": "ubyte"
+            },
+            {
+              "name": "REG_TXRX_BUFFER",
               "type": "ubyte"
             }
           ]
@@ -8487,6 +8908,18 @@ export const library_cx16: LibraryData = {
             },
             {
               "name": "isupper",
+              "parameters": [
+                {
+                  "name": "petsciichar",
+                  "type": "ubyte",
+                  "register": "@A"
+                }
+              ],
+              "returns": [],
+              "clobbers": []
+            },
+            {
+              "name": "isxdigit",
               "parameters": [
                 {
                   "name": "petsciichar",
@@ -15326,6 +15759,23 @@ export const library_cx16: LibraryData = {
               "clobbers": []
             },
             {
+              "name": "die",
+              "parameters": [
+                {
+                  "name": "code",
+                  "type": "ubyte",
+                  "register": "@A"
+                },
+                {
+                  "name": "message",
+                  "type": "str",
+                  "register": "@XY"
+                }
+              ],
+              "returns": [],
+              "clobbers": []
+            },
+            {
               "name": "disable_caseswitch",
               "parameters": [],
               "returns": [],
@@ -15409,26 +15859,6 @@ export const library_cx16: LibraryData = {
               ],
               "returns": [],
               "clobbers": []
-            },
-            {
-              "name": "internal_stringcopy",
-              "parameters": [
-                {
-                  "name": "source",
-                  "type": "str",
-                  "register": "@R0"
-                },
-                {
-                  "name": "target",
-                  "type": "str",
-                  "register": "@AY"
-                }
-              ],
-              "returns": [],
-              "clobbers": [
-                "A",
-                "Y"
-              ]
             },
             {
               "name": "irqsafe_clear_irqd",
@@ -15543,24 +15973,6 @@ export const library_cx16: LibraryData = {
               ]
             },
             {
-              "name": "pop",
-              "parameters": [],
-              "returns": [],
-              "clobbers": []
-            },
-            {
-              "name": "popl",
-              "parameters": [],
-              "returns": [],
-              "clobbers": []
-            },
-            {
-              "name": "popw",
-              "parameters": [],
-              "returns": [],
-              "clobbers": []
-            },
-            {
               "name": "poweroff_system",
               "parameters": [],
               "returns": [],
@@ -15579,48 +15991,12 @@ export const library_cx16: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "push",
-              "parameters": [
-                {
-                  "name": "value",
-                  "type": "ubyte",
-                  "register": "@A"
-                }
-              ],
-              "returns": [],
-              "clobbers": []
-            },
-            {
               "name": "push_returnaddress",
               "parameters": [
                 {
                   "name": "address",
                   "type": "uword",
                   "register": "@XY"
-                }
-              ],
-              "returns": [],
-              "clobbers": []
-            },
-            {
-              "name": "pushl",
-              "parameters": [
-                {
-                  "name": "value",
-                  "type": "long",
-                  "register": "@R0R1"
-                }
-              ],
-              "returns": [],
-              "clobbers": []
-            },
-            {
-              "name": "pushw",
-              "parameters": [
-                {
-                  "name": "value",
-                  "type": "uword",
-                  "register": "@AY"
                 }
               ],
               "returns": [],
@@ -15747,6 +16123,12 @@ export const library_cx16: LibraryData = {
               "clobbers": [
                 "X"
               ]
+            },
+            {
+              "name": "waitirq",
+              "parameters": [],
+              "returns": [],
+              "clobbers": []
             },
             {
               "name": "waitrasterline",
@@ -16858,13 +17240,115 @@ export const library_cx16: LibraryData = {
           "constants": []
         }
       ]
+    },
+    {
+      "name": "wavfile",
+      "blocks": [
+        {
+          "name": "wavfile",
+          "subroutines": [
+            {
+              "name": "parse_header",
+              "parameters": [
+                {
+                  "name": "wav_data",
+                  "type": "^^ubyte"
+                }
+              ],
+              "returns": [
+                {
+                  "type": "bool"
+                }
+              ],
+              "clobbers": []
+            }
+          ],
+          "variables": [
+            {
+              "name": "bits_per_sample",
+              "type": "ubyte",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "block_align",
+              "type": "uword",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "data_offset",
+              "type": "uword",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "data_size",
+              "type": "long",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "nchannels",
+              "type": "ubyte",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "sample_rate",
+              "type": "uword",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "wavefmt",
+              "type": "ubyte",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            }
+          ],
+          "constants": [
+            {
+              "name": "Format::ADPCM",
+              "type": "ubyte"
+            },
+            {
+              "name": "Format::ALAW",
+              "type": "ubyte"
+            },
+            {
+              "name": "Format::DVI_ADPCM",
+              "type": "ubyte"
+            },
+            {
+              "name": "Format::IEEE_FLOAT",
+              "type": "ubyte"
+            },
+            {
+              "name": "Format::MULAW",
+              "type": "ubyte"
+            },
+            {
+              "name": "Format::PCM",
+              "type": "ubyte"
+            }
+          ]
+        }
+      ]
     }
   ]
 };
 
 export const library_c64: LibraryData = {
   "target": "c64",
-  "version": "12.1.1",
+  "version": "12.2.1",
   "modules": [
     {
       "name": "bcd",
@@ -17258,7 +17742,7 @@ export const library_c64: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "pop",
+              "name": "pop_b",
               "parameters": [],
               "returns": [
                 {
@@ -17268,7 +17752,7 @@ export const library_c64: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "popw",
+              "name": "pop_w",
               "parameters": [],
               "returns": [
                 {
@@ -17278,7 +17762,7 @@ export const library_c64: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "push",
+              "name": "push_b",
               "parameters": [
                 {
                   "name": "value",
@@ -17289,7 +17773,7 @@ export const library_c64: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "pushw",
+              "name": "push_w",
               "parameters": [
                 {
                   "name": "value",
@@ -17368,7 +17852,7 @@ export const library_c64: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "pop",
+              "name": "pop_b",
               "parameters": [],
               "returns": [
                 {
@@ -17378,7 +17862,7 @@ export const library_c64: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "popw",
+              "name": "pop_w",
               "parameters": [],
               "returns": [
                 {
@@ -17388,7 +17872,7 @@ export const library_c64: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "push",
+              "name": "push_b",
               "parameters": [
                 {
                   "name": "value",
@@ -17399,7 +17883,7 @@ export const library_c64: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "pushw",
+              "name": "push_w",
               "parameters": [
                 {
                   "name": "value",
@@ -17847,21 +18331,6 @@ export const library_c64: LibraryData = {
               ],
               "returns": [],
               "clobbers": []
-            },
-            {
-              "name": "internal_uword2hex",
-              "parameters": [
-                {
-                  "name": "value",
-                  "type": "uword",
-                  "register": "@AY"
-                }
-              ],
-              "returns": [],
-              "clobbers": [
-                "A",
-                "Y"
-              ]
             },
             {
               "name": "str2byte",
@@ -19647,40 +20116,7 @@ export const library_c64: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "highest_bit_in_byte",
-              "parameters": [
-                {
-                  "name": "value",
-                  "type": "ubyte",
-                  "register": "@A"
-                }
-              ],
-              "returns": [],
-              "clobbers": []
-            },
-            {
-              "name": "internal_get_vptr_highest_bit_pos",
-              "parameters": [
-                {
-                  "name": "vptr",
-                  "type": "^^ubyte"
-                }
-              ],
-              "returns": [
-                {
-                  "type": "ubyte"
-                }
-              ],
-              "clobbers": []
-            },
-            {
               "name": "internal_long_AY_to_FAC",
-              "parameters": [],
-              "returns": [],
-              "clobbers": []
-            },
-            {
-              "name": "internal_long_R1_to_float_AY",
               "parameters": [],
               "returns": [],
               "clobbers": []
@@ -19831,6 +20267,25 @@ export const library_c64: LibraryData = {
               "clobbers": []
             },
             {
+              "name": "mod",
+              "parameters": [
+                {
+                  "name": "value",
+                  "type": "float"
+                },
+                {
+                  "name": "divisor",
+                  "type": "float"
+                }
+              ],
+              "returns": [
+                {
+                  "type": "float"
+                }
+              ],
+              "clobbers": []
+            },
+            {
               "name": "normalize",
               "parameters": [
                 {
@@ -19851,12 +20306,6 @@ export const library_c64: LibraryData = {
                   "register": "@AY"
                 }
               ],
-              "returns": [],
-              "clobbers": []
-            },
-            {
-              "name": "pop",
-              "parameters": [],
               "returns": [],
               "clobbers": []
             },
@@ -19894,18 +20343,6 @@ export const library_c64: LibraryData = {
                 "X",
                 "Y"
               ]
-            },
-            {
-              "name": "push",
-              "parameters": [
-                {
-                  "name": "value",
-                  "type": "float",
-                  "register": "@FAC1"
-                }
-              ],
-              "returns": [],
-              "clobbers": []
             },
             {
               "name": "rad",
@@ -20149,18 +20586,6 @@ export const library_c64: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "get_y_lookup",
-              "parameters": [
-                {
-                  "name": "yy",
-                  "type": "ubyte",
-                  "register": "@Y"
-                }
-              ],
-              "returns": [],
-              "clobbers": []
-            },
-            {
               "name": "horizontal_line",
               "parameters": [
                 {
@@ -20178,22 +20603,6 @@ export const library_c64: LibraryData = {
               ],
               "returns": [],
               "clobbers": []
-            },
-            {
-              "name": "internal_plot",
-              "parameters": [
-                {
-                  "name": "ploty",
-                  "type": "ubyte",
-                  "register": "@Y"
-                }
-              ],
-              "returns": [],
-              "clobbers": [
-                "A",
-                "X",
-                "Y"
-              ]
             },
             {
               "name": "line",
@@ -20282,15 +20691,7 @@ export const library_c64: LibraryData = {
               "clobbers": []
             }
           ],
-          "variables": [
-            {
-              "name": "internal_plotx",
-              "type": "uword",
-              "isMemoryMapped": false,
-              "isShared": false,
-              "isZeroPage": true
-            }
-          ],
+          "variables": [],
           "constants": [
             {
               "name": "BITMAP_ADDRESS",
@@ -20309,6 +20710,99 @@ export const library_c64: LibraryData = {
               "type": "uword"
             }
           ]
+        }
+      ]
+    },
+    {
+      "name": "lineclip",
+      "blocks": [
+        {
+          "name": "lineclip",
+          "subroutines": [
+            {
+              "name": "clip",
+              "parameters": [
+                {
+                  "name": "x1",
+                  "type": "word"
+                },
+                {
+                  "name": "y1",
+                  "type": "word"
+                },
+                {
+                  "name": "x2",
+                  "type": "word"
+                },
+                {
+                  "name": "y2",
+                  "type": "word"
+                }
+              ],
+              "returns": [
+                {
+                  "type": "bool"
+                },
+                {
+                  "type": "word"
+                },
+                {
+                  "type": "word"
+                },
+                {
+                  "type": "word"
+                },
+                {
+                  "type": "word"
+                }
+              ],
+              "clobbers": []
+            },
+            {
+              "name": "inside",
+              "parameters": [
+                {
+                  "name": "x",
+                  "type": "word"
+                },
+                {
+                  "name": "y",
+                  "type": "word"
+                }
+              ],
+              "returns": [
+                {
+                  "type": "bool"
+                }
+              ],
+              "clobbers": []
+            },
+            {
+              "name": "set_cliprect",
+              "parameters": [
+                {
+                  "name": "x1",
+                  "type": "word"
+                },
+                {
+                  "name": "y1",
+                  "type": "word"
+                },
+                {
+                  "name": "x2",
+                  "type": "word"
+                },
+                {
+                  "name": "y2",
+                  "type": "word"
+                }
+              ],
+              "returns": [],
+              "clobbers": []
+            }
+          ],
+          "variables": [],
+          "constants": []
         }
       ]
     },
@@ -20411,6 +20905,14 @@ export const library_c64: LibraryData = {
                 {
                   "name": "length",
                   "type": "uword"
+                },
+                {
+                  "name": "initvalue",
+                  "type": "uword"
+                },
+                {
+                  "name": "xorout",
+                  "type": "uword"
                 }
               ],
               "returns": [
@@ -20422,7 +20924,12 @@ export const library_c64: LibraryData = {
             },
             {
               "name": "crc16_end",
-              "parameters": [],
+              "parameters": [
+                {
+                  "name": "xorout",
+                  "type": "uword"
+                }
+              ],
               "returns": [
                 {
                   "type": "uword"
@@ -20432,7 +20939,12 @@ export const library_c64: LibraryData = {
             },
             {
               "name": "crc16_start",
-              "parameters": [],
+              "parameters": [
+                {
+                  "name": "initvalue",
+                  "type": "uword"
+                }
+              ],
               "returns": [],
               "clobbers": []
             },
@@ -20469,16 +20981,6 @@ export const library_c64: LibraryData = {
             },
             {
               "name": "crc32_end",
-              "parameters": [],
-              "returns": [
-                {
-                  "type": "long"
-                }
-              ],
-              "clobbers": []
-            },
-            {
-              "name": "crc32_end_result",
               "parameters": [],
               "returns": [],
               "clobbers": []
@@ -21476,6 +21978,18 @@ export const library_c64: LibraryData = {
             },
             {
               "name": "isupper",
+              "parameters": [
+                {
+                  "name": "petsciichar",
+                  "type": "ubyte",
+                  "register": "@A"
+                }
+              ],
+              "returns": [],
+              "clobbers": []
+            },
+            {
+              "name": "isxdigit",
               "parameters": [
                 {
                   "name": "petsciichar",
@@ -23908,6 +24422,23 @@ export const library_c64: LibraryData = {
               "clobbers": []
             },
             {
+              "name": "die",
+              "parameters": [
+                {
+                  "name": "code",
+                  "type": "ubyte",
+                  "register": "@A"
+                },
+                {
+                  "name": "message",
+                  "type": "str",
+                  "register": "@XY"
+                }
+              ],
+              "returns": [],
+              "clobbers": []
+            },
+            {
               "name": "disable_caseswitch",
               "parameters": [],
               "returns": [],
@@ -24003,26 +24534,6 @@ export const library_c64: LibraryData = {
               ],
               "returns": [],
               "clobbers": []
-            },
-            {
-              "name": "internal_stringcopy",
-              "parameters": [
-                {
-                  "name": "source",
-                  "type": "str",
-                  "register": "@R0"
-                },
-                {
-                  "name": "target",
-                  "type": "str",
-                  "register": "@AY"
-                }
-              ],
-              "returns": [],
-              "clobbers": [
-                "A",
-                "Y"
-              ]
             },
             {
               "name": "irqsafe_clear_irqd",
@@ -24137,24 +24648,6 @@ export const library_c64: LibraryData = {
               ]
             },
             {
-              "name": "pop",
-              "parameters": [],
-              "returns": [],
-              "clobbers": []
-            },
-            {
-              "name": "popl",
-              "parameters": [],
-              "returns": [],
-              "clobbers": []
-            },
-            {
-              "name": "popw",
-              "parameters": [],
-              "returns": [],
-              "clobbers": []
-            },
-            {
               "name": "progend",
               "parameters": [],
               "returns": [],
@@ -24167,48 +24660,12 @@ export const library_c64: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "push",
-              "parameters": [
-                {
-                  "name": "value",
-                  "type": "ubyte",
-                  "register": "@A"
-                }
-              ],
-              "returns": [],
-              "clobbers": []
-            },
-            {
               "name": "push_returnaddress",
               "parameters": [
                 {
                   "name": "address",
                   "type": "uword",
                   "register": "@XY"
-                }
-              ],
-              "returns": [],
-              "clobbers": []
-            },
-            {
-              "name": "pushl",
-              "parameters": [
-                {
-                  "name": "value",
-                  "type": "long",
-                  "register": "@R0R1"
-                }
-              ],
-              "returns": [],
-              "clobbers": []
-            },
-            {
-              "name": "pushw",
-              "parameters": [
-                {
-                  "name": "value",
-                  "type": "uword",
-                  "register": "@AY"
                 }
               ],
               "returns": [],
@@ -26206,13 +26663,115 @@ export const library_c64: LibraryData = {
           ]
         }
       ]
+    },
+    {
+      "name": "wavfile",
+      "blocks": [
+        {
+          "name": "wavfile",
+          "subroutines": [
+            {
+              "name": "parse_header",
+              "parameters": [
+                {
+                  "name": "wav_data",
+                  "type": "^^ubyte"
+                }
+              ],
+              "returns": [
+                {
+                  "type": "bool"
+                }
+              ],
+              "clobbers": []
+            }
+          ],
+          "variables": [
+            {
+              "name": "bits_per_sample",
+              "type": "ubyte",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "block_align",
+              "type": "uword",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "data_offset",
+              "type": "uword",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "data_size",
+              "type": "long",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "nchannels",
+              "type": "ubyte",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "sample_rate",
+              "type": "uword",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "wavefmt",
+              "type": "ubyte",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            }
+          ],
+          "constants": [
+            {
+              "name": "Format::ADPCM",
+              "type": "ubyte"
+            },
+            {
+              "name": "Format::ALAW",
+              "type": "ubyte"
+            },
+            {
+              "name": "Format::DVI_ADPCM",
+              "type": "ubyte"
+            },
+            {
+              "name": "Format::IEEE_FLOAT",
+              "type": "ubyte"
+            },
+            {
+              "name": "Format::MULAW",
+              "type": "ubyte"
+            },
+            {
+              "name": "Format::PCM",
+              "type": "ubyte"
+            }
+          ]
+        }
+      ]
     }
   ]
 };
 
 export const library_c128: LibraryData = {
   "target": "c128",
-  "version": "12.1.1",
+  "version": "12.2.1",
   "modules": [
     {
       "name": "bcd",
@@ -26606,7 +27165,7 @@ export const library_c128: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "pop",
+              "name": "pop_b",
               "parameters": [],
               "returns": [
                 {
@@ -26616,7 +27175,7 @@ export const library_c128: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "popw",
+              "name": "pop_w",
               "parameters": [],
               "returns": [
                 {
@@ -26626,7 +27185,7 @@ export const library_c128: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "push",
+              "name": "push_b",
               "parameters": [
                 {
                   "name": "value",
@@ -26637,7 +27196,7 @@ export const library_c128: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "pushw",
+              "name": "push_w",
               "parameters": [
                 {
                   "name": "value",
@@ -26716,7 +27275,7 @@ export const library_c128: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "pop",
+              "name": "pop_b",
               "parameters": [],
               "returns": [
                 {
@@ -26726,7 +27285,7 @@ export const library_c128: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "popw",
+              "name": "pop_w",
               "parameters": [],
               "returns": [
                 {
@@ -26736,7 +27295,7 @@ export const library_c128: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "push",
+              "name": "push_b",
               "parameters": [
                 {
                   "name": "value",
@@ -26747,7 +27306,7 @@ export const library_c128: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "pushw",
+              "name": "push_w",
               "parameters": [
                 {
                   "name": "value",
@@ -27195,21 +27754,6 @@ export const library_c128: LibraryData = {
               ],
               "returns": [],
               "clobbers": []
-            },
-            {
-              "name": "internal_uword2hex",
-              "parameters": [
-                {
-                  "name": "value",
-                  "type": "uword",
-                  "register": "@AY"
-                }
-              ],
-              "returns": [],
-              "clobbers": [
-                "A",
-                "Y"
-              ]
             },
             {
               "name": "str2byte",
@@ -28130,6 +28674,99 @@ export const library_c128: LibraryData = {
       ]
     },
     {
+      "name": "lineclip",
+      "blocks": [
+        {
+          "name": "lineclip",
+          "subroutines": [
+            {
+              "name": "clip",
+              "parameters": [
+                {
+                  "name": "x1",
+                  "type": "word"
+                },
+                {
+                  "name": "y1",
+                  "type": "word"
+                },
+                {
+                  "name": "x2",
+                  "type": "word"
+                },
+                {
+                  "name": "y2",
+                  "type": "word"
+                }
+              ],
+              "returns": [
+                {
+                  "type": "bool"
+                },
+                {
+                  "type": "word"
+                },
+                {
+                  "type": "word"
+                },
+                {
+                  "type": "word"
+                },
+                {
+                  "type": "word"
+                }
+              ],
+              "clobbers": []
+            },
+            {
+              "name": "inside",
+              "parameters": [
+                {
+                  "name": "x",
+                  "type": "word"
+                },
+                {
+                  "name": "y",
+                  "type": "word"
+                }
+              ],
+              "returns": [
+                {
+                  "type": "bool"
+                }
+              ],
+              "clobbers": []
+            },
+            {
+              "name": "set_cliprect",
+              "parameters": [
+                {
+                  "name": "x1",
+                  "type": "word"
+                },
+                {
+                  "name": "y1",
+                  "type": "word"
+                },
+                {
+                  "name": "x2",
+                  "type": "word"
+                },
+                {
+                  "name": "y2",
+                  "type": "word"
+                }
+              ],
+              "returns": [],
+              "clobbers": []
+            }
+          ],
+          "variables": [],
+          "constants": []
+        }
+      ]
+    },
+    {
       "name": "math",
       "blocks": [
         {
@@ -28228,6 +28865,14 @@ export const library_c128: LibraryData = {
                 {
                   "name": "length",
                   "type": "uword"
+                },
+                {
+                  "name": "initvalue",
+                  "type": "uword"
+                },
+                {
+                  "name": "xorout",
+                  "type": "uword"
                 }
               ],
               "returns": [
@@ -28239,7 +28884,12 @@ export const library_c128: LibraryData = {
             },
             {
               "name": "crc16_end",
-              "parameters": [],
+              "parameters": [
+                {
+                  "name": "xorout",
+                  "type": "uword"
+                }
+              ],
               "returns": [
                 {
                   "type": "uword"
@@ -28249,7 +28899,12 @@ export const library_c128: LibraryData = {
             },
             {
               "name": "crc16_start",
-              "parameters": [],
+              "parameters": [
+                {
+                  "name": "initvalue",
+                  "type": "uword"
+                }
+              ],
               "returns": [],
               "clobbers": []
             },
@@ -28286,16 +28941,6 @@ export const library_c128: LibraryData = {
             },
             {
               "name": "crc32_end",
-              "parameters": [],
-              "returns": [
-                {
-                  "type": "long"
-                }
-              ],
-              "clobbers": []
-            },
-            {
-              "name": "crc32_end_result",
               "parameters": [],
               "returns": [],
               "clobbers": []
@@ -29272,6 +29917,18 @@ export const library_c128: LibraryData = {
             },
             {
               "name": "isupper",
+              "parameters": [
+                {
+                  "name": "petsciichar",
+                  "type": "ubyte",
+                  "register": "@A"
+                }
+              ],
+              "returns": [],
+              "clobbers": []
+            },
+            {
+              "name": "isxdigit",
               "parameters": [
                 {
                   "name": "petsciichar",
@@ -31969,6 +32626,23 @@ export const library_c128: LibraryData = {
               "clobbers": []
             },
             {
+              "name": "die",
+              "parameters": [
+                {
+                  "name": "code",
+                  "type": "ubyte",
+                  "register": "@A"
+                },
+                {
+                  "name": "message",
+                  "type": "str",
+                  "register": "@XY"
+                }
+              ],
+              "returns": [],
+              "clobbers": []
+            },
+            {
               "name": "disable_caseswitch",
               "parameters": [],
               "returns": [],
@@ -32064,26 +32738,6 @@ export const library_c128: LibraryData = {
               ],
               "returns": [],
               "clobbers": []
-            },
-            {
-              "name": "internal_stringcopy",
-              "parameters": [
-                {
-                  "name": "source",
-                  "type": "str",
-                  "register": "@R0"
-                },
-                {
-                  "name": "target",
-                  "type": "str",
-                  "register": "@AY"
-                }
-              ],
-              "returns": [],
-              "clobbers": [
-                "A",
-                "Y"
-              ]
             },
             {
               "name": "irqsafe_clear_irqd",
@@ -32198,24 +32852,6 @@ export const library_c128: LibraryData = {
               ]
             },
             {
-              "name": "pop",
-              "parameters": [],
-              "returns": [],
-              "clobbers": []
-            },
-            {
-              "name": "popl",
-              "parameters": [],
-              "returns": [],
-              "clobbers": []
-            },
-            {
-              "name": "popw",
-              "parameters": [],
-              "returns": [],
-              "clobbers": []
-            },
-            {
               "name": "progend",
               "parameters": [],
               "returns": [],
@@ -32228,48 +32864,12 @@ export const library_c128: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "push",
-              "parameters": [
-                {
-                  "name": "value",
-                  "type": "ubyte",
-                  "register": "@A"
-                }
-              ],
-              "returns": [],
-              "clobbers": []
-            },
-            {
               "name": "push_returnaddress",
               "parameters": [
                 {
                   "name": "address",
                   "type": "uword",
                   "register": "@XY"
-                }
-              ],
-              "returns": [],
-              "clobbers": []
-            },
-            {
-              "name": "pushl",
-              "parameters": [
-                {
-                  "name": "value",
-                  "type": "long",
-                  "register": "@R0R1"
-                }
-              ],
-              "returns": [],
-              "clobbers": []
-            },
-            {
-              "name": "pushw",
-              "parameters": [
-                {
-                  "name": "value",
-                  "type": "uword",
-                  "register": "@AY"
                 }
               ],
               "returns": [],
@@ -34252,13 +34852,115 @@ export const library_c128: LibraryData = {
           ]
         }
       ]
+    },
+    {
+      "name": "wavfile",
+      "blocks": [
+        {
+          "name": "wavfile",
+          "subroutines": [
+            {
+              "name": "parse_header",
+              "parameters": [
+                {
+                  "name": "wav_data",
+                  "type": "^^ubyte"
+                }
+              ],
+              "returns": [
+                {
+                  "type": "bool"
+                }
+              ],
+              "clobbers": []
+            }
+          ],
+          "variables": [
+            {
+              "name": "bits_per_sample",
+              "type": "ubyte",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "block_align",
+              "type": "uword",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "data_offset",
+              "type": "uword",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "data_size",
+              "type": "long",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "nchannels",
+              "type": "ubyte",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "sample_rate",
+              "type": "uword",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "wavefmt",
+              "type": "ubyte",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            }
+          ],
+          "constants": [
+            {
+              "name": "Format::ADPCM",
+              "type": "ubyte"
+            },
+            {
+              "name": "Format::ALAW",
+              "type": "ubyte"
+            },
+            {
+              "name": "Format::DVI_ADPCM",
+              "type": "ubyte"
+            },
+            {
+              "name": "Format::IEEE_FLOAT",
+              "type": "ubyte"
+            },
+            {
+              "name": "Format::MULAW",
+              "type": "ubyte"
+            },
+            {
+              "name": "Format::PCM",
+              "type": "ubyte"
+            }
+          ]
+        }
+      ]
     }
   ]
 };
 
 export const library_pet32: LibraryData = {
   "target": "pet32",
-  "version": "12.1.1",
+  "version": "12.2.1",
   "modules": [
     {
       "name": "bcd",
@@ -34652,7 +35354,7 @@ export const library_pet32: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "pop",
+              "name": "pop_b",
               "parameters": [],
               "returns": [
                 {
@@ -34662,7 +35364,7 @@ export const library_pet32: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "popw",
+              "name": "pop_w",
               "parameters": [],
               "returns": [
                 {
@@ -34672,7 +35374,7 @@ export const library_pet32: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "push",
+              "name": "push_b",
               "parameters": [
                 {
                   "name": "value",
@@ -34683,7 +35385,7 @@ export const library_pet32: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "pushw",
+              "name": "push_w",
               "parameters": [
                 {
                   "name": "value",
@@ -34762,7 +35464,7 @@ export const library_pet32: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "pop",
+              "name": "pop_b",
               "parameters": [],
               "returns": [
                 {
@@ -34772,7 +35474,7 @@ export const library_pet32: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "popw",
+              "name": "pop_w",
               "parameters": [],
               "returns": [
                 {
@@ -34782,7 +35484,7 @@ export const library_pet32: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "push",
+              "name": "push_b",
               "parameters": [
                 {
                   "name": "value",
@@ -34793,7 +35495,7 @@ export const library_pet32: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "pushw",
+              "name": "push_w",
               "parameters": [
                 {
                   "name": "value",
@@ -35241,21 +35943,6 @@ export const library_pet32: LibraryData = {
               ],
               "returns": [],
               "clobbers": []
-            },
-            {
-              "name": "internal_uword2hex",
-              "parameters": [
-                {
-                  "name": "value",
-                  "type": "uword",
-                  "register": "@AY"
-                }
-              ],
-              "returns": [],
-              "clobbers": [
-                "A",
-                "Y"
-              ]
             },
             {
               "name": "str2byte",
@@ -36620,40 +37307,7 @@ export const library_pet32: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "highest_bit_in_byte",
-              "parameters": [
-                {
-                  "name": "value",
-                  "type": "ubyte",
-                  "register": "@A"
-                }
-              ],
-              "returns": [],
-              "clobbers": []
-            },
-            {
-              "name": "internal_get_vptr_highest_bit_pos",
-              "parameters": [
-                {
-                  "name": "vptr",
-                  "type": "^^ubyte"
-                }
-              ],
-              "returns": [
-                {
-                  "type": "ubyte"
-                }
-              ],
-              "clobbers": []
-            },
-            {
               "name": "internal_long_AY_to_FAC",
-              "parameters": [],
-              "returns": [],
-              "clobbers": []
-            },
-            {
-              "name": "internal_long_R1_to_float_AY",
               "parameters": [],
               "returns": [],
               "clobbers": []
@@ -36804,9 +37458,22 @@ export const library_pet32: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "pop",
-              "parameters": [],
-              "returns": [],
+              "name": "mod",
+              "parameters": [
+                {
+                  "name": "value",
+                  "type": "float"
+                },
+                {
+                  "name": "divisor",
+                  "type": "float"
+                }
+              ],
+              "returns": [
+                {
+                  "type": "float"
+                }
+              ],
               "clobbers": []
             },
             {
@@ -36843,18 +37510,6 @@ export const library_pet32: LibraryData = {
                 "X",
                 "Y"
               ]
-            },
-            {
-              "name": "push",
-              "parameters": [
-                {
-                  "name": "value",
-                  "type": "float",
-                  "register": "@FAC1"
-                }
-              ],
-              "returns": [],
-              "clobbers": []
             },
             {
               "name": "rad",
@@ -36988,6 +37643,99 @@ export const library_pet32: LibraryData = {
       ]
     },
     {
+      "name": "lineclip",
+      "blocks": [
+        {
+          "name": "lineclip",
+          "subroutines": [
+            {
+              "name": "clip",
+              "parameters": [
+                {
+                  "name": "x1",
+                  "type": "word"
+                },
+                {
+                  "name": "y1",
+                  "type": "word"
+                },
+                {
+                  "name": "x2",
+                  "type": "word"
+                },
+                {
+                  "name": "y2",
+                  "type": "word"
+                }
+              ],
+              "returns": [
+                {
+                  "type": "bool"
+                },
+                {
+                  "type": "word"
+                },
+                {
+                  "type": "word"
+                },
+                {
+                  "type": "word"
+                },
+                {
+                  "type": "word"
+                }
+              ],
+              "clobbers": []
+            },
+            {
+              "name": "inside",
+              "parameters": [
+                {
+                  "name": "x",
+                  "type": "word"
+                },
+                {
+                  "name": "y",
+                  "type": "word"
+                }
+              ],
+              "returns": [
+                {
+                  "type": "bool"
+                }
+              ],
+              "clobbers": []
+            },
+            {
+              "name": "set_cliprect",
+              "parameters": [
+                {
+                  "name": "x1",
+                  "type": "word"
+                },
+                {
+                  "name": "y1",
+                  "type": "word"
+                },
+                {
+                  "name": "x2",
+                  "type": "word"
+                },
+                {
+                  "name": "y2",
+                  "type": "word"
+                }
+              ],
+              "returns": [],
+              "clobbers": []
+            }
+          ],
+          "variables": [],
+          "constants": []
+        }
+      ]
+    },
+    {
       "name": "math",
       "blocks": [
         {
@@ -37086,6 +37834,14 @@ export const library_pet32: LibraryData = {
                 {
                   "name": "length",
                   "type": "uword"
+                },
+                {
+                  "name": "initvalue",
+                  "type": "uword"
+                },
+                {
+                  "name": "xorout",
+                  "type": "uword"
                 }
               ],
               "returns": [
@@ -37097,7 +37853,12 @@ export const library_pet32: LibraryData = {
             },
             {
               "name": "crc16_end",
-              "parameters": [],
+              "parameters": [
+                {
+                  "name": "xorout",
+                  "type": "uword"
+                }
+              ],
               "returns": [
                 {
                   "type": "uword"
@@ -37107,7 +37868,12 @@ export const library_pet32: LibraryData = {
             },
             {
               "name": "crc16_start",
-              "parameters": [],
+              "parameters": [
+                {
+                  "name": "initvalue",
+                  "type": "uword"
+                }
+              ],
               "returns": [],
               "clobbers": []
             },
@@ -37144,16 +37910,6 @@ export const library_pet32: LibraryData = {
             },
             {
               "name": "crc32_end",
-              "parameters": [],
-              "returns": [
-                {
-                  "type": "long"
-                }
-              ],
-              "clobbers": []
-            },
-            {
-              "name": "crc32_end_result",
               "parameters": [],
               "returns": [],
               "clobbers": []
@@ -37713,6 +38469,16 @@ export const library_pet32: LibraryData = {
           "name": "petsnd",
           "subroutines": [
             {
+              "name": "is_playing",
+              "parameters": [],
+              "returns": [
+                {
+                  "type": "bool"
+                }
+              ],
+              "clobbers": []
+            },
+            {
               "name": "note",
               "parameters": [
                 {
@@ -37744,6 +38510,80 @@ export const library_pet32: LibraryData = {
               "name": "on",
               "parameters": [],
               "returns": [],
+              "clobbers": []
+            },
+            {
+              "name": "play_note",
+              "parameters": [
+                {
+                  "name": "n",
+                  "type": "ubyte"
+                },
+                {
+                  "name": "ticks",
+                  "type": "ubyte"
+                }
+              ],
+              "returns": [],
+              "clobbers": []
+            },
+            {
+              "name": "play_song",
+              "parameters": [
+                {
+                  "name": "notes",
+                  "type": "^^ubyte"
+                },
+                {
+                  "name": "durations",
+                  "type": "^^ubyte"
+                },
+                {
+                  "name": "length",
+                  "type": "ubyte"
+                }
+              ],
+              "returns": [],
+              "clobbers": []
+            },
+            {
+              "name": "set_gap",
+              "parameters": [
+                {
+                  "name": "ticks",
+                  "type": "ubyte"
+                }
+              ],
+              "returns": [],
+              "clobbers": []
+            },
+            {
+              "name": "song",
+              "parameters": [
+                {
+                  "name": "notes",
+                  "type": "^^ubyte"
+                },
+                {
+                  "name": "durations",
+                  "type": "^^ubyte"
+                },
+                {
+                  "name": "length",
+                  "type": "ubyte"
+                }
+              ],
+              "returns": [],
+              "clobbers": []
+            },
+            {
+              "name": "update",
+              "parameters": [],
+              "returns": [
+                {
+                  "type": "bool"
+                }
+              ],
               "clobbers": []
             }
           ],
@@ -37867,6 +38707,10 @@ export const library_pet32: LibraryData = {
             },
             {
               "name": "OCTAVES_678",
+              "type": "ubyte"
+            },
+            {
+              "name": "REST",
               "type": "ubyte"
             }
           ]
@@ -38318,6 +39162,18 @@ export const library_pet32: LibraryData = {
             },
             {
               "name": "isupper",
+              "parameters": [
+                {
+                  "name": "petsciichar",
+                  "type": "ubyte",
+                  "register": "@A"
+                }
+              ],
+              "returns": [],
+              "clobbers": []
+            },
+            {
+              "name": "isxdigit",
               "parameters": [
                 {
                   "name": "petsciichar",
@@ -39581,6 +40437,23 @@ export const library_pet32: LibraryData = {
               "clobbers": []
             },
             {
+              "name": "die",
+              "parameters": [
+                {
+                  "name": "code",
+                  "type": "ubyte",
+                  "register": "@A"
+                },
+                {
+                  "name": "message",
+                  "type": "str",
+                  "register": "@XY"
+                }
+              ],
+              "returns": [],
+              "clobbers": []
+            },
+            {
               "name": "disable_caseswitch",
               "parameters": [],
               "returns": [],
@@ -39664,26 +40537,6 @@ export const library_pet32: LibraryData = {
               ],
               "returns": [],
               "clobbers": []
-            },
-            {
-              "name": "internal_stringcopy",
-              "parameters": [
-                {
-                  "name": "source",
-                  "type": "str",
-                  "register": "@R0"
-                },
-                {
-                  "name": "target",
-                  "type": "str",
-                  "register": "@AY"
-                }
-              ],
-              "returns": [],
-              "clobbers": [
-                "A",
-                "Y"
-              ]
             },
             {
               "name": "irqsafe_clear_irqd",
@@ -39798,24 +40651,6 @@ export const library_pet32: LibraryData = {
               ]
             },
             {
-              "name": "pop",
-              "parameters": [],
-              "returns": [],
-              "clobbers": []
-            },
-            {
-              "name": "popl",
-              "parameters": [],
-              "returns": [],
-              "clobbers": []
-            },
-            {
-              "name": "popw",
-              "parameters": [],
-              "returns": [],
-              "clobbers": []
-            },
-            {
               "name": "progend",
               "parameters": [],
               "returns": [],
@@ -39828,48 +40663,12 @@ export const library_pet32: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "push",
-              "parameters": [
-                {
-                  "name": "value",
-                  "type": "ubyte",
-                  "register": "@A"
-                }
-              ],
-              "returns": [],
-              "clobbers": []
-            },
-            {
               "name": "push_returnaddress",
               "parameters": [
                 {
                   "name": "address",
                   "type": "uword",
                   "register": "@XY"
-                }
-              ],
-              "returns": [],
-              "clobbers": []
-            },
-            {
-              "name": "pushl",
-              "parameters": [
-                {
-                  "name": "value",
-                  "type": "long",
-                  "register": "@R0R1"
-                }
-              ],
-              "returns": [],
-              "clobbers": []
-            },
-            {
-              "name": "pushw",
-              "parameters": [
-                {
-                  "name": "value",
-                  "type": "uword",
-                  "register": "@AY"
                 }
               ],
               "returns": [],
@@ -41722,13 +42521,115 @@ export const library_pet32: LibraryData = {
           ]
         }
       ]
+    },
+    {
+      "name": "wavfile",
+      "blocks": [
+        {
+          "name": "wavfile",
+          "subroutines": [
+            {
+              "name": "parse_header",
+              "parameters": [
+                {
+                  "name": "wav_data",
+                  "type": "^^ubyte"
+                }
+              ],
+              "returns": [
+                {
+                  "type": "bool"
+                }
+              ],
+              "clobbers": []
+            }
+          ],
+          "variables": [
+            {
+              "name": "bits_per_sample",
+              "type": "ubyte",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "block_align",
+              "type": "uword",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "data_offset",
+              "type": "uword",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "data_size",
+              "type": "long",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "nchannels",
+              "type": "ubyte",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "sample_rate",
+              "type": "uword",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "wavefmt",
+              "type": "ubyte",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            }
+          ],
+          "constants": [
+            {
+              "name": "Format::ADPCM",
+              "type": "ubyte"
+            },
+            {
+              "name": "Format::ALAW",
+              "type": "ubyte"
+            },
+            {
+              "name": "Format::DVI_ADPCM",
+              "type": "ubyte"
+            },
+            {
+              "name": "Format::IEEE_FLOAT",
+              "type": "ubyte"
+            },
+            {
+              "name": "Format::MULAW",
+              "type": "ubyte"
+            },
+            {
+              "name": "Format::PCM",
+              "type": "ubyte"
+            }
+          ]
+        }
+      ]
     }
   ]
 };
 
 export const library_virtual: LibraryData = {
   "target": "virtual",
-  "version": "12.1.1",
+  "version": "12.2.1",
   "modules": [
     {
       "name": "buffers",
@@ -41897,7 +42798,7 @@ export const library_virtual: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "pop",
+              "name": "pop_b",
               "parameters": [],
               "returns": [
                 {
@@ -41907,7 +42808,7 @@ export const library_virtual: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "popw",
+              "name": "pop_w",
               "parameters": [],
               "returns": [
                 {
@@ -41917,7 +42818,7 @@ export const library_virtual: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "push",
+              "name": "push_b",
               "parameters": [
                 {
                   "name": "value",
@@ -41928,7 +42829,7 @@ export const library_virtual: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "pushw",
+              "name": "push_w",
               "parameters": [
                 {
                   "name": "value",
@@ -42007,7 +42908,7 @@ export const library_virtual: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "pop",
+              "name": "pop_b",
               "parameters": [],
               "returns": [
                 {
@@ -42017,7 +42918,7 @@ export const library_virtual: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "popw",
+              "name": "pop_w",
               "parameters": [],
               "returns": [
                 {
@@ -42027,7 +42928,7 @@ export const library_virtual: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "push",
+              "name": "push_b",
               "parameters": [
                 {
                   "name": "value",
@@ -42038,7 +42939,7 @@ export const library_virtual: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "pushw",
+              "name": "push_w",
               "parameters": [
                 {
                   "name": "value",
@@ -42344,36 +43245,6 @@ export const library_virtual: LibraryData = {
                   "type": "uword"
                 }
               ],
-              "clobbers": []
-            },
-            {
-              "name": "internal_str_ub",
-              "parameters": [
-                {
-                  "name": "value",
-                  "type": "ubyte"
-                },
-                {
-                  "name": "out_ptr",
-                  "type": "str"
-                }
-              ],
-              "returns": [],
-              "clobbers": []
-            },
-            {
-              "name": "internal_str_uw",
-              "parameters": [
-                {
-                  "name": "value",
-                  "type": "uword"
-                },
-                {
-                  "name": "out_ptr",
-                  "type": "str"
-                }
-              ],
-              "returns": [],
               "clobbers": []
             },
             {
@@ -42742,6 +43613,36 @@ export const library_virtual: LibraryData = {
               "clobbers": []
             },
             {
+              "name": "directory_dirs",
+              "parameters": [],
+              "returns": [
+                {
+                  "type": "bool"
+                }
+              ],
+              "clobbers": []
+            },
+            {
+              "name": "directory_files",
+              "parameters": [],
+              "returns": [
+                {
+                  "type": "bool"
+                }
+              ],
+              "clobbers": []
+            },
+            {
+              "name": "diskname",
+              "parameters": [],
+              "returns": [
+                {
+                  "type": "str"
+                }
+              ],
+              "clobbers": []
+            },
+            {
               "name": "exists",
               "parameters": [
                 {
@@ -42848,6 +43749,34 @@ export const library_virtual: LibraryData = {
               "clobbers": []
             },
             {
+              "name": "f_seek",
+              "parameters": [
+                {
+                  "name": "position",
+                  "type": "long"
+                }
+              ],
+              "returns": [
+                {
+                  "type": "bool"
+                }
+              ],
+              "clobbers": []
+            },
+            {
+              "name": "f_tell",
+              "parameters": [],
+              "returns": [
+                {
+                  "type": "long"
+                },
+                {
+                  "type": "long"
+                }
+              ],
+              "clobbers": []
+            },
+            {
               "name": "f_write",
               "parameters": [
                 {
@@ -42909,6 +43838,25 @@ export const library_virtual: LibraryData = {
                 },
                 {
                   "name": "start_address",
+                  "type": "uword"
+                }
+              ],
+              "returns": [
+                {
+                  "type": "uword"
+                }
+              ],
+              "clobbers": []
+            },
+            {
+              "name": "loadlib",
+              "parameters": [
+                {
+                  "name": "libnameptr",
+                  "type": "str"
+                },
+                {
+                  "name": "libaddress",
                   "type": "uword"
                 }
               ],
@@ -43393,6 +44341,25 @@ export const library_virtual: LibraryData = {
               "clobbers": []
             },
             {
+              "name": "mod",
+              "parameters": [
+                {
+                  "name": "value",
+                  "type": "float"
+                },
+                {
+                  "name": "divisor",
+                  "type": "float"
+                }
+              ],
+              "returns": [
+                {
+                  "type": "float"
+                }
+              ],
+              "clobbers": []
+            },
+            {
               "name": "normalize",
               "parameters": [
                 {
@@ -43423,16 +44390,6 @@ export const library_virtual: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "pop",
-              "parameters": [],
-              "returns": [
-                {
-                  "type": "float"
-                }
-              ],
-              "clobbers": []
-            },
-            {
               "name": "pow",
               "parameters": [
                 {
@@ -43453,17 +44410,6 @@ export const library_virtual: LibraryData = {
             },
             {
               "name": "print",
-              "parameters": [
-                {
-                  "name": "value",
-                  "type": "float"
-                }
-              ],
-              "returns": [],
-              "clobbers": []
-            },
-            {
-              "name": "push",
               "parameters": [
                 {
                   "name": "value",
@@ -43612,6 +44558,99 @@ export const library_virtual: LibraryData = {
       ]
     },
     {
+      "name": "lineclip",
+      "blocks": [
+        {
+          "name": "lineclip",
+          "subroutines": [
+            {
+              "name": "clip",
+              "parameters": [
+                {
+                  "name": "x1",
+                  "type": "word"
+                },
+                {
+                  "name": "y1",
+                  "type": "word"
+                },
+                {
+                  "name": "x2",
+                  "type": "word"
+                },
+                {
+                  "name": "y2",
+                  "type": "word"
+                }
+              ],
+              "returns": [
+                {
+                  "type": "bool"
+                },
+                {
+                  "type": "word"
+                },
+                {
+                  "type": "word"
+                },
+                {
+                  "type": "word"
+                },
+                {
+                  "type": "word"
+                }
+              ],
+              "clobbers": []
+            },
+            {
+              "name": "inside",
+              "parameters": [
+                {
+                  "name": "x",
+                  "type": "word"
+                },
+                {
+                  "name": "y",
+                  "type": "word"
+                }
+              ],
+              "returns": [
+                {
+                  "type": "bool"
+                }
+              ],
+              "clobbers": []
+            },
+            {
+              "name": "set_cliprect",
+              "parameters": [
+                {
+                  "name": "x1",
+                  "type": "word"
+                },
+                {
+                  "name": "y1",
+                  "type": "word"
+                },
+                {
+                  "name": "x2",
+                  "type": "word"
+                },
+                {
+                  "name": "y2",
+                  "type": "word"
+                }
+              ],
+              "returns": [],
+              "clobbers": []
+            }
+          ],
+          "variables": [],
+          "constants": []
+        }
+      ]
+    },
+    {
       "name": "math",
       "blocks": [
         {
@@ -43714,6 +44753,14 @@ export const library_virtual: LibraryData = {
                 {
                   "name": "length",
                   "type": "uword"
+                },
+                {
+                  "name": "initvalue",
+                  "type": "uword"
+                },
+                {
+                  "name": "xorout",
+                  "type": "uword"
                 }
               ],
               "returns": [
@@ -43725,7 +44772,12 @@ export const library_virtual: LibraryData = {
             },
             {
               "name": "crc16_end",
-              "parameters": [],
+              "parameters": [
+                {
+                  "name": "xorout",
+                  "type": "uword"
+                }
+              ],
               "returns": [
                 {
                   "type": "uword"
@@ -43735,7 +44787,12 @@ export const library_virtual: LibraryData = {
             },
             {
               "name": "crc16_start",
-              "parameters": [],
+              "parameters": [
+                {
+                  "name": "initvalue",
+                  "type": "uword"
+                }
+              ],
               "returns": [],
               "clobbers": []
             },
@@ -45057,6 +46114,21 @@ export const library_virtual: LibraryData = {
               "clobbers": []
             },
             {
+              "name": "isxdigit",
+              "parameters": [
+                {
+                  "name": "character",
+                  "type": "ubyte"
+                }
+              ],
+              "returns": [
+                {
+                  "type": "bool"
+                }
+              ],
+              "clobbers": []
+            },
+            {
               "name": "left",
               "parameters": [
                 {
@@ -45488,6 +46560,21 @@ export const library_virtual: LibraryData = {
               "clobbers": []
             },
             {
+              "name": "die",
+              "parameters": [
+                {
+                  "name": "code",
+                  "type": "ubyte"
+                },
+                {
+                  "name": "message",
+                  "type": "str"
+                }
+              ],
+              "returns": [],
+              "clobbers": []
+            },
+            {
               "name": "disable_caseswitch",
               "parameters": [],
               "returns": [],
@@ -45586,15 +46673,23 @@ export const library_virtual: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "internal_stringcopy",
+              "name": "gfx_text",
               "parameters": [
                 {
-                  "name": "source",
+                  "name": "xx",
+                  "type": "uword"
+                },
+                {
+                  "name": "yy",
+                  "type": "uword"
+                },
+                {
+                  "name": "textptr",
                   "type": "str"
                 },
                 {
-                  "name": "tgt",
-                  "type": "str"
+                  "name": "color",
+                  "type": "ubyte"
                 }
               ],
               "returns": [],
@@ -45681,33 +46776,9 @@ export const library_virtual: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "pop",
+              "name": "poweroff_system",
               "parameters": [],
-              "returns": [
-                {
-                  "type": "ubyte"
-                }
-              ],
-              "clobbers": []
-            },
-            {
-              "name": "popl",
-              "parameters": [],
-              "returns": [
-                {
-                  "type": "long"
-                }
-              ],
-              "clobbers": []
-            },
-            {
-              "name": "popw",
-              "parameters": [],
-              "returns": [
-                {
-                  "type": "uword"
-                }
-              ],
+              "returns": [],
               "clobbers": []
             },
             {
@@ -45731,40 +46802,7 @@ export const library_virtual: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "push",
-              "parameters": [
-                {
-                  "name": "b",
-                  "type": "ubyte"
-                }
-              ],
-              "returns": [],
-              "clobbers": []
-            },
-            {
               "name": "push_returnaddress",
-              "parameters": [
-                {
-                  "name": "w",
-                  "type": "uword"
-                }
-              ],
-              "returns": [],
-              "clobbers": []
-            },
-            {
-              "name": "pushl",
-              "parameters": [
-                {
-                  "name": "l",
-                  "type": "long"
-                }
-              ],
-              "returns": [],
-              "clobbers": []
-            },
-            {
-              "name": "pushw",
               "parameters": [
                 {
                   "name": "w",
@@ -45916,8 +46954,60 @@ export const library_virtual: LibraryData = {
           "name": "cx16",
           "subroutines": [
             {
+              "name": "getrambank",
+              "parameters": [],
+              "returns": [
+                {
+                  "type": "ubyte"
+                }
+              ],
+              "clobbers": []
+            },
+            {
+              "name": "getrombank",
+              "parameters": [],
+              "returns": [
+                {
+                  "type": "ubyte"
+                }
+              ],
+              "clobbers": []
+            },
+            {
+              "name": "numbanks",
+              "parameters": [],
+              "returns": [
+                {
+                  "type": "uword"
+                }
+              ],
+              "clobbers": []
+            },
+            {
+              "name": "rambank",
+              "parameters": [
+                {
+                  "name": "bank",
+                  "type": "ubyte"
+                }
+              ],
+              "returns": [],
+              "clobbers": []
+            },
+            {
               "name": "restore_virtual_registers",
               "parameters": [],
+              "returns": [],
+              "clobbers": []
+            },
+            {
+              "name": "rombank",
+              "parameters": [
+                {
+                  "name": "bank",
+                  "type": "ubyte"
+                }
+              ],
               "returns": [],
               "clobbers": []
             },
@@ -46993,6 +48083,12 @@ export const library_virtual: LibraryData = {
               "clobbers": []
             },
             {
+              "name": "iso",
+              "parameters": [],
+              "returns": [],
+              "clobbers": []
+            },
+            {
               "name": "iso2petscii",
               "parameters": [
                 {
@@ -47015,6 +48111,12 @@ export const library_virtual: LibraryData = {
                   "type": "str"
                 }
               ],
+              "returns": [],
+              "clobbers": []
+            },
+            {
+              "name": "iso_off",
+              "parameters": [],
               "returns": [],
               "clobbers": []
             },
@@ -47321,6 +48423,108 @@ export const library_virtual: LibraryData = {
           ],
           "variables": [],
           "constants": []
+        }
+      ]
+    },
+    {
+      "name": "wavfile",
+      "blocks": [
+        {
+          "name": "wavfile",
+          "subroutines": [
+            {
+              "name": "parse_header",
+              "parameters": [
+                {
+                  "name": "wav_data",
+                  "type": "^^ubyte"
+                }
+              ],
+              "returns": [
+                {
+                  "type": "bool"
+                }
+              ],
+              "clobbers": []
+            }
+          ],
+          "variables": [
+            {
+              "name": "bits_per_sample",
+              "type": "ubyte",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "block_align",
+              "type": "uword",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "data_offset",
+              "type": "uword",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "data_size",
+              "type": "long",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "nchannels",
+              "type": "ubyte",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "sample_rate",
+              "type": "uword",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            },
+            {
+              "name": "wavefmt",
+              "type": "ubyte",
+              "isMemoryMapped": false,
+              "isShared": false,
+              "isZeroPage": false
+            }
+          ],
+          "constants": [
+            {
+              "name": "Format::ADPCM",
+              "type": "ubyte"
+            },
+            {
+              "name": "Format::ALAW",
+              "type": "ubyte"
+            },
+            {
+              "name": "Format::DVI_ADPCM",
+              "type": "ubyte"
+            },
+            {
+              "name": "Format::IEEE_FLOAT",
+              "type": "ubyte"
+            },
+            {
+              "name": "Format::MULAW",
+              "type": "ubyte"
+            },
+            {
+              "name": "Format::PCM",
+              "type": "ubyte"
+            }
+          ]
         }
       ]
     }

@@ -77,8 +77,11 @@ export const prog8Keywords: { [key: string]: KeywordInfo } = {
     // Other declarations
     'const': { description: 'Constant value (compile-time)', category: 'declaration' },
     'struct': { description: 'Structure type definition', category: 'declaration' },
+    'enum': { description: 'Enumeration type definition', category: 'declaration' },
     'alias': { description: 'Create an alias for another identifier', category: 'declaration' },
     'void': { description: 'Discard the return value of a function', category: 'modifier' },
+    'private': { description: 'Restrict visibility to the current block/module', category: 'modifier' },
+    'swap': { description: 'Swap the values of two variables', category: 'statement' },
     
     // Literals
     'true': { description: 'Boolean true value', category: 'literal' },
@@ -207,8 +210,12 @@ export const progbKeywords: { [key: string]: KeywordInfo } = {
     'AS': { description: 'Type specifier', category: 'declaration' },
     'TYPE': { description: 'Structure type definition', category: 'declaration' },
     'END TYPE': { description: 'End of TYPE block', category: 'declaration' },
+    'ENUM': { description: 'Enumeration type definition', category: 'declaration' },
+    'END ENUM': { description: 'End of ENUM block', category: 'declaration' },
     'ALIAS': { description: 'Create an alias for another identifier', category: 'declaration' },
     'VOID': { description: 'Discard the return value of a function', category: 'modifier' },
+    'PRIVATE': { description: 'Restrict visibility to the current block/module', category: 'modifier' },
+    'SWAP': { description: 'Swap the values of two variables', category: 'statement' },
     'AT': { description: 'Memory address specifier', category: 'modifier' },
     'SHARED': { description: 'Shared variable modifier', category: 'modifier' },
     

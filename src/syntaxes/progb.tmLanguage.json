@@ -146,6 +146,10 @@
           "match": "(?i)\\b(IF|IIF|THEN|ELSEIF|ELSE|END\\s+IF|SELECT\\s+CASE|CASE|END\\s+SELECT|ON|GOTO|CALL|FOR|EACH|IN|TO|DOWNTO|STEP|NEXT|WHILE|WEND|DO|LOOP|UNTIL|REPEAT|END\\s+REPEAT|UNROLL|END\\s+UNROLL|RETURN|BREAK|EXIT|CONTINUE|DEFER|END\\s+DEFER)\\b"
         },
         {
+          "name": "keyword.other.progb",
+          "match": "(?i)\\b(PRIVATE|ENUM|END\\s+ENUM)\\b"
+        },
+        {
           "name": "keyword.control.conditional.progb",
           "match": "(?i)\\b(IF_CS|IF_CC|IF_VS|IF_VC|IF_EQ|IF_Z|IF_NE|IF_NZ|IF_PL|IF_POS|IF_MI|IF_NEG)\\b"
         },
@@ -154,8 +158,8 @@
           "match": "(?i)\\b(END\\s+MODULE)\\b"
         },
         {
-          "comment": "Subroutine declarations: SUB/FUNCTION/ASMSUB/EXTSUB followed by name",
-          "match": "(?i)\\b(SUB|FUNCTION|ASMSUB|EXTSUB)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+          "comment": "Subroutine declarations: [PRIVATE] [INLINE] SUB/FUNCTION/ASMSUB/EXTSUB followed by name",
+          "match": "(?i)\\b(?:PRIVATE\\s+)?(?:INLINE\\s+)?(SUB|FUNCTION|ASMSUB|EXTSUB)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
           "captures": {
             "1": { "name": "keyword.other.function.progb" },
             "2": { "name": "entity.name.function.progb" }
@@ -167,7 +171,7 @@
         },
         {
           "name": "keyword.other.progb",
-          "match": "(?i)\\b(VOID|ALIAS|END\\s+TYPE|AT|ADDRESSOF|TYPEDADDR)\\b"
+          "match": "(?i)\\b(VOID|ALIAS|END\\s+TYPE|AT|ADDRESSOF|TYPEDADDR|PRIVATE|SWAP)\\b"
         }
       ]
     },
@@ -195,16 +199,16 @@
           }
         },
         {
-          "comment": "DIM keyword with variable name (including array syntax)",
-          "match": "(?i)\\b(DIM)\\s+([a-zA-Z_][a-zA-Z0-9_]*)(?:\\s*\\[[^\\]]*\\])?",
+          "comment": "DIM keyword with variable name (including array syntax, optional PRIVATE)",
+          "match": "(?i)\\b(?:PRIVATE\\s+)?(DIM)\\s+([a-zA-Z_][a-zA-Z0-9_]*)(?:\\s*\\[[^\\]]*\\])?",
           "captures": {
             "1": { "name": "keyword.other.progb" },
             "2": { "name": "variable.other.declaration.progb" }
           }
         },
         {
-          "comment": "Const declarations",
-          "match": "(?i)\\b(CONST)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\s+(AS)\\s+(UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING)",
+          "comment": "Const declarations (optional PRIVATE)",
+          "match": "(?i)\\b(?:PRIVATE\\s+)?(CONST)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\s+(AS)\\s+(UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING)",
           "captures": {
             "1": { "name": "storage.modifier.progb" },
             "2": { "name": "variable.other.declaration.progb" },
@@ -399,11 +403,22 @@
     "blocks": {
       "patterns": [
         {
-          "match": "(?i)\\b(TYPE)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+          "match": "(?i)\\b(?:PRIVATE\\s+)?(TYPE)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
           "captures": {
             "1": { "name": "keyword.other.progb" },
             "2": { "name": "entity.name.type.struct.progb" }
           }
+        },
+        {
+          "match": "(?i)\\b(?:PRIVATE\\s+)?(ENUM)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+          "captures": {
+            "1": { "name": "keyword.other.progb" },
+            "2": { "name": "entity.name.type.enum.progb" }
+          }
+        },
+        {
+          "name": "keyword.other.progb",
+          "match": "(?i)\\b(END\\s+ENUM)\\b"
         },
         {
           "match": "(?i)\\b(MODULE)\\s+([a-zA-Z_][a-zA-Z0-9_]*)(?:\\s+(AT)\\s+(\\$[0-9a-fA-F]+))?",

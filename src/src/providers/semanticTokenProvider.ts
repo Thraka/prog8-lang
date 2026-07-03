@@ -148,8 +148,8 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
             declPositions.add(`${sr.start.line}:${sr.start.character}:${sr.end.character}`);
         }
 
-        // Identifier regex — matches Prog8/ProgB identifiers, including qualified names
-        const identRegex = /[a-zA-Z_\u00C0-\u024F\u0400-\u04FF][\w\u00C0-\u024F\u0400-\u04FF]*(?:\.[a-zA-Z_\u00C0-\u024F\u0400-\u04FF][\w\u00C0-\u024F\u0400-\u04FF]*)*/g;
+        // Identifier regex — matches Prog8/ProgB identifiers, including qualified names with . or ::
+        const identRegex = /[a-zA-Z_\u00C0-\u024F\u0400-\u04FF][\w\u00C0-\u024F\u0400-\u04FF]*(?:(?:\.|::)[a-zA-Z_\u00C0-\u024F\u0400-\u04FF][\w\u00C0-\u024F\u0400-\u04FF]*)*/g;
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
             const line = lines[lineIndex];
@@ -205,8 +205,21 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
                 const scope = unifiedParser.getScopeAtPosition(symbols, new vscode.Position(lineIndex, col));
 
                 // For qualified names like "monitor.open", split into segments
-                // and classify each part independently
-                if (word.includes('.')) {
+                // For enum member access like "lines::boxes", only if :: is being used
+                let isQualified = word.includes('.');
+                let isEnumMember = false;
+                
+                if (word.includes('::')) {
+                    // Check if the first part is an enum
+                    const firstPart = word.split('::')[0];
+                    const enumSymbol = unifiedParser.findSymbol(symbols, firstPart, scope);
+                    if (enumSymbol && enumSymbol.kind === SymbolKind.Enum) {
+                        isEnumMember = true;
+                        isQualified = true;
+                    }
+                }
+
+                if (isQualified) {
                     this.emitQualifiedName(builder, word, col, lineIndex, symbols, scope, declPositions, importedFileSymbols, librarySymbols);
                 } else {
                     // Try to resolve unqualified name in local symbols first
@@ -257,7 +270,9 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
         importedFileSymbols: ImportedFileSymbols[],
         librarySymbols: UnifiedSymbol[]
     ): void {
-        const parts = qualifiedName.split('.');
+        // Normalize :: separator (for enum members) to . for symbol table lookup
+        const normalizedName = qualifiedName.replace(/::/g, '.');
+        const parts = normalizedName.split('.');
         let currentCol = startCol;
         let pathSoFar = '';
 
@@ -275,6 +290,14 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
 
                 // Try to resolve this segment as a symbol in local symbols first
                 let resolved = unifiedParser.findSymbol(symbols, pathSoFar, scope);
+                
+                // For qualified names, if not found by exact path, try suffix matching
+                // (e.g., "lines.boxes" matches "main.lines.boxes" for enum members)
+                if (!resolved && pathSoFar.includes('.')) {
+                    resolved = symbols.find(s => 
+                        s.fullPath === pathSoFar || s.fullPath.endsWith('.' + pathSoFar)
+                    );
+                }
                 
                 // If not found locally, search in imported file symbols
                 if (!resolved) {
@@ -307,7 +330,7 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
                         ...importedFileSymbols.flatMap(imp => imp.symbols),
                         ...librarySymbols
                     ];
-                    resolved = unifiedParser.resolveStructMemberAccess(qualifiedName, allSymbols, scope);
+                    resolved = unifiedParser.resolveStructMemberAccess(pathSoFar, allSymbols, scope);
                 }
                 
                 if (resolved) {
@@ -327,8 +350,14 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
                 pathSoFar = pathSoFar ? `${pathSoFar}.${part}` : part;
             }
 
-            // Advance past this segment + the dot separator
-            currentCol = partEnd + 1; // +1 for the '.'
+            // Advance past this segment + the separator in the original qualifiedName
+            if (i < parts.length - 1) {
+                // Find the separator after this part in the original qualifiedName
+                const searchStart = currentCol - startCol + part.length;
+                const separatorMatch = qualifiedName.substring(searchStart).match(/^(\.{1}|:{2})/);
+                const separatorLength = separatorMatch ? separatorMatch[0].length : 1; // Default to 1 if not found
+                currentCol = partEnd + separatorLength;
+            }
         }
     }
 
@@ -373,6 +402,13 @@ export class Prog8SemanticTokensProvider implements vscode.DocumentSemanticToken
 
             case SymbolKind.Alias:
                 return { tokenType: 'type', modifiers };
+
+            case SymbolKind.Enum:
+                return { tokenType: 'enum', modifiers };
+
+            case SymbolKind.EnumMember:
+                modifiers.push('readonly');
+                return { tokenType: 'enum', modifiers };
 
             default:
                 return { tokenType: 'variable', modifiers };

@@ -30,7 +30,9 @@ export enum SymbolKind {
     Struct = 'struct',
     StructField = 'field',
     Parameter = 'parameter',
-    Alias = 'alias'
+    Alias = 'alias',
+    Enum = 'enum',
+    EnumMember = 'enum_member'
 }
 
 /**
@@ -65,7 +67,7 @@ export class Parser {
      * Find the word at a given position in a document
      */
     getWordAtPosition(document: vscode.TextDocument, position: vscode.Position): string | undefined {
-        const wordRange = document.getWordRangeAtPosition(position, /[a-zA-Z_\u00C0-\u024F\u0400-\u04FF][\w\u00C0-\u024F\u0400-\u04FF.]*/);
+        const wordRange = document.getWordRangeAtPosition(position, /[a-zA-Z_\u00C0-\u024F\u0400-\u04FF][\w\u00C0-\u024F\u0400-\u04FF.:]*/);
         return wordRange ? document.getText(wordRange) : undefined;
     }
 
@@ -104,7 +106,8 @@ export class Parser {
             if ((symbol.kind === SymbolKind.Block ||
                  symbol.kind === SymbolKind.Subroutine ||
                  symbol.kind === SymbolKind.AsmSubroutine ||
-                 symbol.kind === SymbolKind.Struct) &&
+                 symbol.kind === SymbolKind.Struct ||
+                 symbol.kind === SymbolKind.Enum) &&
                 symbol.range.contains(position)) {
                 if (!minRange || symbol.range.start.isAfter(minRange.start)) {
                     currentScope = symbol.fullPath;
@@ -303,7 +306,7 @@ export class Parser {
             }
 
             // Struct definition
-            const structMatch = trimmedLine.match(/^struct\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\{?/);
+            const structMatch = trimmedLine.match(/^(?:private\s+)?struct\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\{?/);
             if (structMatch) {
                 const name = structMatch[1];
                 const nameStart = line.indexOf(name);
@@ -327,8 +330,41 @@ export class Parser {
                 }
             }
 
-            // Subroutine: [inline] sub|asmsub name(params) [-> returntype]
-            const subMatch = trimmedLine.match(/^(inline\s+)?(sub|asmsub)\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\)(\s*->\s*(.+?))?\s*\{?/);
+            // Enum definition: [private] enum Name { [members] }
+            const enumMatch = trimmedLine.match(/^(?:private\s+)?enum\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*(\{.*)?$/);
+            if (enumMatch) {
+                const name = enumMatch[1];
+                const rest = enumMatch[2] || '';
+                const nameStart = line.indexOf(name);
+                const fullPath = scopePath ? `${scopePath}.${name}` : name;
+
+                const symbolIndex = symbols.length;
+                symbols.push({
+                    name,
+                    kind: SymbolKind.Enum,
+                    description: this.extractDescriptionAbove(lines, lineIndex, false),
+                    range: new vscode.Range(lineIndex, 0, lineIndex, line.length),
+                    selectionRange: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),
+                    parent: scopePath || undefined,
+                    fullPath,
+                    uri: document.uri
+                });
+
+                if (rest.includes('{') && rest.includes('}')) {
+                    // Single-line: enum Foo { a, b, c }
+                    const bodyMatch = rest.match(/\{([^}]*)\}/);
+                    if (bodyMatch) {
+                        this.parseProg8EnumMembers(bodyMatch[1], lineIndex, line, fullPath, document.uri, symbols);
+                    }
+                } else if (rest.includes('{')) {
+                    // Opening brace on this line, members follow on subsequent lines
+                    scopeStack.push({ name, kind: SymbolKind.Enum, symbolIndex });
+                    scopeStartDepths.push(braceDepth);
+                }
+            }
+
+            // Subroutine: [private] [private] [inline] sub|asmsub name(params) [-> returntype]
+            const subMatch = trimmedLine.match(/^(?:private\s+)?(inline\s+)?(sub|asmsub)\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\)(\s*->\s*(.+?))?\s*\{?/);
             if (subMatch) {
                 const isInline = !!subMatch[1];
                 const subKind = subMatch[2] === 'asmsub' ? SymbolKind.AsmSubroutine : SymbolKind.Subroutine;
@@ -361,7 +397,7 @@ export class Parser {
                 }
             } else {
                 // Multiline sub declaration start
-                const multilineSubStart = trimmedLine.match(/^(inline\s+)?(sub|asmsub)\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\s*$/);
+                const multilineSubStart = trimmedLine.match(/^(?:private\s+)?(inline\s+)?(sub|asmsub)\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\s*$/);
                 if (multilineSubStart) {
                     const isInline = !!multilineSubStart[1];
                     const subKind = multilineSubStart[2] === 'asmsub' ? SymbolKind.AsmSubroutine : SymbolKind.Subroutine;
@@ -384,8 +420,8 @@ export class Parser {
                 }
             }
 
-            // extsub $address = name(params)
-            const extsubMatch = trimmedLine.match(/^extsub\s+(\$[0-9a-fA-F]+)\s*=\s*([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\)/);
+            // extsub [$addr | @bank N $addr] = name(params)
+            const extsubMatch = trimmedLine.match(/^(?:private\s+)?extsub\s+(?:@bank\s+\d+\s+)?(\$[0-9a-fA-F]+)\s*=\s*([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\)/);
             if (extsubMatch) {
                 const address = extsubMatch[1];
                 const name = extsubMatch[2];
@@ -408,7 +444,7 @@ export class Parser {
             }
 
             // const type name = value
-            const constMatch = trimmedLine.match(/^const\s+(ubyte|byte|uword|word|long|ulong|float|bool|str)\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*=\s*(.+)/);
+            const constMatch = trimmedLine.match(/^(?:private\s+)?const\s+(ubyte|byte|uword|word|long|ulong|float|bool|str)\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*=\s*(.+)/);
             if (constMatch) {
                 const type = constMatch[1];
                 const name = constMatch[2];
@@ -431,6 +467,13 @@ export class Parser {
 
             // Variable declarations
             const insideStruct = scopeStack.length > 0 && scopeStack[scopeStack.length - 1].kind === SymbolKind.Struct;
+            const insideEnum = scopeStack.length > 0 && scopeStack[scopeStack.length - 1].kind === SymbolKind.Enum;
+            if (insideEnum) {
+                this.parseProg8EnumMembersFromLine(trimmedLine, line, lineIndex, scopePath, document.uri, symbols);
+                braceDepth += this.countBraces(line);
+                this.updateClosedScopes(braceDepth, scopeStack, scopeStartDepths, symbols, lineIndex, line);
+                continue;
+            }
             const symbolCountBefore = symbols.length;
             this.parseProg8VariableDeclarations(trimmedLine, line, lineIndex, scopePath, document.uri, symbols, insideStruct);
             // Attach description to any variables just added
@@ -444,7 +487,7 @@ export class Parser {
             }
 
             // Alias
-            const aliasMatch = trimmedLine.match(/^alias\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*=\s*(.+)/);
+            const aliasMatch = trimmedLine.match(/^(?:private\s+)?alias\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*=\s*(.+)/);
             if (aliasMatch) {
                 const name = aliasMatch[1];
                 const target = aliasMatch[2];
@@ -627,7 +670,7 @@ export class Parser {
         insideStruct: boolean = false
     ): void {
         // Skip keyword lines
-        if (/^(const|sub|asmsub|extsub|struct|if|else|when|for|while|do|repeat|return|goto|defer|alias|on)\b/.test(trimmedLine)) {
+        if (/^(const|sub|asmsub|extsub|struct|enum|if|else|when|for|while|do|repeat|return|goto|defer|alias|on|swap|private)\b/.test(trimmedLine)) {
             return;
         }
 
@@ -654,8 +697,8 @@ export class Parser {
             return;
         }
 
-        // Regular variable: type [@tags] name [= value]
-        const varMatch = trimmedLine.match(/^(\^{0,2}(?:ubyte|byte|uword|word|long|ulong|float|bool|str|[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*(?:\.[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)*))(\[\d*\])?\s+(@\w+\s+)*([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)/);
+        // Regular variable: type [@tags] [arrayspec] name [= value]
+        const varMatch = trimmedLine.match(/^(\^{0,2}(?:ubyte|byte|uword|word|long|ulong|float|bool|str|[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*(?:\.[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)*))((?:\[\d*\]){0,2})\s+(@\w+\s+)*([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)/);
         if (varMatch) {
             const baseType = varMatch[1];
             const arrayPart = varMatch[2] || '';
@@ -697,6 +740,58 @@ export class Parser {
                 }
             }
         }
+    }
+
+    /**
+     * Parse enum members from a text fragment (comma-separated identifiers with optional = value).
+     * Used for single-line enums: enum Foo { a, b = 5, c }
+     */
+    private parseProg8EnumMembers(
+        memberText: string,
+        lineIndex: number,
+        fullLine: string,
+        enumPath: string,
+        uri: vscode.Uri,
+        symbols: ParsedSymbol[]
+    ): void {
+        for (const part of memberText.split(',')) {
+            const m = part.trim();
+            if (!m) continue;
+            const memberMatch = m.match(/^([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*(?:=\s*(.+))?$/);
+            if (memberMatch) {
+                const name = memberMatch[1];
+                const value = memberMatch[2]?.trim();
+                const nameStart = fullLine.indexOf(name);
+                symbols.push({
+                    name,
+                    kind: SymbolKind.EnumMember,
+                    detail: value ? `= ${value}` : undefined,
+                    range: new vscode.Range(lineIndex, 0, lineIndex, fullLine.length),
+                    selectionRange: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),
+                    parent: enumPath,
+                    fullPath: `${enumPath}.${name}`,
+                    uri
+                });
+            }
+        }
+    }
+
+    /**
+     * Parse enum members from a single line when already inside an enum scope.
+     * Handles comma-separated members, possibly with = value.
+     */
+    private parseProg8EnumMembersFromLine(
+        trimmedLine: string,
+        fullLine: string,
+        lineIndex: number,
+        enumPath: string,
+        uri: vscode.Uri,
+        symbols: ParsedSymbol[]
+    ): void {
+        if (trimmedLine === '{' || trimmedLine === '}' || trimmedLine === '') return;
+        // Strip surrounding braces/commas and parse each comma-separated item
+        const cleaned = trimmedLine.replace(/^\{/, '').replace(/\}$/, '').trim();
+        this.parseProg8EnumMembers(cleaned, lineIndex, fullLine, enumPath, uri, symbols);
     }
 
     /**
@@ -898,8 +993,8 @@ export class Parser {
                 continue;
             }
 
-            // TYPE (struct) definition: TYPE Name
-            const typeMatch = trimmedLine.match(/^TYPE\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)/i);
+            // TYPE (struct) definition: [PRIVATE] TYPE Name
+            const typeMatch = trimmedLine.match(/^(?:PRIVATE\s+)?TYPE\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)/i);
             if (typeMatch) {
                 const name = typeMatch[1];
                 const nameStart = line.toUpperCase().indexOf(name.toUpperCase(), line.toUpperCase().indexOf('TYPE') + 4);
@@ -927,8 +1022,60 @@ export class Parser {
                 continue;
             }
 
-            // FUNCTION definition: [INLINE] FUNCTION name(params) AS type
-            const funcMatch = trimmedLine.match(/^(INLINE\s+)?FUNCTION\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\)(?:\s+AS\s+(.+))?/i);
+            // ENUM definition: [PRIVATE] ENUM Name
+            const progbEnumMatch = trimmedLine.match(/^(?:PRIVATE\s+)?ENUM\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)/i);
+            if (progbEnumMatch) {
+                const name = progbEnumMatch[1];
+                const nameStart = this.findIdentifierStart(line, name, 'ENUM');
+                const fullPath = scopePath ? `${scopePath}.${name}` : name;
+
+                const symbolIndex = symbols.length;
+                symbols.push({
+                    name,
+                    kind: SymbolKind.Enum,
+                    description: this.extractDescriptionAbove(lines, lineIndex, true),
+                    range: new vscode.Range(lineIndex, 0, lineIndex, line.length),
+                    selectionRange: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),
+                    parent: scopePath || undefined,
+                    fullPath,
+                    uri: document.uri
+                });
+
+                scopeStack.push({ name, kind: SymbolKind.Enum, symbolIndex, startLine: lineIndex });
+                continue;
+            }
+
+            // END ENUM
+            if (/^END\s+ENUM\b/i.test(trimmedLine)) {
+                this.closeProgBScope(scopeStack, symbols, lineIndex, line, SymbolKind.Enum);
+                continue;
+            }
+
+            // ENUM members when inside an ENUM scope
+            if (scopeStack.length > 0 && scopeStack[scopeStack.length - 1].kind === SymbolKind.Enum) {
+                const enumPath = scopePath;
+                const memberMatch = trimmedLine.match(/^([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*(?:=\s*(.+))?$/);
+                if (memberMatch) {
+                    const name = memberMatch[1];
+                    const value = memberMatch[2]?.trim();
+                    const nameStart = line.indexOf(name);
+                    symbols.push({
+                        name,
+                        kind: SymbolKind.EnumMember,
+                        detail: value ? `= ${value}` : undefined,
+                        description: this.extractDescriptionAbove(lines, lineIndex, true),
+                        range: new vscode.Range(lineIndex, 0, lineIndex, line.length),
+                        selectionRange: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),
+                        parent: enumPath,
+                        fullPath: `${enumPath}.${name}`,
+                        uri: document.uri
+                    });
+                }
+                continue;
+            }
+
+            // FUNCTION definition: [PRIVATE] [INLINE] FUNCTION name(params) AS type
+            const funcMatch = trimmedLine.match(/^(?:PRIVATE\s+)?(INLINE\s+)?FUNCTION\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\)(?:\s+AS\s+(.+))?/i);
             if (funcMatch) {
                 const isInline = !!funcMatch[1];
                 const name = funcMatch[2];
@@ -958,7 +1105,7 @@ export class Parser {
                 continue;
             } else {
                 // Multiline FUNCTION declaration start
-                const multilineFuncStart = trimmedLine.match(/^(INLINE\s+)?FUNCTION\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\s*$/i);
+                const multilineFuncStart = trimmedLine.match(/^(?:PRIVATE\s+)?(INLINE\s+)?FUNCTION\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\s*$/i);
                 if (multilineFuncStart) {
                     const isInline = !!multilineFuncStart[1];
                     const name = multilineFuncStart[2];
@@ -984,8 +1131,8 @@ export class Parser {
                 continue;
             }
 
-            // SUB definition: [INLINE] SUB name(params)
-            const subMatch = trimmedLine.match(/^(INLINE\s+)?SUB\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\)/i);
+            // SUB definition: [PRIVATE] [INLINE] SUB name(params)
+            const subMatch = trimmedLine.match(/^(?:PRIVATE\s+)?(INLINE\s+)?SUB\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\)/i);
             if (subMatch && !/^END\s+SUB\b/i.test(trimmedLine)) {
                 const isInline = !!subMatch[1];
                 const name = subMatch[2];
@@ -1013,7 +1160,7 @@ export class Parser {
                 continue;
             } else if (!/^END\s+SUB\b/i.test(trimmedLine)) {
                 // Multiline SUB declaration start
-                const multilineSubStart = trimmedLine.match(/^(INLINE\s+)?SUB\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\s*$/i);
+                const multilineSubStart = trimmedLine.match(/^(?:PRIVATE\s+)?(INLINE\s+)?SUB\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\s*$/i);
                 if (multilineSubStart) {
                     const isInline = !!multilineSubStart[1];
                     const name = multilineSubStart[2];
@@ -1039,8 +1186,8 @@ export class Parser {
                 continue;
             }
 
-            // ASMSUB definition: [INLINE] ASMSUB name(params) [CLOBBERS(...)] [AS type @reg]
-            const asmsubMatch = trimmedLine.match(/^(INLINE\s+)?ASMSUB\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\)/i);
+            // ASMSUB definition: [PRIVATE] [INLINE] ASMSUB name(params) [CLOBBERS(...)] [AS type @reg]
+            const asmsubMatch = trimmedLine.match(/^(?:PRIVATE\s+)?(INLINE\s+)?ASMSUB\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\)/i);
             if (asmsubMatch) {
                 const isInline = !!asmsubMatch[1];
                 const name = asmsubMatch[2];
@@ -1070,7 +1217,7 @@ export class Parser {
                 continue;
             } else {
                 // Multiline ASMSUB declaration start
-                const multilineAsmsubStart = trimmedLine.match(/^(INLINE\s+)?ASMSUB\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\s*$/i);
+                const multilineAsmsubStart = trimmedLine.match(/^(?:PRIVATE\s+)?(INLINE\s+)?ASMSUB\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\s*$/i);
                 if (multilineAsmsubStart) {
                     const isInline = !!multilineAsmsubStart[1];
                     const name = multilineAsmsubStart[2];
@@ -1096,8 +1243,8 @@ export class Parser {
                 continue;
             }
 
-            // EXTSUB: EXTSUB [AT BANK n] $addr = name(params) [AS type @reg] [CLOBBERS(...)]
-            const extsubMatch = trimmedLine.match(/^EXTSUB\s+(?:AT\s+BANK\s+\d+\s+)?(\$[0-9a-fA-F]+)\s*=\s*([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\)/i);
+            // EXTSUB: [PRIVATE] EXTSUB [AT BANK n] $addr = name(params) [AS type @reg] [CLOBBERS(...)]
+            const extsubMatch = trimmedLine.match(/^(?:PRIVATE\s+)?EXTSUB\s+(?:AT\s+BANK\s+\d+\s+)?(\$[0-9a-fA-F]+)\s*=\s*([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*\(([^)]*)\)/i);
             if (extsubMatch) {
                 const address = extsubMatch[1];
                 const name = extsubMatch[2];
@@ -1121,7 +1268,7 @@ export class Parser {
             }
 
             // CONST name AS type = value
-            const constMatch = trimmedLine.match(/^CONST\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s+AS\s+((?:PTR\s+)*\^{0,2}(?:UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*))\s*=\s*(.+)/i);
+            const constMatch = trimmedLine.match(/^(?:PRIVATE\s+)?CONST\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s+AS\s+((?:PTR\s+)*\^{0,2}(?:UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*))\s*=\s*(.+)/i);
             if (constMatch) {
                 const name = constMatch[1];
                 const type = this.convertProgBType(constMatch[2]);
@@ -1159,7 +1306,7 @@ export class Parser {
             }
 
             // ALIAS short = long.name
-            const aliasMatch = trimmedLine.match(/^ALIAS\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*=\s*(.+)/i);
+            const aliasMatch = trimmedLine.match(/^(?:PRIVATE\s+)?ALIAS\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)\s*=\s*(.+)/i);
             if (aliasMatch) {
                 const name = aliasMatch[1];
                 const target = aliasMatch[2];
@@ -1328,15 +1475,15 @@ export class Parser {
         symbols: ParsedSymbol[],
         insideStruct: boolean = false
     ): void {
-        if (!/^DIM\b/i.test(trimmedLine)) {
+        if (!/^(?:PRIVATE\s+)?DIM\b/i.test(trimmedLine)) {
             return;
         }
 
-        // DIM with AT (memory-mapped): DIM name AS type AT $address
-        const memoryMatch = trimmedLine.match(/^DIM\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)(?:\s*\[([^\]]*)\])?\s+AS\s+(\^{0,2}(?:UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*(?:\.[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)*))\s+AT\s+(\$[0-9a-fA-F]+)/i);
+        // DIM with AT (memory-mapped): [PRIVATE] DIM name[spec] AS type AT $address
+        const memoryMatch = trimmedLine.match(/^(?:PRIVATE\s+)?DIM\s+([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)((?:\s*\[[^\]]*\]){0,2})?\s+AS\s+(\^{0,2}(?:UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*(?:\.[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)*))\s+AT\s+(\$[0-9a-fA-F]+)/i);
         if (memoryMatch) {
             const name = memoryMatch[1];
-            const arraySize = memoryMatch[2];
+            const arraySpec = memoryMatch[2]?.trim() || '';
             const type = this.convertProgBType(memoryMatch[3]);
             const address = memoryMatch[4];
             const nameStart = this.findIdentifierStart(fullLine, name, 'DIM');
@@ -1345,7 +1492,7 @@ export class Parser {
             symbols.push({
                 name,
                 kind: insideStruct ? SymbolKind.StructField : SymbolKind.Variable,
-                type: arraySize ? `${type}[${arraySize}]` : `&${type}`,
+                type: arraySpec ? `${type}${arraySpec}` : `&${type}`,
                 detail: `@ ${address}`,
                 range: new vscode.Range(lineIndex, 0, lineIndex, fullLine.length),
                 selectionRange: new vscode.Range(lineIndex, nameStart, lineIndex, nameStart + name.length),
@@ -1356,18 +1503,18 @@ export class Parser {
             return;
         }
 
-        // Regular DIM: DIM name[size], name2 AS type [= value] [@tags]
-        const dimMatch = trimmedLine.match(/^DIM\s+(.+?)\s+AS\s+((?:PTR\s+)*\^{0,2}(?:UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*(?:\.[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)*))(?:\s+(@\w+))?/i);
+        // Regular DIM: [PRIVATE] DIM name[spec], name2 AS type [= value] [@tags]
+        const dimMatch = trimmedLine.match(/^(?:PRIVATE\s+)?DIM\s+(.+?)\s+AS\s+((?:PTR\s+)*\^{0,2}(?:UBYTE|BYTE|UWORD|WORD|LONG|FLOAT|BOOL|STRING|[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*(?:\.[a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)*))(?:\s+(@\w+))?/i);
         if (dimMatch) {
             const varList = dimMatch[1];
             const baseType = this.convertProgBType(dimMatch[2]);
 
-            const varPattern = /([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)(?:\s*\[([^\]]*)\])?(?:\s*=\s*[^,]+)?/gi;
+            const varPattern = /([a-zA-Z_\u00C0-\u024F][\w\u00C0-\u024F]*)((?:\s*\[[^\]]*\]){0,2})(?:\s*=\s*[^,]+)?/gi;
             let varMatch;
             while ((varMatch = varPattern.exec(varList)) !== null) {
                 const name = varMatch[1];
-                const arraySize = varMatch[2];
-                const type = arraySize ? `${baseType}[${arraySize}]` : baseType;
+                const arraySpec = varMatch[2]?.trim() || '';
+                const type = arraySpec ? `${baseType}${arraySpec}` : baseType;
                 const nameStart = fullLine.indexOf(name);
                 const fullPath = scopePath ? `${scopePath}.${name}` : name;
 

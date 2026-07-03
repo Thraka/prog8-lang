@@ -88,12 +88,12 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
             librarySymbols.filter(s => s.kind === SymbolKind.Block).map(s => s.name)
         );
 
-        // Check if we're completing a qualified name (e.g., "txt." or "main.start.")
+        // Check if we're completing a qualified name (e.g., "txt." or "main.start." or "lines::")
         const qualifiedPrefixValue = getQualifiedPrefix(linePrefix);
         
         if (qualifiedPrefixValue) {
             // Scoped completion - show only members of the specified scope
-            const scopedCompletions = this.getScopedCompletions(qualifiedPrefixValue, symbols, importedFileSymbols, currentScope, importedLibBlockNames);
+            const scopedCompletions = this.getScopedCompletions(qualifiedPrefixValue, symbols, importedFileSymbols, currentScope, importedLibBlockNames, linePrefix);
             completions.push(...scopedCompletions);
         } else {
             // Regular completion - show local variables and accessible symbols
@@ -171,7 +171,8 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
         symbols: UnifiedSymbol[], 
         importedFileSymbols: ImportedFileSymbols[] = [],
         currentScope?: string,
-        importedLibBlockNames?: Set<string>
+        importedLibBlockNames?: Set<string>,
+        linePrefix: string = ''
     ): vscode.CompletionItem[] {
         const completions: vscode.CompletionItem[] = [];
         const addedNames = new Set<string>();
@@ -202,12 +203,30 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
         completions.push(...structMemberCompletions);
         structMemberCompletions.forEach(item => addedNames.add(item.label as string));
 
+        // If prefix is unqualified (no dots), try scope-aware resolution to find the actual full path
+        // For :: syntax, only resolve if the prefix is an enum
+        let resolvedPrefix = prefix;
+        const isEnumAccess = linePrefix.includes('::');
+        
+        if (!prefix.includes('.')) {
+            const resolved = unifiedParser.findSymbol(symbols, prefix, currentScope);
+            if (resolved) {
+                // Only resolve :: syntax if it's actually an enum
+                if (isEnumAccess && resolved.kind === SymbolKind.Enum) {
+                    resolvedPrefix = resolved.fullPath;
+                } else if (!isEnumAccess) {
+                    // For regular . syntax, resolve normally
+                    resolvedPrefix = resolved.fullPath;
+                }
+            }
+        }
+
         // Then, check local symbols that belong to this scope
         for (const symbol of symbols) {
-            // Check if this symbol's parent matches the prefix
-            if (symbol.parent === prefix || symbol.fullPath.startsWith(prefix + '.')) {
+            // Check if this symbol's parent matches the prefix (use resolved prefix if different)
+            if (symbol.parent === resolvedPrefix || symbol.fullPath.startsWith(resolvedPrefix + '.')) {
                 // Only add direct children, not nested ones
-                const relativePath = symbol.fullPath.substring(prefix.length + 1);
+                const relativePath = symbol.fullPath.substring(resolvedPrefix.length + 1);
                 if (!relativePath.includes('.')) {
                     if (!addedNames.has(symbol.name)) {
                         addedNames.add(symbol.name);
@@ -220,10 +239,25 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
 
         // Check imported file symbols for the prefix
         for (const imported of importedFileSymbols) {
+            // For :: syntax, only resolve if it's an enum
+            let resolvedImportedPrefix = resolvedPrefix;
+            if (!prefix.includes('.') && resolvedPrefix === prefix && isEnumAccess) {
+                const resolved = unifiedParser.findSymbol(imported.symbols, prefix, currentScope);
+                if (resolved && resolved.kind === SymbolKind.Enum) {
+                    resolvedImportedPrefix = resolved.fullPath;
+                }
+            } else if (!prefix.includes('.') && resolvedPrefix === prefix && !isEnumAccess) {
+                // For regular . syntax
+                const resolved = unifiedParser.findSymbol(imported.symbols, prefix, currentScope);
+                if (resolved) {
+                    resolvedImportedPrefix = resolved.fullPath;
+                }
+            }
+            
             for (const symbol of imported.symbols) {
                 // Check if this symbol's parent matches the prefix or is a direct child
-                if (symbol.parent === prefix || symbol.fullPath.startsWith(prefix + '.')) {
-                    const relativePath = symbol.fullPath.substring(prefix.length + 1);
+                if (symbol.parent === resolvedImportedPrefix || symbol.fullPath.startsWith(resolvedImportedPrefix + '.')) {
+                    const relativePath = symbol.fullPath.substring(resolvedImportedPrefix.length + 1);
                     if (!relativePath.includes('.')) {
                         if (!addedNames.has(symbol.name)) {
                             addedNames.add(symbol.name);
@@ -590,6 +624,7 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
         SymbolKind.Block,
         SymbolKind.Struct,
         SymbolKind.Alias,
+        SymbolKind.Enum,
         SymbolKind.Label
     ]);
 
@@ -626,6 +661,7 @@ export class Prog8CompletionProvider implements vscode.CompletionItemProvider {
                 case SymbolKind.AsmSubroutine:
                 case SymbolKind.ExtSubroutine:
                 case SymbolKind.Struct:
+                case SymbolKind.Enum:
                 case SymbolKind.Alias:
                     // These require scope accessibility check
                     if (!this.isSymbolAccessible(symbol, currentScope)) {
