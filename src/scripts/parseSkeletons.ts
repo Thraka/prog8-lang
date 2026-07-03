@@ -3,7 +3,7 @@
  * 
  * Run with: npx ts-node scripts/parseSkeletons.ts
  * 
- * Input: skeleton files from https://prog8.readthedocs.io/en/latest/_static/symboldumps/
+ * Input: skeleton files from https://prog8.readthedocs.io/en/stable/_static/symboldumps/
  * Output: src/data/librarySymbols.ts
  */
 
@@ -416,11 +416,11 @@ async function main() {
     console.log('Fetching Prog8 skeleton files...');
     
     const targets = [
-        { name: 'cx16', url: 'https://prog8.readthedocs.io/en/latest/_static/symboldumps/skeletons-cx16.txt' },
-        { name: 'c64', url: 'https://prog8.readthedocs.io/en/latest/_static/symboldumps/skeletons-c64.txt' },
-        { name: 'c128', url: 'https://prog8.readthedocs.io/en/latest/_static/symboldumps/skeletons-c128.txt' },
-        { name: 'pet32', url: 'https://prog8.readthedocs.io/en/latest/_static/symboldumps/skeletons-pet32.txt' },
-        { name: 'virtual', url: 'https://prog8.readthedocs.io/en/latest/_static/symboldumps/skeletons-virtual.txt' },
+        { name: 'cx16', url: 'https://prog8.readthedocs.io/en/stable/_static/symboldumps/skeletons-cx16.txt' },
+        { name: 'c64', url: 'https://prog8.readthedocs.io/en/stable/_static/symboldumps/skeletons-c64.txt' },
+        { name: 'c128', url: 'https://prog8.readthedocs.io/en/stable/_static/symboldumps/skeletons-c128.txt' },
+        { name: 'pet32', url: 'https://prog8.readthedocs.io/en/stable/_static/symboldumps/skeletons-pet32.txt' },
+        { name: 'virtual', url: 'https://prog8.readthedocs.io/en/stable/_static/symboldumps/skeletons-virtual.txt' },
     ];
     
     const libraries: LibraryData[] = [];

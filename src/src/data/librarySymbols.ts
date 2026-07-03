@@ -8,7 +8,7 @@ import { LibraryData } from "./librarySymbolsHelpers";
 
 export const library_cx16: LibraryData = {
   "target": "cx16",
-  "version": "12.3",
+  "version": "12.2.1",
   "modules": [
     {
       "name": "adpcm",
@@ -3967,25 +3967,6 @@ export const library_cx16: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "mod",
-              "parameters": [
-                {
-                  "name": "value",
-                  "type": "float"
-                },
-                {
-                  "name": "divisor",
-                  "type": "float"
-                }
-              ],
-              "returns": [
-                {
-                  "type": "float"
-                }
-              ],
-              "clobbers": []
-            },
-            {
               "name": "normalize",
               "parameters": [
                 {
@@ -7693,29 +7674,10 @@ export const library_cx16: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "get_baud_string",
-              "parameters": [
-                {
-                  "name": "baud",
-                  "type": "uword"
-                }
-              ],
-              "returns": [
-                {
-                  "type": "str"
-                }
-              ],
-              "clobbers": []
-            },
-            {
               "name": "initialize_uart",
               "parameters": [
                 {
                   "name": "uart_addr",
-                  "type": "uword"
-                },
-                {
-                  "name": "baud_divisor",
                   "type": "uword"
                 }
               ],
@@ -7827,10 +7789,6 @@ export const library_cx16: LibraryData = {
               "parameters": [
                 {
                   "name": "uart_addr",
-                  "type": "uword"
-                },
-                {
-                  "name": "baud_divisor",
                   "type": "uword"
                 }
               ],
@@ -20267,25 +20225,6 @@ export const library_c64: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "mod",
-              "parameters": [
-                {
-                  "name": "value",
-                  "type": "float"
-                },
-                {
-                  "name": "divisor",
-                  "type": "float"
-                }
-              ],
-              "returns": [
-                {
-                  "type": "float"
-                }
-              ],
-              "clobbers": []
-            },
-            {
               "name": "normalize",
               "parameters": [
                 {
@@ -20484,7 +20423,7 @@ export const library_c64: LibraryData = {
               "type": "float"
             },
             {
-              "name": "π",
+              "name": "��",
               "type": "float"
             }
           ]
@@ -37458,25 +37397,6 @@ export const library_pet32: LibraryData = {
               "clobbers": []
             },
             {
-              "name": "mod",
-              "parameters": [
-                {
-                  "name": "value",
-                  "type": "float"
-                },
-                {
-                  "name": "divisor",
-                  "type": "float"
-                }
-              ],
-              "returns": [
-                {
-                  "type": "float"
-                }
-              ],
-              "clobbers": []
-            },
-            {
               "name": "pow",
               "parameters": [
                 {
@@ -38469,16 +38389,6 @@ export const library_pet32: LibraryData = {
           "name": "petsnd",
           "subroutines": [
             {
-              "name": "is_playing",
-              "parameters": [],
-              "returns": [
-                {
-                  "type": "bool"
-                }
-              ],
-              "clobbers": []
-            },
-            {
               "name": "note",
               "parameters": [
                 {
@@ -38510,80 +38420,6 @@ export const library_pet32: LibraryData = {
               "name": "on",
               "parameters": [],
               "returns": [],
-              "clobbers": []
-            },
-            {
-              "name": "play_note",
-              "parameters": [
-                {
-                  "name": "n",
-                  "type": "ubyte"
-                },
-                {
-                  "name": "ticks",
-                  "type": "ubyte"
-                }
-              ],
-              "returns": [],
-              "clobbers": []
-            },
-            {
-              "name": "play_song",
-              "parameters": [
-                {
-                  "name": "notes",
-                  "type": "^^ubyte"
-                },
-                {
-                  "name": "durations",
-                  "type": "^^ubyte"
-                },
-                {
-                  "name": "length",
-                  "type": "ubyte"
-                }
-              ],
-              "returns": [],
-              "clobbers": []
-            },
-            {
-              "name": "set_gap",
-              "parameters": [
-                {
-                  "name": "ticks",
-                  "type": "ubyte"
-                }
-              ],
-              "returns": [],
-              "clobbers": []
-            },
-            {
-              "name": "song",
-              "parameters": [
-                {
-                  "name": "notes",
-                  "type": "^^ubyte"
-                },
-                {
-                  "name": "durations",
-                  "type": "^^ubyte"
-                },
-                {
-                  "name": "length",
-                  "type": "ubyte"
-                }
-              ],
-              "returns": [],
-              "clobbers": []
-            },
-            {
-              "name": "update",
-              "parameters": [],
-              "returns": [
-                {
-                  "type": "bool"
-                }
-              ],
               "clobbers": []
             }
           ],
@@ -38707,10 +38543,6 @@ export const library_pet32: LibraryData = {
             },
             {
               "name": "OCTAVES_678",
-              "type": "ubyte"
-            },
-            {
-              "name": "REST",
               "type": "ubyte"
             }
           ]
@@ -44330,25 +44162,6 @@ export const library_virtual: LibraryData = {
                 },
                 {
                   "name": "f2",
-                  "type": "float"
-                }
-              ],
-              "returns": [
-                {
-                  "type": "float"
-                }
-              ],
-              "clobbers": []
-            },
-            {
-              "name": "mod",
-              "parameters": [
-                {
-                  "name": "value",
-                  "type": "float"
-                },
-                {
-                  "name": "divisor",
                   "type": "float"
                 }
               ],
